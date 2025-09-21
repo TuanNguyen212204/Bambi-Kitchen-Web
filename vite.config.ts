@@ -18,7 +18,7 @@ export default defineConfig({
       "@constant": fileURLToPath(new URL("./src/constant", import.meta.url)),
       "@context": fileURLToPath(new URL("./src/context", import.meta.url)),
       "@routes": fileURLToPath(new URL("./src/routers", import.meta.url)),
-      "@types": fileURLToPath(new URL("./src/types", import.meta.url)),
+      "@models": fileURLToPath(new URL("./src/models", import.meta.url)),
       "@utils": fileURLToPath(new URL("./src/utils", import.meta.url)),
       // State management (sẽ thay redux bằng zustand)
       // "@redux": fileURLToPath(new URL("./src/redux", import.meta.url)),
@@ -39,10 +39,8 @@ export default defineConfig({
     open: true, 
     host: true,
   },
-
-  // ✅ Build optimizations
   build: {
-    sourcemap: true, // Giữ source maps cho debug
+    sourcemap: true, 
     rollupOptions: {
       output: {
         manualChunks: {
@@ -54,12 +52,6 @@ export default defineConfig({
     },
   },
 
-  // ✅ Environment-specific config
-  envPrefix: ['VITE_', 'REACT_APP_'], // Hỗ trợ cả Vite và React env vars
 
-  // ✅ Preview config
-  preview: {
-    port: 3001,
-    open: true,
-  },
+  envPrefix: ['VITE_', 'REACT_APP_'],
 })

@@ -9,7 +9,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@ui/*": ["./src/components/ui/*"],
-      "@lib/*": ["./src/lib/*"]
+      "@lib/*": ["./src/lib/*"],
+      "@models/*": ["src/models/*"],
     },
     "target": "ES2022",
     "useDefineForClassFields": true,
