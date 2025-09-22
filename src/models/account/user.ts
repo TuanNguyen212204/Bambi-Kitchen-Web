@@ -23,16 +23,16 @@ export interface UserProfile extends User {
   phone?: string
   address?: string
   avatar?: string
-  preferences?: UserPreferences
+  preferences?: UserPreferences //sở thích ăn uống
   last_login?: string
   total_orders?: number
   average_rating?: number
 }
 
 export interface UserPreferences {
-  dietary_restrictions: DietaryRestriction[]
+  dietary_restrictions: DietaryRestriction[] //Chế độ ăn
   calorie_goal: CalorieGoal
-  favorite_cuisine: CuisineType[]
+  favorite_cuisine: CuisineType[] //Phong cách ẩm thực mà người dùng thích
   allergies: string[]
   meal_frequency: "3-meals" | "2-meals-snacks"
 }
@@ -41,7 +41,9 @@ export type DietaryRestriction =
   | "vegetarian" //Ăn chay 
   | "vegan" //Thuần chay
   | "low-carb" //Ít tinh bột
-  | "diabetic"
+  | "gluten-free" //Chất hỗn hợp protein tự nhiên có trong lúa mì , ngũ cốc ai bị bệnh celiac hoặc nhạy cảm gluten ăn dễ bị đau bụng, tiêu chảy,...
+  | "keto" // CHế độ ăn kiêng ít tinh bột nhiều chất béo để cơ thể đốt mỡ thành ketone làm năng lượng hay còn gọi là trạng thái ketosis
+  | "diabetic" //Tiểu đường
 
 export type CalorieGoal = 
   | "low"
@@ -54,6 +56,7 @@ export type CuisineType =
   | "western"
   | "healthy"
 
+//Auth payload
 export interface LoginPayload {
   mail: string
   pass: string
