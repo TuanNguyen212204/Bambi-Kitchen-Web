@@ -1,7 +1,6 @@
 import type { Ingredient } from "@models/ingredient/ingredient"
 import type { OrderDetail } from "@models/order/order-detail"
 
-// OrderReceipt = Nguyên liệu trong đơn hàng cụ thể (từ database table "order_receipt")
 export interface OrderReceipt {
   id: number
   ingredient_id: number

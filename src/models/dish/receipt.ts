@@ -1,7 +1,6 @@
 import type { Ingredient } from "@models/ingredient/ingredient"
 import type { Dish } from "@models/dish/dish"
 
-// Receipt = Công thức món ăn (từ database table "receipt")
 export interface Receipt {
   id: number
   name: string
