@@ -42,7 +42,6 @@ export type OrderStatus =
   | "cancelled"
   | "refunded"
 
-// PaymentMethod imported from @models/payment/payment
 
 export interface CreateOrderPayload {
   user_id: number

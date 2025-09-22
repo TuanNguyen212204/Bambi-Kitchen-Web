@@ -1,4 +1,3 @@
-// Re-export all domains
 export * from "@models/account"
 export * from "@models/ingredient" 
 export * from "@models/dish"
@@ -10,7 +9,6 @@ export * from "@models/transaction"
 export * from "@models/category"
 export * from "@models/shared"
 
-// Common types
 export type ApiRoutes = string 
 export type EntityId = number 
 export type Uuid = string 

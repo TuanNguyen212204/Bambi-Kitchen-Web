@@ -1,6 +1,7 @@
 import type { Ingredient } from "@models/ingredient/ingredient"
 import type { Dish } from "@models/dish/dish"
 
+
 export interface Receipt {
   id: number
   name: string

@@ -11,6 +11,8 @@
       "@ui/*": ["./src/components/ui/*"],
       "@lib/*": ["./src/lib/*"],
       "@models/*": ["src/models/*"],
+      "@pages/*": ["src/pages/*"],
+      "@config/*": ["src/config/*"],
     },
     "target": "ES2022",
     "useDefineForClassFields": true,
