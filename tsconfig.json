@@ -13,6 +13,12 @@
       "@models/*": ["src/models/*"],
       "@pages/*": ["src/pages/*"],
       "@config/*": ["src/config/*"],
+      "@zustand/*": ["./src/zustand/*"],
+      "@components/*": ["./src/components/*"],
+      "@constant/*": ["./src/constant/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@routers/*": ["./src/routers/*"]
+
     },
     "target": "ES2022",
     "useDefineForClassFields": true,

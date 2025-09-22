@@ -80,7 +80,6 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
     role: [],
   },
 ]
-
 // export const PRIVATE_ROUTES: RouteConfig[] = [
 //   {
 //     path: PATHS.ORDER,
@@ -226,3 +225,4 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
 //     icon: "💬",
 //   },
 // ]
+export const PRIVATE_ROUTES: RouteConfig[] = []
