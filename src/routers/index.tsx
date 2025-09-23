@@ -67,7 +67,6 @@ export const AppRoute = memo(() => {
       element: <ErrorPage />,
     },
 
-    // 404 fallback
     {
       path: "*",
       element: (

@@ -4,7 +4,7 @@ import { useAuthStore } from "@zustand/stores/auth"
 import { ROLES } from "@config/routes"
 import { PATHS } from "@config/path"
 import { HTTP_STATUS } from "@config/httpStatus"
-import { Button } from "@components/ui/Button"
+import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 

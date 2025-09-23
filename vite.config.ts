@@ -23,10 +23,9 @@ export default defineConfig({
       "@constant": fileURLToPath(new URL("./src/constant", import.meta.url)),
       "@utils": fileURLToPath(new URL("./src/utils", import.meta.url)),
       "@routers": fileURLToPath(new URL("./src/routers", import.meta.url)),
-
+      "@assets": fileURLToPath(new URL("./src/assets", import.meta.url)),
       "@hooks": fileURLToPath(new URL("./src/hooks", import.meta.url)),
       "@user": fileURLToPath(new URL("./src/pages/User", import.meta.url)),
-      "@assets": fileURLToPath(new URL("./src/assets", import.meta.url)),
     },
     
     extensions: ['.js', '.jsx', '.ts', '.tsx'],

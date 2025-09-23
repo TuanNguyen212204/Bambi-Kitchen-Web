@@ -35,7 +35,7 @@ export interface Dish {
   category_id: number
   is_public: boolean
   used_count: number
-  account_id: number 
+  account_id: number // Creator
 }
 
 export interface OrderItem {
@@ -73,8 +73,8 @@ export interface Order {
   }
   created_at: Date
   updated_at?: Date
-  staff_id?: number 
-  ranking?: number
+  staff_id?: number // Assigned staff
+  ranking?: number // Customer rating 1-5
   feedback?: string
 }
 
@@ -131,15 +131,18 @@ interface KitchenState {
   fetchOrderHistory: (userId: number, page?: number, limit?: number) => Promise<void>
   reorder: (orderId: number) => Promise<void>
   rateOrder: (orderId: number, rating: number, feedback?: string) => Promise<void>
+  
 
   fetchActiveOrders: () => Promise<void>
   claimOrder: (orderId: number) => Promise<void>
   updateOrderStatus: (orderId: number, status: Order["status"]) => Promise<void>
   confirmPayment: (orderId: number, amount: number) => Promise<void>
+  
 
   fetchAnalytics: (dateRange?: { start: Date; end: Date }) => Promise<void>
   updateIngredientStock: (ingredientId: number, quantity: number, type: "add" | "remove") => Promise<void>
   toggleIngredientAvailability: (ingredientId: number, available: boolean) => Promise<void>
+  
 
   clearError: () => void
   setLoading: (key: keyof KitchenState["loading"], value: boolean) => void
@@ -150,6 +153,7 @@ export const useKitchenStore = create<KitchenState>()(
     devtools(
       persist(
         (set, get) => ({
+          // Initial state
           currentStep: ORDER_STEPS.RICE,
           orderDraft: {
             customer_id: 0,
@@ -354,6 +358,7 @@ export const useKitchenStore = create<KitchenState>()(
               { protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 }
             )
 
+
             set((state) => ({
               orderDraft: {
                 ...state.orderDraft,
@@ -434,8 +439,8 @@ export const useKitchenStore = create<KitchenState>()(
                 items: orderDraft.items,
                 total_calories: orderDraft.total_calories,
                 total_price: orderDraft.total_price,
-                paymentMethod,
-                final_price: orderDraft.total_price,
+                payment_method,
+                final_price: orderDraft.total_price, 
                 note: orderDraft.note,
                 ai_analysis: orderDraft.ai_analysis,
               }
@@ -445,7 +450,7 @@ export const useKitchenStore = create<KitchenState>()(
               const createdOrder = response.data
 
               set((state) => ({
-                orderHistory: [createdOrder, ...state.orderHistory.slice(0, 9)],
+                orderHistory: [createdOrder, ...state.orderHistory.slice(0, 9)], 
                 loading: { ...state.loading, orderBuilder: false },
               }))
 
@@ -456,6 +461,7 @@ export const useKitchenStore = create<KitchenState>()(
                   onClick: () => window.location.href = `/orders/${createdOrder.id}`,
                 },
               })
+
 
               get().startNewOrder()
 
@@ -569,6 +575,7 @@ export const useKitchenStore = create<KitchenState>()(
               toast.error("Không thể gửi đánh giá")
             }
           },
+
 
           fetchActiveOrders: async () => {
             set((state) => ({
@@ -782,7 +789,7 @@ export const useKitchenStore = create<KitchenState>()(
           partialize: (state) => ({
             orderDraft: state.orderDraft,
             quickOrders: state.quickOrders,
-            orderHistory: state.orderHistory.slice(0, 10), 
+            orderHistory: state.orderHistory.slice(0, 10),
           }),
           merge: (persistedState, currentState) => ({
             ...currentState,

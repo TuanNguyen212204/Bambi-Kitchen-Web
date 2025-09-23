@@ -1,4 +1,4 @@
-import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from "axios"
+import axios, { type AxiosInstance, type AxiosRequestConfig, type InternalAxiosRequestConfig, type AxiosRequestHeaders } from "axios"
 import { ApiError } from "@utils/errors"
 import { toast } from "sonner"
 import { useAuthStore } from "@zustand/stores/auth"
@@ -40,12 +40,12 @@ class BambiApiClient {
 
   private setupInterceptors() {
     this.client.interceptors.request.use(
-      async (config: AxiosRequestConfig) => {
+      (config: InternalAxiosRequestConfig & { skipAuth?: boolean }) => {
         const { token } = useAuthStore.getState()
-        
+
         if (token && !config.skipAuth) {
-          config.headers = config.headers || {}
-          config.headers.Authorization = `Bearer ${token}`
+          config.headers = (config.headers ?? {}) as AxiosRequestHeaders
+          ;(config.headers as AxiosRequestHeaders).Authorization = `Bearer ${token}`
         }
 
         if (import.meta.env.DEV) {
@@ -57,6 +57,7 @@ class BambiApiClient {
       (error) => Promise.reject(error)
     )
 
+
     this.client.interceptors.response.use(
       (response) => {
         if (import.meta.env.DEV) {
@@ -65,14 +66,16 @@ class BambiApiClient {
         return response
       },
       async (error) => {
-        const originalRequest = error.config as AxiosRequestConfig & { _retry?: number }
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: number; skipAuth?: boolean }
+
+
         if (error.response?.status === 401 && !originalRequest.skipAuth) {
           if (this.isRefreshing) {
             return new Promise((resolve, reject) => {
               this.addRefreshSubscriber((token) => {
                 if (token) {
-                  originalRequest.headers = originalRequest.headers || {}
-                  originalRequest.headers.Authorization = `Bearer ${token}`
+                  originalRequest.headers = (originalRequest.headers ?? {}) as AxiosRequestHeaders
+                  ;(originalRequest.headers as AxiosRequestHeaders).Authorization = `Bearer ${token}`
                   resolve(this.client(originalRequest))
                 } else {
                   reject(error)
@@ -88,17 +91,18 @@ class BambiApiClient {
             this.isRefreshing = false
 
             if (newToken) {
-              originalRequest.headers = originalRequest.headers || {}
-              originalRequest.headers.Authorization = `Bearer ${newToken}`
+              originalRequest.headers = (originalRequest.headers ?? {}) as AxiosRequestHeaders
+              ;(originalRequest.headers as AxiosRequestHeaders).Authorization = `Bearer ${newToken}`
               this.onRefreshed(newToken)
               return this.client(originalRequest)
             }
-          } catch (refreshError) {
+          } catch {
             this.isRefreshing = false
             this.onRefreshFailed()
             this.logout()
           }
         }
+
         this.handleError(error)
 
         return Promise.reject(new ApiError(error))
@@ -134,16 +138,17 @@ class BambiApiClient {
       localStorage.setItem("refresh_token", refresh_token)
       
       return token
-    } catch (error) {
+    } catch {
       localStorage.removeItem("access_token")
       localStorage.removeItem("refresh_token")
       return null
     }
   }
 
-  private handleError(error: any) {
-    const status = error.response?.status
-    const message = error.response?.data?.message || error.message || "Có lỗi xảy ra"
+  private handleError(error: unknown) {
+    const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string }
+    const status = err.response?.status
+    const message = err.response?.data?.message || err.message || "Có lỗi xảy ra"
 
     switch (status) {
       case 401:
@@ -186,6 +191,7 @@ class BambiApiClient {
     useAuthStore.getState().logout()
     window.location.href = "/login"
   }
+
   async get<T>(url: string, options?: RequestOptions): Promise<ApiResponse<T>> {
     const response = await this.client.get<T>(url, options)
     return {
@@ -196,7 +202,7 @@ class BambiApiClient {
     }
   }
 
-  async post<T, D = any>(url: string, data?: D, options?: RequestOptions): Promise<ApiResponse<T>> {
+  async post<T, D = unknown>(url: string, data?: D, options?: RequestOptions): Promise<ApiResponse<T>> {
     const response = await this.client.post<T>(url, data, options)
     return {
       data: response.data,
@@ -206,7 +212,7 @@ class BambiApiClient {
     }
   }
 
-  async put<T, D = any>(url: string, data?: D, options?: RequestOptions): Promise<ApiResponse<T>> {
+  async put<T, D = unknown>(url: string, data?: D, options?: RequestOptions): Promise<ApiResponse<T>> {
     const response = await this.client.put<T>(url, data, options)
     return {
       data: response.data,
@@ -216,7 +222,7 @@ class BambiApiClient {
     }
   }
 
-  async patch<T, D = any>(url: string, data?: D, options?: RequestOptions): Promise<ApiResponse<T>> {
+  async patch<T, D = unknown>(url: string, data?: D, options?: RequestOptions): Promise<ApiResponse<T>> {
     const response = await this.client.patch<T>(url, data, options)
     return {
       data: response.data,
@@ -289,7 +295,9 @@ export const API_ENDPOINTS = {
 
 export const bambiApi = new BambiApiClient()
 
+
 export const apiQueryKeys = {
+
   auth: ["auth"] as const,
   
 
@@ -300,7 +308,6 @@ export const apiQueryKeys = {
 
   ingredients: (category?: string) => ["ingredients", category] as const,
   dishes: (categoryId?: number) => ["dishes", categoryId] as const,
-  
 
   aiAnalysis: (orderId: string) => ["ai-analysis", orderId] as const,
   

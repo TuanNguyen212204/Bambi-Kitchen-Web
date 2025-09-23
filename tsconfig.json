@@ -17,7 +17,8 @@
       "@components/*": ["./src/components/*"],
       "@constant/*": ["./src/constant/*"],
       "@utils/*": ["./src/utils/*"],
-      "@routers/*": ["./src/routers/*"]
+      "@routers/*": ["./src/routers/*"],
+      "@assets/*": ["./src/assets/*"]
 
     },
     "target": "ES2022",

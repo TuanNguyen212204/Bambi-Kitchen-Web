@@ -29,7 +29,6 @@ const buttonVariants = cva(
   },
 );
 
-// Export type cho Button props
 export type ButtonVariantProps = VariantProps<typeof buttonVariants>;
 
 export { buttonVariants };

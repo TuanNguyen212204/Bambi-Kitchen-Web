@@ -1,5 +1,3 @@
-// Payment model imports removed as they were unused
-
 export interface Payment {
   id: number 
   order_id: number 

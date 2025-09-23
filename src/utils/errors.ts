@@ -12,8 +12,8 @@ export class ApiError extends Error {
 
   constructor(error: AxiosError) {
     super(
-      error.response?.data?.message || 
-      error.message || 
+      (error.response?.data as { message?: string } | undefined)?.message ||
+      error.message ||
       "Đã xảy ra lỗi API"
     )
 
@@ -27,6 +27,7 @@ export class ApiError extends Error {
 
     this.stack = error.stack || new Error().stack
   }
+
 
   get userFriendlyMessage(): string {
     switch (this.status) {
@@ -45,9 +46,11 @@ export class ApiError extends Error {
     }
   }
 
+
   get isNetworkError(): boolean {
     return !this.status || this.status >= 500
   }
+
 
   get isAuthError(): boolean {
     return this.status === 401 || this.status === 403
