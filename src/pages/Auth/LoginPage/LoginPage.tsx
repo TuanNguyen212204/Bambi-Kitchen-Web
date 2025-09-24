@@ -120,7 +120,7 @@ export default function LoginPage() {
                   <button className="hover:underline">Forget password?</button>
                   <div>
                     <span className="text-black">Does not have account? </span>
-                    <button className="text-[#0d7a9b] hover:underline">Sign up</button>
+                    <button className="text-[#0d7a9b] hover:underline" onClick={() => navigate("/register")}>Register</button>
                   </div>
                 </div>
 
