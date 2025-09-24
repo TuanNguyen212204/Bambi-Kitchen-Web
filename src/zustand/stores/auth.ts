@@ -2,40 +2,14 @@ import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import { devtools } from "zustand/middleware"
 import { toast } from "sonner"
-import { bambiApi, API_ENDPOINTS } from "@/utils/api"
-import { ApiError } from "@/utils/errors"
-
-interface User {
-  id: number
-  name: string
-  email: string
-  role: "CUSTOMER" | "STAFF" | "ADMIN" 
-  role_id: 4 | 3 | 1 
-  avatar?: string
-  created_at: string
-  status: "active" | "inactive"
-}
-
-interface AuthState {
-  user: User | null
-  token: string | null
-  refreshToken: string | null
-  isAuthenticated: boolean
-  loading: boolean
-  error: string | null
-  
-  login: (email: string, password: string) => Promise<void>
-  register: (userData: Omit<User, "id" | "created_at" | "status"> & { password: string }) => Promise<void>
-  logout: () => void
-  verifyAuth: () => Promise<void>
-  clearError: () => void
-  updateProfile: (profileData: Partial<User>) => Promise<void>
-}
+import { bambiApi, API_ENDPOINTS } from "@utils/api"
+import { ApiError } from "@utils/errors"
+import type { AuthState, User, AuthResponse } from "@/zustand/types"
 
 export const useAuthStore = create<AuthState>()(
-  persist(
-    devtools(
-      (set, get) => ({
+  devtools(
+    persist(
+      (set) => ({
         user: null,
         token: null,
         refreshToken: null,
@@ -47,7 +21,7 @@ export const useAuthStore = create<AuthState>()(
           set({ loading: true, error: null })
           
           try {
-            const response = await bambiApi.post(
+            const response = await bambiApi.post<AuthResponse>(
               API_ENDPOINTS.AUTH_LOGIN,
               { email, password },
               { skipAuth: true }
@@ -92,7 +66,7 @@ export const useAuthStore = create<AuthState>()(
           set({ loading: true, error: null })
           
           try {
-            const response = await bambiApi.post(
+            const response = await bambiApi.post<AuthResponse>(
               API_ENDPOINTS.AUTH_REGISTER,
               userData,
               { skipAuth: true }
@@ -165,7 +139,7 @@ export const useAuthStore = create<AuthState>()(
           set({ loading: true })
 
           try {
-            const response = await bambiApi.get(API_ENDPOINTS.AUTH_ME)
+            const response = await bambiApi.get<User>(API_ENDPOINTS.AUTH_ME)
             set({
               user: response.data,
               token,
@@ -173,7 +147,7 @@ export const useAuthStore = create<AuthState>()(
               loading: false,
             })
 
-          } catch (error) {
+          } catch {
             set({
               user: null,
               token: null,
@@ -196,21 +170,24 @@ export const useAuthStore = create<AuthState>()(
           try {
             const response = await bambiApi.put(API_ENDPOINTS.PROFILE, profileData)
             
-            set(state => ({
-              user: state.user ? { ...state.user, ...response.data } : null,
-              loading: false,
-            }))
+            set((state) => {
+              const updatedUser = state.user ? { ...state.user, ...(response.data as Partial<User>) } : null
+              return {
+                user: updatedUser,
+                loading: false,
+              }
+            })
 
             toast.success("Cập nhật hồ sơ thành công!")
 
-          } catch (error) {
-            const apiError = error as ApiError
+          } catch (e) {
+            const apiError = e as ApiError
             const message = apiError.userFriendlyMessage || "Cập nhật thất bại"
             
             set({ loading: false, error: message })
             toast.error("Cập nhật thất bại", { description: message })
             
-            throw error
+            throw e
           }
         },
 
@@ -219,6 +196,12 @@ export const useAuthStore = create<AuthState>()(
       {
         name: "bambi-auth-storage",
         storage: createJSONStorage(() => localStorage),
+        partialize: (state: AuthState) => ({
+          user: state.user,
+          token: state.token,
+          refreshToken: state.refreshToken,
+          isAuthenticated: state.isAuthenticated,
+        }),
       }
     )
   )

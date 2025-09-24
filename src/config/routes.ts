@@ -1,7 +1,7 @@
 import { lazy } from "react"
 import { PATHS } from "@config/path"
 const Login = lazy(() => import("@pages/Auth/LoginPage"))
-const Register = lazy(() => import("@pages/Auth/RegisterPage"))
+const Register = lazy(() => import("@/pages/Auth/RegisterPage/RegisterPage"))
 const ForgotPassword = lazy(() => import("@pages/Auth/ForgotPassword"))
 const ResetPassword = lazy(() => import("@/pages/Auth/ResetPassword"))
 
