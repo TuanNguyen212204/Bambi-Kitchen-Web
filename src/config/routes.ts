@@ -43,7 +43,7 @@ export interface RouteConfig {
   icon?: React.ReactNode
 }
 
-export const PUBLIC_ROUTES: RouteConfig[] = [
+export const AUTH_PUBLIC_ROUTES: RouteConfig[] = [
   {
     path: PATHS.LOGIN,
     component: Login,
@@ -72,6 +72,9 @@ export const PUBLIC_ROUTES: RouteConfig[] = [
     protected: false,
     role: [],
   },
+]
+
+export const CUSTOMER_PUBLIC_ROUTES: RouteConfig[] = [
   {
     path: PATHS.HOME,
     component: Home,

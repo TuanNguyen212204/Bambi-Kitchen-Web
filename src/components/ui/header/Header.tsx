@@ -1,0 +1,91 @@
+import { useState } from "react";
+import { Badge } from "@components/ui/badge/badge";
+import { LogOut, User as UserIcon, LogIn, Search, ShoppingCart } from "lucide-react";
+import { useAuthStore } from "@/zustand/stores/auth";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import logo from "@assets/logo.png";
+// import { navigationItems } from "../../pages/customerPage/home/HomePage"; 
+
+const Header = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { isAuthenticated, user, logout } = useAuthStore();
+  const navigate = useNavigate();
+  const toggleMenu = () => setMenuOpen((prev) => !prev);
+  const handleLogout = () => logout();
+  return (
+    <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-md py-3 px-0">
+      <div className="max-w-[1600px] mx-auto w-full flex items-center pl-2">
+        {/* Left: Logo */}
+        <div className="flex items-center space-x-3">
+          <Link to="/" aria-label="Trang chủ" className="-ml-2">
+            <img
+              src={logo}
+              alt="Bambi's Kitchen Logo"
+              className="w-44 h-20 object-contain"
+            />
+          </Link>
+        </div>
+
+        {/* Center: Tabs */}
+        <nav className="flex-1 hidden md:flex justify-center gap-10">
+          <NavLink to="/" end className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Home</NavLink>
+          <NavLink to="/menu" className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Menu</NavLink>
+          <NavLink to="/about" className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>About Us</NavLink>
+          <NavLink to="/specials" className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Our specials</NavLink>
+          <NavLink to="/contact" className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Contact</NavLink>
+        </nav>
+
+        {/* Right: Icons */}
+        <div className="flex items-center gap-4">
+          <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" aria-label="Tìm kiếm">
+            <Search size={18} />
+          </button>
+          <div className="relative">
+            <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" aria-label="Giỏ hàng">
+              <ShoppingCart size={18} />
+            </button>
+            <Badge className="absolute -top-1 -right-1 w-5 h-5 bg-[#ea6d27] text-white p-0 flex items-center justify-center">2</Badge>
+          </div>
+          <div className="relative">
+            {isAuthenticated ? (
+              <>
+                <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" onClick={toggleMenu} aria-label="Tài khoản">
+                  <UserIcon size={18} />
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                    <div className="px-4 py-2 text-sm text-gray-600">{user?.name ?? "Đã đăng nhập"}</div>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
+                      <UserIcon size={16} />
+                      Thông tin người dùng
+                    </button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2" onClick={handleLogout}>
+                      <LogOut size={16} />
+                      Đăng xuất
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" onClick={toggleMenu} aria-label="Đăng nhập">
+                  <UserIcon size={18} />
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2" onClick={() => navigate("/login")}>
+                      <LogIn size={16} />
+                      Đăng nhập
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export default Header;
