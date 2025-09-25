@@ -24,14 +24,13 @@ const ErrorFallback = <ErrorPage />
 
 export const AppRoute = memo(() => {
   const router = createBrowserRouter([
-    // Nhóm AUTH: không bọc MainLayout
     ...AUTH_PUBLIC_ROUTES.map((route) => ({
       path: route.path,
       element: createRouteElement(route.component, LoadingFallback),
       errorElement: ErrorFallback,
     })),
 
-    // Nhóm CUSTOMER PUBLIC: bọc MainLayout để luôn có Header/Sidebar/Footer
+
     {
       path: "/",
       element: (

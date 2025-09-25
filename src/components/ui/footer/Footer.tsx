@@ -2,12 +2,10 @@ import React from "react";
 import { Facebook, Instagram } from "lucide-react";
 import logo from "@assets/logo.png";
 import footerBg from "@assets/Footer/BackgroundGetOrPromoCodeFooterPic.png";
-// import { footerNavigation } from "../../pages/customerPage/home/HomePage"; 
 
 const Footer = () => {
   return (
     <footer className="bg-white py-8 px-6 mt-auto">
-      {/* Promo banner */}
       <div className="max-w-[1163px] mx-auto mb-10">
         <div
           className="relative rounded-3xl overflow-hidden h-72 md:h-80 flex items-center justify-center"
@@ -36,9 +34,7 @@ const Footer = () => {
         </div>
       </div>
 
-      {/* Footer content */}
       <div className="max-w-[1163px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 md:pl-4">
-        {/* Left: Logo + Description + Opening hours */}
         <div className="space-y-4 md:ml-4">
           <img src={logo} alt="Bambi's Kitchen Logo" className="w-44 h-24 object-contain" />
           <p className="text-[#5c6574] text-[15px] leading-7">
@@ -64,7 +60,6 @@ const Footer = () => {
             </div>
           </div>
         </div>
-        {/* Middle-left: Navigation */}
         <div>
           <h3 className="font-bold text-[#101a24] text-xs leading-10 tracking-[0.5px] uppercase">Navigation</h3>
           <div className="text-[#5c6574] text-[15px] leading-10">
@@ -75,7 +70,6 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Middle-right: Dishes */}
         <div>
           <h3 className="font-bold text-[#101a24] text-xs leading-10 tracking-[0.5px] uppercase">Dishes</h3>
           <div className="text-[#5c6574] text-[15px] leading-10">
@@ -85,8 +79,6 @@ const Footer = () => {
             <div>Lumpia w/Suace</div>
           </div>
         </div>
-
-        {/* Right: Follow us */}
         <div>
           <h3 className="font-bold text-[#101a24] text-xs leading-10 tracking-[0.5px] uppercase">Follow Us</h3>
           <div className="mt-2 flex gap-4">

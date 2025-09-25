@@ -4,7 +4,6 @@ import { LogOut, User as UserIcon, LogIn, Search, ShoppingCart } from "lucide-re
 import { useAuthStore } from "@/zustand/stores/auth";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import logo from "@assets/logo.png";
-// import { navigationItems } from "../../pages/customerPage/home/HomePage"; 
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -15,7 +14,6 @@ const Header = () => {
   return (
     <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-md py-3 px-0">
       <div className="max-w-[1600px] mx-auto w-full flex items-center pl-2">
-        {/* Left: Logo */}
         <div className="flex items-center space-x-3">
           <Link to="/" aria-label="Trang chủ" className="-ml-2">
             <img
@@ -26,7 +24,6 @@ const Header = () => {
           </Link>
         </div>
 
-        {/* Center: Tabs */}
         <nav className="flex-1 hidden md:flex justify-center gap-10">
           <NavLink to="/" end className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Home</NavLink>
           <NavLink to="/menu" className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Menu</NavLink>
@@ -35,7 +32,6 @@ const Header = () => {
           <NavLink to="/contact" className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Contact</NavLink>
         </nav>
 
-        {/* Right: Icons */}
         <div className="flex items-center gap-4">
           <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" aria-label="Tìm kiếm">
             <Search size={18} />
