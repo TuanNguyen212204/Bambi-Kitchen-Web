@@ -1,14 +1,19 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { bambiApi } from "@utils/api";
+import { API_ENDPOINTS } from "@utils/endpoints";
 import { Card, CardContent, CardHeader } from "@components/ui/card/card";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Separator } from "@components/ui/separator";
-import { Mail } from "lucide-react";
+import { Mail, Eye, EyeOff } from "lucide-react";
 import logo from "@assets/logo.png";
 import registerImage from "@assets/RegisterPage/registerPage.png";
 
 export function RegisterForm() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -18,13 +23,17 @@ export function RegisterForm() {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (key: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLButtonElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (loading) return;
     if (formData.password !== formData.confirmPassword) {
       setError("Mật khẩu và xác nhận mật khẩu không khớp.");
       return;
@@ -33,16 +42,27 @@ export function RegisterForm() {
       setError("Email không hợp lệ.");
       return;
     }
-    if (!/(\+84|0)[3|5|7|8|9][0-9]{8}$/.test(formData.phone)) {
-      setError("Số điện thoại không hợp lệ.");
-      return;
-    }
     if (formData.password.length < 6) {
       setError("Mật khẩu phải có ít nhất 6 ký tự.");
       return;
     }
     setError("");
-    console.log("Đăng ký với:", formData);
+
+    try {
+      setLoading(true);
+      const payload = {
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        mail: formData.email.trim(),
+        password: formData.password,
+      };
+      await bambiApi.post(API_ENDPOINTS.AUTH_REGISTER, payload, { skipAuth: true });
+      toast.success("Đăng ký thành công!", { description: "Vui lòng đăng nhập để tiếp tục." });
+      navigate("/login");
+    } catch {
+      toast.error("Đăng ký thất bại", { description: "Vui lòng kiểm tra thông tin và thử lại." });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -74,6 +94,7 @@ export function RegisterForm() {
               </CardHeader>
 
               <CardContent className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">First Name</Label>
@@ -113,35 +134,55 @@ export function RegisterForm() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Password</Label>
-                    <Input
-                      type="password"
+                    <div className="relative">
+                      <Input
+                      type={showPassword ? "text" : "password"}
                       className="border-0 border-b border-[#dbdbdb] rounded-none bg-transparent px-0 pb-2 focus-visible:ring-0 focus-visible:border-[#5b86e5]"
                       value={formData.password}
                       onChange={(e) => handleChange("password", e.target.value)}
                       placeholder="Ít nhất 6 ký tự"
-                    />
+                      />
+                      <button
+                        type="button"
+                        aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Confirm Password</Label>
-                    <Input
-                      type="password"
+                    <div className="relative">
+                      <Input
+                      type={showConfirmPassword ? "text" : "password"}
                       className="border-0 border-b border-[#dbdbdb] rounded-none bg-transparent px-0 pb-2 focus-visible:ring-0 focus-visible:border-[#5b86e5]"
                       value={formData.confirmPassword}
                       onChange={(e) => handleChange("confirmPassword", e.target.value)}
                       placeholder="Nhập lại mật khẩu"
-                    />
+                      />
+                      <button
+                        type="button"
+                        aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                        onClick={() => setShowConfirmPassword((v) => !v)}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {error && <p className="text-red-500 text-sm">{error}</p>}
 
-                <Button
-                  type="submit"
-                  onClick={handleSubmit}
-                  className="w-full h-10 sm:h-11 bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white font-semibold rounded-lg"
-                >
-                  Create Account
-                </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-10 sm:h-11 bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white font-semibold rounded-lg"
+                  >
+                    {loading ? "Đang tạo tài khoản..." : "Create Account"}
+                  </Button>
 
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
                   <div>
@@ -178,6 +219,7 @@ export function RegisterForm() {
                 </div>
 
                 <div className="text-xs text-center text-black">FASCO Terms & Conditions</div>
+                </form>
               </CardContent>
             </Card>
           </div>

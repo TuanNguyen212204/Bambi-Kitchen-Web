@@ -5,7 +5,7 @@ import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import { Separator } from "@components/ui/separator"
-import { Mail } from "lucide-react"
+import { Mail, Eye, EyeOff } from "lucide-react"
 import logo from "@assets/logo.png"
 import loginPage1 from "@assets/LoginPage/loginPage1.png"
 import { useAuthStore } from "@zustand/stores/auth"
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ username?: string; password?: string }>({})
 
   const handleSubmit = async (e: React.FormEvent<HTMLButtonElement>) => {
@@ -88,7 +89,7 @@ export default function LoginPage() {
                     <Label className="text-muted-foreground">Password</Label>
                     <div className="relative">
                       <Input
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         className="border-0 border-b border-[#dbdbdb] rounded-none bg-transparent px-0 pb-2 focus-visible:ring-0 focus-visible:border-[#5b86e5]"
                         value={password}
                         onChange={(e) => {
@@ -97,6 +98,14 @@ export default function LoginPage() {
                           setFieldErrors((prev) => ({ ...prev, password: e.target.value ? undefined : prev.password }))
                         }}
                       />
+                      <button
+                        type="button"
+                        aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                     {fieldErrors.password && (
                       <p className="text-red-500 text-xs">{fieldErrors.password}</p>
