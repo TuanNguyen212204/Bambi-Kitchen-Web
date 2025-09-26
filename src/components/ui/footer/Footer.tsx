@@ -3,7 +3,6 @@ import { Facebook, Instagram } from "lucide-react";
 import logo from "@assets/logo.png";
 import footerBg from "@assets/Footer/BackgroundGetOrPromoCodeFooterPic.png";
 
-
 const Footer = () => {
   return (
     <footer className="bg-white py-8 px-6 mt-auto">
@@ -81,7 +80,6 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Right: Follow us */}
         <div>
           <h3 className="font-bold text-[#101a24] text-xs leading-10 tracking-[0.5px] uppercase">Follow Us</h3>
           <div className="mt-2 flex gap-4">
