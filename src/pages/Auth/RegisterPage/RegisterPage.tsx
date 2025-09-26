@@ -59,7 +59,7 @@ export function RegisterForm() {
       toast.success("Đăng ký thành công!", { description: "Vui lòng đăng nhập để tiếp tục." });
       navigate("/login");
     } catch (err: unknown) {
-      // Type check cho axios error  
+
       const axiosError = err as { 
         response?: { 
           status?: number; 
@@ -71,13 +71,11 @@ export function RegisterForm() {
         message?: string;
       };
       
-      // Debug log để check response và error details
       console.error("Registration error:", err);
       console.error("Error response:", axiosError?.response);
       console.error("Error status:", axiosError?.response?.status);
       console.error("Error data:", axiosError?.response?.data);
-      
-      // Global API client đã handle error display rồi, chỉ show specific cases:
+
       if (axiosError?.response?.status === 400) {
         toast.error("Thông tin không hợp lệ", { 
           description: axiosError?.response?.data?.message || "Vui lòng kiểm tra lại thông tin đã nhập." 
@@ -87,9 +85,7 @@ export function RegisterForm() {
           description: "Email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác." 
         });
       }
-      // Không toast cho status 500 vì global interceptor đã xử lý
-      
-      // Show error in form state for better UX
+
       const stateError = axiosError?.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
       setError(stateError);
       console.error("Setting form error:", stateError);
@@ -201,7 +197,7 @@ export function RegisterForm() {
                         onClick={() => setShowConfirmPassword((v) => !v)}
                         className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                       >
-                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showConfirmPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
