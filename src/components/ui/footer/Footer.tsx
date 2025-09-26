@@ -18,7 +18,7 @@ const Footer = () => {
           <div className="absolute inset-0 bg-black/35" />
           <div className="relative z-10 w-full px-8 flex flex-col items-center gap-4">
             <div className="text-white text-2xl md:text-3xl font-semibold text-center">
-              Get 0n Promo Code by
+              Get on Promo Code by
               <br /> Subscribing To our Newsletter
             </div>
             <div className="w-full max-w-2xl flex bg-white rounded-xl p-1">
