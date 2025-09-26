@@ -58,8 +58,41 @@ export function RegisterForm() {
       await bambiApi.post(API_ENDPOINTS.AUTH_REGISTER, payload, { skipAuth: true });
       toast.success("Đăng ký thành công!", { description: "Vui lòng đăng nhập để tiếp tục." });
       navigate("/login");
-    } catch {
-      toast.error("Đăng ký thất bại", { description: "Vui lòng kiểm tra thông tin và thử lại." });
+    } catch (err: unknown) {
+      // Type check cho axios error  
+      const axiosError = err as { 
+        response?: { 
+          status?: number; 
+          data?: { 
+            message?: string; 
+            details?: string 
+          } 
+        }; 
+        message?: string;
+      };
+      
+      // Debug log để check response và error details
+      console.error("Registration error:", err);
+      console.error("Error response:", axiosError?.response);
+      console.error("Error status:", axiosError?.response?.status);
+      console.error("Error data:", axiosError?.response?.data);
+      
+      // Global API client đã handle error display rồi, chỉ show specific cases:
+      if (axiosError?.response?.status === 400) {
+        toast.error("Thông tin không hợp lệ", { 
+          description: axiosError?.response?.data?.message || "Vui lòng kiểm tra lại thông tin đã nhập." 
+        });
+      } else if (axiosError?.response?.status === 409) {
+        toast.error("Email đã tồn tại", { 
+          description: "Email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác." 
+        });
+      }
+      // Không toast cho status 500 vì global interceptor đã xử lý
+      
+      // Show error in form state for better UX
+      const stateError = axiosError?.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
+      setError(stateError);
+      console.error("Setting form error:", stateError);
     } finally {
       setLoading(false);
     }
