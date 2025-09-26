@@ -79,6 +79,7 @@ const Footer = () => {
             <div>Lumpia w/Suace</div>
           </div>
         </div>
+
         <div>
           <h3 className="font-bold text-[#101a24] text-xs leading-10 tracking-[0.5px] uppercase">Follow Us</h3>
           <div className="mt-2 flex gap-4">
