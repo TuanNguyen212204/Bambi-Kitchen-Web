@@ -28,6 +28,7 @@ export const PATHS = {
   
   UNAUTHORIZED: "/unauthorized",
   UNAUTHENTICATED: "/unauthenticated",
-  ERROR: "/error/:code",
+  ERROR: "/error",
+  SUCCESS: "/success",
   NOT_FOUND: "*",
 };
