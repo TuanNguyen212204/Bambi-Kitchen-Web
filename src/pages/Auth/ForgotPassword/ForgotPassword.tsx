@@ -28,11 +28,9 @@ export const ForgotPassword = () => {
     setLoading(true);
     
     try {
-      // TODO: Implement forgot password API call
+
       console.log("Gửi yêu cầu reset mật khẩu cho:", email);
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      // Navigate to confirmation page or show success message
     } catch {
       setError("Có lỗi xảy ra, vui lòng thử lại sau.");
     } finally {
