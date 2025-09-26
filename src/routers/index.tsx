@@ -3,7 +3,7 @@ import { Suspense, lazy, memo } from "react"
 import Authentication from "@/auth/Authentication" 
 import Authorization from "@/auth/Authorization"
 import MainLayout from "@components/layouts/MainLayout"
-import { PUBLIC_ROUTES, PRIVATE_ROUTES, ROLES } from "@config/routes"
+import { AUTH_PUBLIC_ROUTES, CUSTOMER_PUBLIC_ROUTES, PRIVATE_ROUTES, ROLES } from "@config/routes"
 import { PATHS } from "@config/path"
 import ErrorPage from "@pages/error/ErrorPage"
 import { HTTP_STATUS } from "@config/httpStatus"
@@ -24,11 +24,28 @@ const ErrorFallback = <ErrorPage />
 
 export const AppRoute = memo(() => {
   const router = createBrowserRouter([
-    ...PUBLIC_ROUTES.map((route) => ({
+    ...AUTH_PUBLIC_ROUTES.map((route) => ({
       path: route.path,
       element: createRouteElement(route.component, LoadingFallback),
       errorElement: ErrorFallback,
     })),
+
+
+    {
+      path: "/",
+      element: (
+        <div className="min-h-screen bg-background">
+          <MainLayout />
+        </div>
+      ),
+      errorElement: ErrorFallback,
+      children: CUSTOMER_PUBLIC_ROUTES.map((route) => ({
+        index: route.path === PATHS.HOME,
+        path: route.path === PATHS.HOME ? undefined : route.path,
+        element: createRouteElement(route.component, LoadingFallback),
+        errorElement: ErrorFallback,
+      })),
+    },
 
     {
       path: PATHS.UNAUTHENTICATED,
