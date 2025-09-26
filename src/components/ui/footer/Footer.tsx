@@ -3,6 +3,7 @@ import { Facebook, Instagram } from "lucide-react";
 import logo from "@assets/logo.png";
 import footerBg from "@assets/Footer/BackgroundGetOrPromoCodeFooterPic.png";
 
+
 const Footer = () => {
   return (
     <footer className="bg-white py-8 px-6 mt-auto">
@@ -79,6 +80,8 @@ const Footer = () => {
             <div>Lumpia w/Suace</div>
           </div>
         </div>
+
+        {/* Right: Follow us */}
         <div>
           <h3 className="font-bold text-[#101a24] text-xs leading-10 tracking-[0.5px] uppercase">Follow Us</h3>
           <div className="mt-2 flex gap-4">
@@ -95,7 +98,7 @@ const Footer = () => {
         <div className="flex items-center space-x-2.5">
           <img src={logo} alt="Bambi's Kitchen Logo" className="w-14 h-10 object-contain" />
           <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-[#5c6574] text-base tracking-[0] leading-[29px]">
-            2022 Restaurants. All Right Reserved. Designed by{" "}
+            2025 Restaurants. All Right Reserved. Designed by{" "}
             <span className="[font-family:'Inter-Bold',Helvetica] font-bold">
               Ếch Giáo Sư
             </span>
