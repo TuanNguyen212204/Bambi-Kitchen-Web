@@ -80,11 +80,6 @@ export const AppRoute = memo(() => {
     },
 
     {
-      path: PATHS.ERROR,
-      element: <ErrorPage />,
-    },
-
-    {
       path: "*",
       element: (
         <ErrorPage
