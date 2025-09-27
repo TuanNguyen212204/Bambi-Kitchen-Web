@@ -6,6 +6,7 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import logo from "@assets/logo.png";
 import forgotPasswordImage from "@assets/ForgotPassword/ForgotPassword.png";
+import { checkEmailExists, sendConfirmationCode } from "@utils/auth-service";
 
 export const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -28,11 +29,22 @@ export const ForgotPassword = () => {
     setLoading(true);
     
     try {
+      // Kiểm tra email có tồn tại trong hệ thống không
+      const emailExists = await checkEmailExists(email);
+      
+      if (!emailExists) {
+        setError("Email này không tồn tại trong hệ thống. Vui lòng kiểm tra lại.");
+        return;
+      }
 
-      console.log("Gửi yêu cầu reset mật khẩu cho:", email);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch {
-      setError("Có lỗi xảy ra, vui lòng thử lại sau.");
+      // Gửi mã xác nhận
+      await sendConfirmationCode(email);
+      
+      // Chuyển đến trang xác nhận với email
+      navigate("/confirm-password", { state: { email } });
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Có lỗi xảy ra, vui lòng thử lại sau.");
     } finally {
       setLoading(false);
     }

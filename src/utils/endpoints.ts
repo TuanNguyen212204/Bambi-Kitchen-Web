@@ -3,6 +3,7 @@ export const API_ENDPOINTS = {
   AUTH_REGISTER: "/api/account",
   AUTH_REFRESH: "/auth/refresh",
   AUTH_ME: "/api/user/me",
+  AUTH_CHECK_EMAIL: "/api/account", // GET all accounts để check email
   
   ORDERS: "/orders",
   ORDER_CREATE: "/orders",
