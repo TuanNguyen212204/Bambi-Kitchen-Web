@@ -29,7 +29,7 @@ export const ForgotPassword = () => {
     setLoading(true);
     
     try {
-      // Kiểm tra email có tồn tại trong hệ thống không
+
       const emailExists = await checkEmailExists(email);
       
       if (!emailExists) {
@@ -37,10 +37,9 @@ export const ForgotPassword = () => {
         return;
       }
 
-      // Gửi mã xác nhận
+
       await sendConfirmationCode(email);
-      
-      // Chuyển đến trang xác nhận với email
+
       navigate("/confirm-password", { state: { email } });
       
     } catch (err) {

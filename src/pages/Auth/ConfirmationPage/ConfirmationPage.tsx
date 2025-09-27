@@ -17,12 +17,11 @@ export const ConfirmationPage = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Lấy email từ state khi chuyển từ trang forgot password
+
     const emailFromState = location.state?.email;
     if (emailFromState) {
       setEmail(emailFromState);
     } else {
-      // Nếu không có email trong state, chuyển về trang forgot password
       navigate("/forgot-password");
     }
   }, [location.state, navigate]);
@@ -43,11 +42,10 @@ export const ConfirmationPage = () => {
     setLoading(true);
     
     try {
-      // Xác nhận mã với email
+
       const isValid = await verifyConfirmationCode(email, confirmationCode);
       
       if (isValid) {
-        // TODO: Chuyển đến trang reset password với email và mã xác nhận
         navigate("/reset-password", { state: { email, code: confirmationCode } });
       } else {
         setError("Mã xác nhận không đúng hoặc đã hết hạn. Vui lòng thử lại.");
@@ -63,8 +61,8 @@ export const ConfirmationPage = () => {
     setLoading(true);
     try {
       await sendConfirmationCode(email);
-      setError(""); // Clear any previous errors
-      // Có thể hiển thị thông báo thành công
+      setError(""); 
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể gửi lại mã xác nhận. Vui lòng thử lại sau.");
     } finally {
