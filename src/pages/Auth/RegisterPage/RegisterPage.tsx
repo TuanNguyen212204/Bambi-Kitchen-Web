@@ -11,6 +11,8 @@ import { Separator } from "@components/ui/separator";
 import { Mail, Eye, EyeOff } from "lucide-react";
 import logo from "@assets/logo.png";
 import registerImage from "@assets/RegisterPage/registerPage.png";
+import type { RegisterPayload } from "@models/account";
+import { validateRegisterPayload as validatePayload, createRegisterPayload as createPayload } from "@utils/auth-validation";
 
 export function RegisterForm() {
   const navigate = useNavigate();
@@ -21,40 +23,59 @@ export function RegisterForm() {
     phone: "",
     password: "",
     confirmPassword: "",
+    acceptTerms: false,
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleChange = (key: keyof typeof formData, value: string) => {
+  const handleChange = (key: keyof typeof formData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // Validation function using utility
+  const validateFormData = (data: typeof formData): string | null => {
+    if (!data.firstName.trim()) return "Vui lòng nhập tên";
+    if (!data.lastName.trim()) return "Vui lòng nhập họ";
+    if (data.password !== data.confirmPassword) return "Mật khẩu và xác nhận mật khẩu không khớp";
+    
+    // Use utility validation for payload
+    const payload = createPayload({
+      name: `${data.firstName} ${data.lastName}`.trim(),
+      email: data.email,
+      password: data.password,
+      phone: data.phone,
+      acceptTerms: data.acceptTerms,
+    });
+    
+    const validation = validatePayload(payload);
+    return validation.isValid ? null : validation.error || null;
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (loading) return;
-    if (formData.password !== formData.confirmPassword) {
-      setError("Mật khẩu và xác nhận mật khẩu không khớp.");
+    // Validate form data using our validation function
+    const validationError = validateFormData(formData);
+    if (validationError) {
+      setError(validationError);
       return;
     }
-    if (!/^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$/.test(formData.email)) {
-      setError("Email không hợp lệ.");
-      return;
-    }
-    if (formData.password.length < 6) {
-      setError("Mật khẩu phải có ít nhất 6 ký tự.");
-      return;
-    }
+    
     setError("");
 
     try {
       setLoading(true);
-      const payload = {
+      
+      // Create payload using utility function
+      const payload: RegisterPayload = createPayload({
         name: `${formData.firstName} ${formData.lastName}`.trim(),
-        mail: formData.email.trim(),
+        email: formData.email,
         password: formData.password,
-      };
+        phone: formData.phone,
+        acceptTerms: formData.acceptTerms,
+      });
       await bambiApi.post(API_ENDPOINTS.AUTH_REGISTER, payload, { skipAuth: true });
       toast.success("Đăng ký thành công!", { description: "Vui lòng đăng nhập để tiếp tục." });
       navigate("/login");
@@ -264,7 +285,25 @@ export function RegisterForm() {
                   </div>
                 </div>
 
-                <div className="text-xs text-center text-black">FASCO Terms & Conditions</div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="acceptTerms"
+                    checked={formData.acceptTerms}
+                    onChange={(e) => handleChange("acceptTerms", e.target.checked)}
+                    className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500 focus:ring-2"
+                  />
+                  <label htmlFor="acceptTerms" className="text-xs text-gray-700">
+                    Tôi đồng ý với{" "}
+                    <a href="#" className="text-orange-600 hover:underline">
+                      Điều khoản sử dụng
+                    </a>{" "}
+                    và{" "}
+                    <a href="#" className="text-orange-600 hover:underline">
+                      Chính sách bảo mật
+                    </a>
+                  </label>
+                </div>
                 </form>
               </CardContent>
             </Card>

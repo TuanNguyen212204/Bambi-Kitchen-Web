@@ -9,31 +9,42 @@ import { Mail, Eye, EyeOff } from "lucide-react"
 import logo from "@assets/logo.png"
 import loginPage1 from "@assets/LoginPage/loginPage1.png"
 import { useAuthStore } from "@zustand/stores/auth"
+import type { LoginPayload } from "@models/account"
+import { validateLoginPayload, createLoginPayload } from "@utils/auth-validation"
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const { login, loading } = useAuthStore()
 
-  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [fieldErrors, setFieldErrors] = useState<{ username?: string; password?: string }>({})
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
 
   const handleSubmit = async (e: React.FormEvent<HTMLButtonElement>) => {
     e.preventDefault()
-    const ve: { username?: string; password?: string } = {}
-    if (!username.trim()) ve.username = "Vui lòng nhập tài khoản"
-    if (!password) ve.password = "Vui lòng nhập mật khẩu"
+    
+    // Create LoginPayload and validate
+    const payload: LoginPayload = createLoginPayload(email, password)
+    const validation = validateLoginPayload(payload)
+    
+    const ve: { email?: string; password?: string } = {}
+    if (!validation.isValid) {
+      if (!email.trim()) ve.email = "Vui lòng nhập email"
+      else if (!password) ve.password = "Vui lòng nhập mật khẩu"
+      else setError(validation.error || "Thông tin không hợp lệ")
+    }
+    
     setFieldErrors(ve)
     if (Object.keys(ve).length > 0) return
 
     try {
       setError("")
-      await login(username, password)
+      await login(email, password)
       navigate("/app")
     } catch {
-      setError("Tài khoản hoặc mật khẩu không đúng")
+      setError("Email hoặc mật khẩu không đúng")
     }
   }
 
@@ -68,20 +79,22 @@ export default function LoginPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Username</Label>
+                    <Label className="text-muted-foreground">Email</Label>
                     <div className="relative">
                       <Input
+                        type="email"
                         className="border-0 border-b border-[#dbdbdb] rounded-none bg-transparent px-0 pb-2 focus-visible:ring-0 focus-visible:border-[#5b86e5]"
-                        value={username}
+                        value={email}
                         onChange={(e) => {
-                          setUsername(e.target.value)
+                          setEmail(e.target.value)
                           setError("")
-                          setFieldErrors((prev) => ({ ...prev, username: e.target.value.trim() ? undefined : prev.username }))
+                          setFieldErrors((prev) => ({ ...prev, email: e.target.value.trim() ? undefined : prev.email }))
                         }}
+                        placeholder="Nhập email của bạn"
                       />
                     </div>
-                    {fieldErrors.username && (
-                      <p className="text-red-500 text-xs">{fieldErrors.username}</p>
+                    {fieldErrors.email && (
+                      <p className="text-red-500 text-xs">{fieldErrors.email}</p>
                     )}
                   </div>
 
@@ -111,7 +124,7 @@ export default function LoginPage() {
                       <p className="text-red-500 text-xs">{fieldErrors.password}</p>
                     )}
                   </div>
-                  {!fieldErrors.username && !fieldErrors.password && error && (
+                  {!fieldErrors.email && !fieldErrors.password && error && (
                     <p className="text-red-500 text-sm">{error}</p>
                   )}
                 </div>
