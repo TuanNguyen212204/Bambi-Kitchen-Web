@@ -1,4 +1,4 @@
-import React from "react";
+// import React from "react";
 import { Facebook, Instagram } from "lucide-react";
 import logo from "@assets/logo.png";
 import footerBg from "@assets/Footer/BackgroundGetOrPromoCodeFooterPic.png";

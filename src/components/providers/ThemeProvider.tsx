@@ -18,7 +18,7 @@ export function ThemeProvider({
   defaultTheme = "system",
   storageKey = "theme",
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme] = useState<Theme>(() => {
     if (typeof window === "undefined") return defaultTheme
     const saved = window.localStorage.getItem(storageKey) as Theme | null
     return saved ?? defaultTheme
