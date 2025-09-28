@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { bambiApi } from "@utils/api";
 import { API_ENDPOINTS } from "@utils/endpoints";
 import { Card, CardContent, CardHeader } from "@components/ui/card/card";
-import { Button } from "@components/ui/button";
+import { Button } from "@components/ui/button/index";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Separator } from "@components/ui/separator";

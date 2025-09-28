@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@components/ui/button";
+import { Button } from "@components/ui/button/index";
 import { Card, CardContent, CardHeader } from "@components/ui/card/card";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
