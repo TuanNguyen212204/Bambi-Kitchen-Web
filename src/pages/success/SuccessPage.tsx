@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@components/ui/card/card";
-import { Button } from "@components/ui/button";
+import { Button } from "@components/ui/button/index";
 import { CheckCircle, Home } from "lucide-react";
 
 interface SuccessPageProps {

@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader } from "@components/ui/card/card"
-import { Button } from "@components/ui/button"
+import { Button } from "@components/ui/button/index"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import { Separator } from "@components/ui/separator"
