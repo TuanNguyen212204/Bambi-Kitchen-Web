@@ -18,7 +18,9 @@
       "@constant/*": ["./src/constant/*"],
       "@utils/*": ["./src/utils/*"],
       "@routers/*": ["./src/routers/*"],
-      "@assets/*": ["./src/assets/*"]
+      "@assets/*": ["./src/assets/*"],
+      "@i18n": ["./src/i18n/index.ts"],
+      "@i18n/*": ["./src/i18n/*"]
 
     },
     "target": "ES2022",
@@ -26,6 +28,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
