@@ -14,15 +14,8 @@ export interface Nutrition {
   sugar: number
   sat_fat: number
   per_unit: string
-  serving_size?: number
-  total_fat?: number
-  cholesterol?: number
-  vitamin_a?: number
-  vitamin_c?: number
-  vitamin_d?: number
   created_at?: string
-  source?: string
-  verified?: boolean
+  updated_at?: string
 }
 
 export interface DailyNutritionGoal {

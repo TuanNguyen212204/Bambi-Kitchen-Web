@@ -6,14 +6,8 @@ export interface OrderDetail {
   order_id: number
   total_calories: number
   note?: string
-  dish_name?: string
-  quantity: number
-  price_per_serving: number
-  sub_total: number
-  preparation_status?: "pending" | "preparing" | "completed"
-  preparation_time?: number
-  staff_notes?: string
   created_at?: string
+  updated_at?: string
 }
 
 export interface CustomOrderItem {
