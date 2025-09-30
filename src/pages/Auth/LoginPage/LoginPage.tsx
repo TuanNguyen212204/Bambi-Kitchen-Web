@@ -24,8 +24,8 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLButtonElement>) => {
     e.preventDefault()
+
     
-    // Create LoginPayload and validate
     const payload: LoginPayload = createLoginPayload(phone, password)
     const validation = validateLoginPayload(payload)
     
@@ -42,7 +42,10 @@ export default function LoginPage() {
     try {
       setError("")
       await login(phone, password)
-      navigate("/app")
+      setTimeout(() => {
+        navigate("/app", { replace: true })
+      }, 2000)
+      
     } catch {
       setError("Số điện thoại hoặc mật khẩu không đúng")
     }

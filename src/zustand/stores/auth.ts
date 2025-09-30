@@ -4,7 +4,7 @@ import { devtools } from "zustand/middleware"
 import { toast } from "sonner"
 import { bambiApi, API_ENDPOINTS } from "@utils/api"
 import { ApiError } from "@utils/errors"
-import type { AuthState, User, AuthResponse } from "@/zustand/types"
+import type { AuthState, User, AuthResponse, UserMeResponse } from "@/zustand/types"
 
 export const useAuthStore = create<AuthState>()(
   devtools(
@@ -21,24 +21,41 @@ export const useAuthStore = create<AuthState>()(
           set({ loading: true, error: null })
           
           try {
-            const response = await bambiApi.post<AuthResponse>(
-              API_ENDPOINTS.AUTH_LOGIN,
-              { phone, password },
-              { skipAuth: true }
-            )
+            const formData = new FormData()
+            formData.append('username', phone)
+            formData.append('password', password)
             
-            const { user, token, refresh_token } = response.data
+            await bambiApi.post<unknown>(
+              API_ENDPOINTS.AUTH_LOGIN,
+              formData,
+              { 
+                skipAuth: true,
+                headers: {}
+              }
+            )
+
+            await new Promise(resolve => setTimeout(resolve, 100))
+            
+            const userResponse = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME)
+            const userMe = userResponse.data
+
+            const roleAuthority = userMe.role?.[0]?.authority?.replace("ROLE_", "") || "USER"
+            const user: User = {
+              id: userMe.userId,
+              name: userMe.name,
+              role: roleAuthority as "USER" | "ADMIN" | "STAFF",
+              email: undefined, 
+              role_id: userMe.role?.[0]?.authority === "ROLE_ADMIN" ? 1 : 
+                       userMe.role?.[0]?.authority === "ROLE_STAFF" ? 3 : 4
+            }
             
             set({
               user,
-              token,
-              refreshToken: refresh_token,
+              token: "session-based",
+              refreshToken: null,
               isAuthenticated: true,
               loading: false,
             })
-
-            localStorage.setItem("access_token", token)
-            localStorage.setItem("refresh_token", refresh_token)
 
             toast.success("Đăng nhập thành công!", {
               description: `Chào ${user.name}!`,
@@ -125,24 +142,24 @@ export const useAuthStore = create<AuthState>()(
         },
 
         verifyAuth: async () => {
-          const token = localStorage.getItem("access_token")
-          
-          if (!token) {
-            set({ 
-              user: null, 
-              isAuthenticated: false, 
-              loading: false 
-            })
-            return
-          }
-
           set({ loading: true })
 
           try {
-            const response = await bambiApi.get<User>(API_ENDPOINTS.AUTH_ME)
+            const response = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME)
+            const userMe = response.data
+            const roleAuthority = userMe.role[0]?.authority.replace("ROLE_", "") || "USER"
+            const user: User = {
+              id: userMe.userId,
+              name: userMe.name,
+              role: roleAuthority as "USER" | "ADMIN" | "STAFF",
+              email: undefined,
+              role_id: userMe.role[0]?.authority === "ROLE_ADMIN" ? 1 : 
+                       userMe.role[0]?.authority === "ROLE_STAFF" ? 3 : 4
+            }
+            
             set({
-              user: response.data,
-              token,
+              user,
+              token: "session-based",
               isAuthenticated: true,
               loading: false,
             })
@@ -154,9 +171,6 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: false,
               loading: false,
             })
-
-            localStorage.removeItem("access_token")
-            localStorage.removeItem("refresh_token")
 
             toast.warning("Phiên đăng nhập hết hạn", {
               description: "Vui lòng đăng nhập lại",

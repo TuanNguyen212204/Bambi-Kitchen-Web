@@ -2,12 +2,18 @@
 export interface User {
   id: number
   name: string
-  email: string
-  role: "CUSTOMER" | "STAFF" | "ADMIN" 
-  role_id: 4 | 3 | 1 
+  email?: string
+  role: "USER" | "STAFF" | "ADMIN" 
+  role_id?: 4 | 3 | 1 
   avatar?: string
-  created_at: string
-  status: "active" | "inactive"
+  created_at?: string
+  status?: "active" | "inactive"
+}
+
+export interface UserMeResponse {
+  userId: number
+  name: string
+  role: Array<{ authority: string }>
 }
 
 export interface AuthState {
@@ -36,7 +42,7 @@ export interface RegisterRequest {
   name: string
   email: string
   password: string
-  role?: "CUSTOMER" | "STAFF" | "ADMIN"
+  role?: "USER" | "STAFF" | "ADMIN"
   role_id?: 4 | 3 | 1
   avatar?: string
   status?: "active" | "inactive"

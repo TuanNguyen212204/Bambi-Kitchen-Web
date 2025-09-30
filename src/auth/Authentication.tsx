@@ -18,8 +18,14 @@ export default function Authentication({ children, fallback }: AuthenticationPro
   const navigate = useNavigate()
 
   useEffect(() => {
-    verifyAuth()
-  }, [verifyAuth])
+    if (!user) {
+      const timer = setTimeout(() => {
+        verifyAuth()
+      }, 500)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [user, verifyAuth])
 
   if (loading) {
     return (
