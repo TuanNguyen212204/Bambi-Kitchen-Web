@@ -57,13 +57,9 @@ export const validateRegisterPayload = (payload: Partial<RegisterPayload>): Vali
     return { isValid: false, error: "Email không hợp lệ" };
   }
   
-  const passwordValidation = isValidPassword(payload.pass || "");
+  const passwordValidation = isValidPassword(payload.password || "");
   if (!passwordValidation.isValid) {
     return passwordValidation;
-  }
-  
-  if (!payload.accept_terms) {
-    return { isValid: false, error: "Vui lòng đồng ý với điều khoản sử dụng" };
   }
   
   return { isValid: true };
@@ -81,13 +77,11 @@ export const createRegisterPayload = (data: {
   email: string;
   password: string;
   phone?: string;
-  acceptTerms: boolean;
 }): RegisterPayload => {
   return {
     name: data.name.trim(),
+    password: data.password,
     mail: data.email.trim(),
-    pass: data.password,
     phone: data.phone?.trim() || undefined,
-    accept_terms: data.acceptTerms,
   };
 };
