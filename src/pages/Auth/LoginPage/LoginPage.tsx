@@ -16,22 +16,22 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { login, loading } = useAuthStore()
 
-  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
+  const [fieldErrors, setFieldErrors] = useState<{ phone?: string; password?: string }>({})
 
   const handleSubmit = async (e: React.FormEvent<HTMLButtonElement>) => {
     e.preventDefault()
+
     
-    // Create LoginPayload and validate
-    const payload: LoginPayload = createLoginPayload(email, password)
+    const payload: LoginPayload = createLoginPayload(phone, password)
     const validation = validateLoginPayload(payload)
     
-    const ve: { email?: string; password?: string } = {}
+    const ve: { phone?: string; password?: string } = {}
     if (!validation.isValid) {
-      if (!email.trim()) ve.email = "Vui lòng nhập email"
+      if (!phone.trim()) ve.phone = "Vui lòng nhập số điện thoại"
       else if (!password) ve.password = "Vui lòng nhập mật khẩu"
       else setError(validation.error || "Thông tin không hợp lệ")
     }
@@ -41,10 +41,13 @@ export default function LoginPage() {
 
     try {
       setError("")
-      await login(email, password)
-      navigate("/app")
+      await login(phone, password)
+      setTimeout(() => {
+        navigate("/app", { replace: true })
+      }, 2000)
+      
     } catch {
-      setError("Email hoặc mật khẩu không đúng")
+      setError("Số điện thoại hoặc mật khẩu không đúng")
     }
   }
 
@@ -79,22 +82,23 @@ export default function LoginPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Email</Label>
+                    <Label className="text-muted-foreground">Số điện thoại</Label>
                     <div className="relative">
                       <Input
-                        type="email"
+                        type="tel"
+                        inputMode="tel"
                         className="border-0 border-b border-[#dbdbdb] rounded-none bg-transparent px-0 pb-2 focus-visible:ring-0 focus-visible:border-[#5b86e5]"
-                        value={email}
+                        value={phone}
                         onChange={(e) => {
-                          setEmail(e.target.value)
+                          setPhone(e.target.value)
                           setError("")
-                          setFieldErrors((prev) => ({ ...prev, email: e.target.value.trim() ? undefined : prev.email }))
+                          setFieldErrors((prev) => ({ ...prev, phone: e.target.value.trim() ? undefined : prev.phone }))
                         }}
-                        placeholder="Nhập email của bạn"
+                        placeholder="Nhập số điện thoại của bạn"
                       />
                     </div>
-                    {fieldErrors.email && (
-                      <p className="text-red-500 text-xs">{fieldErrors.email}</p>
+                    {fieldErrors.phone && (
+                      <p className="text-red-500 text-xs">{fieldErrors.phone}</p>
                     )}
                   </div>
 
@@ -124,7 +128,7 @@ export default function LoginPage() {
                       <p className="text-red-500 text-xs">{fieldErrors.password}</p>
                     )}
                   </div>
-                  {!fieldErrors.email && !fieldErrors.password && error && (
+                  {!fieldErrors.phone && !fieldErrors.password && error && (
                     <p className="text-red-500 text-sm">{error}</p>
                   )}
                 </div>

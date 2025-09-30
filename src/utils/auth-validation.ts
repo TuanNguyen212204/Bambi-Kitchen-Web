@@ -13,6 +13,12 @@ export const isValidEmail = (email: string): boolean => {
   return emailRegex.test(email);
 };
 
+export const isValidPhone = (phone: string): boolean => {
+  const normalized = phone.trim();
+  const vnLike = /^(\+?84|0)\d{8,10}$/;
+  return vnLike.test(normalized);
+};
+
 
 export const isValidPassword = (password: string): ValidationResult => {
   if (!password) {
@@ -27,12 +33,12 @@ export const isValidPassword = (password: string): ValidationResult => {
 };
 
 export const validateLoginPayload = (payload: Partial<LoginPayload>): ValidationResult => {
-  if (!payload.mail?.trim()) {
-    return { isValid: false, error: "Vui lòng nhập email" };
+  if (!payload.phone?.trim()) {
+    return { isValid: false, error: "Vui lòng nhập số điện thoại" };
   }
   
-  if (!isValidEmail(payload.mail)) {
-    return { isValid: false, error: "Email không hợp lệ" };
+  if (!isValidPhone(payload.phone)) {
+    return { isValid: false, error: "Số điện thoại không hợp lệ" };
   }
   
   const passwordValidation = isValidPassword(payload.pass || "");
@@ -65,9 +71,9 @@ export const validateRegisterPayload = (payload: Partial<RegisterPayload>): Vali
   return { isValid: true };
 };
 
-export const createLoginPayload = (email: string, password: string): LoginPayload => {
+export const createLoginPayload = (phone: string, password: string): LoginPayload => {
   return {
-    mail: email.trim(),
+    phone: phone.trim(),
     pass: password,
   };
 };

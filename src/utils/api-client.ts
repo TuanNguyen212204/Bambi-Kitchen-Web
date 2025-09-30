@@ -1,6 +1,5 @@
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosRequestHeaders, AxiosRequestConfig } from "axios"
-import axios from "axios"
-import { http, API_BASE_URL } from "./http"
+import { http } from "@utils/http"
 import { ApiError } from "@utils/errors"
 import { toast } from "sonner"
 import { useAuthStore } from "@zustand/stores/auth"
@@ -22,8 +21,6 @@ export interface RequestOptions extends Omit<AxiosRequestConfig, "baseURL" | "ur
 
 export class BambiApiClient {
   private client: AxiosInstance
-  private isRefreshing = false
-  private refreshSubscribers: Array<(token: string | null) => void> = []
 
   constructor(client: AxiosInstance = http) {
     this.client = client
@@ -35,10 +32,12 @@ export class BambiApiClient {
       (config: InternalAxiosRequestConfig & { skipAuth?: boolean }) => {
         const { token } = useAuthStore.getState()
 
-        if (token && !config.skipAuth) {
+        if (token && token !== "session-based" && !config.skipAuth) {
           config.headers = (config.headers ?? {}) as AxiosRequestHeaders
           ;(config.headers as AxiosRequestHeaders).Authorization = `Bearer ${token}`
         }
+
+        config.withCredentials = true
 
         if (import.meta.env.DEV) {
           console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`)
@@ -59,38 +58,9 @@ export class BambiApiClient {
       async (error) => {
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: number; skipAuth?: boolean }
 
+
         if (error.response?.status === 401 && !originalRequest.skipAuth) {
-          if (this.isRefreshing) {
-            return new Promise((resolve, reject) => {
-              this.addRefreshSubscriber((token) => {
-                if (token) {
-                  originalRequest.headers = (originalRequest.headers ?? {}) as AxiosRequestHeaders
-                  ;(originalRequest.headers as AxiosRequestHeaders).Authorization = `Bearer ${token}`
-                  resolve(this.client(originalRequest))
-                } else {
-                  reject(error)
-                }
-              })
-            })
-          }
-
-          this.isRefreshing = true
-
-          try {
-            const newToken = await this.refreshToken()
-            this.isRefreshing = false
-
-            if (newToken) {
-              originalRequest.headers = (originalRequest.headers ?? {}) as AxiosRequestHeaders
-              ;(originalRequest.headers as AxiosRequestHeaders).Authorization = `Bearer ${newToken}`
-              this.onRefreshed(newToken)
-              return this.client(originalRequest)
-            }
-          } catch {
-            this.isRefreshing = false
-            this.onRefreshFailed()
-            this.logout()
-          }
+          this.logout()
         }
 
         this.handleError(error)
@@ -99,39 +69,6 @@ export class BambiApiClient {
     )
   }
 
-  private addRefreshSubscriber(callback: (token: string | null) => void) {
-    this.refreshSubscribers.push(callback)
-  }
-
-  private onRefreshed(token: string) {
-    this.refreshSubscribers.forEach((callback) => callback(token))
-    this.refreshSubscribers = []
-  }
-
-  private onRefreshFailed() {
-    this.refreshSubscribers.forEach((callback) => callback(null))
-    this.refreshSubscribers = []
-  }
-
-  private async refreshToken(): Promise<string | null> {
-    try {
-      const refreshToken = localStorage.getItem("refresh_token")
-      if (!refreshToken) throw new Error("No refresh token")
-
-      const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-        refresh_token: refreshToken,
-      })
-
-      const { token, refresh_token } = response.data
-      localStorage.setItem("access_token", token)
-      localStorage.setItem("refresh_token", refresh_token)
-      return token
-    } catch {
-      localStorage.removeItem("access_token")
-      localStorage.removeItem("refresh_token")
-      return null
-    }
-  }
 
   private handleError(error: unknown) {
     const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string }

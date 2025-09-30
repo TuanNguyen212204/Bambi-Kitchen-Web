@@ -2,12 +2,18 @@
 export interface User {
   id: number
   name: string
-  email: string
-  role: "CUSTOMER" | "STAFF" | "ADMIN" 
-  role_id: 4 | 3 | 1 
+  email?: string
+  role: "USER" | "STAFF" | "ADMIN" 
+  role_id?: 4 | 3 | 1 
   avatar?: string
-  created_at: string
-  status: "active" | "inactive"
+  created_at?: string
+  status?: "active" | "inactive"
+}
+
+export interface UserMeResponse {
+  userId: number
+  name: string
+  role: Array<{ authority: string }>
 }
 
 export interface AuthState {
@@ -18,7 +24,7 @@ export interface AuthState {
   loading: boolean
   error: string | null
   
-  login: (email: string, password: string) => Promise<void>
+  login: (phone: string, password: string) => Promise<void>
   register: (userData: RegisterRequest) => Promise<void>
   logout: () => void
   verifyAuth: () => Promise<void>
@@ -28,7 +34,7 @@ export interface AuthState {
 
 // API Request/Response types
 export interface LoginRequest {
-  email: string
+  phone: string
   password: string
 }
 
@@ -36,7 +42,7 @@ export interface RegisterRequest {
   name: string
   email: string
   password: string
-  role?: "CUSTOMER" | "STAFF" | "ADMIN"
+  role?: "USER" | "STAFF" | "ADMIN"
   role_id?: 4 | 3 | 1
   avatar?: string
   status?: "active" | "inactive"
