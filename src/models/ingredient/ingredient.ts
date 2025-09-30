@@ -5,6 +5,8 @@ export interface Ingredient {
   unit: string
   status: IngredientStatus
   category: IngredientCategory
+  imgUrl?: string
+  store_id: number
   created_at?: string
   updated_at?: string
 }

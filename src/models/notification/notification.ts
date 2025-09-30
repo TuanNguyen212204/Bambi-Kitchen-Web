@@ -8,13 +8,8 @@ export interface Notification {
   is_read: boolean
   content: string
   account_id: number
-  type: NotificationType
-  priority: NotificationPriority
-  related_order_id?: number
-  related_ingredient_id?: number
-  action_url?: string
-  expires_at?: string
-  created_by?: number
+  created_at?: string
+  updated_at?: string
 }
 
 export type NotificationType = 

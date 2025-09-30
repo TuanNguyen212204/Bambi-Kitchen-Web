@@ -7,13 +7,6 @@ export interface Recipe {
   dish_id: number 
   ingredient_id: number 
   quantity: number 
-  unit: string 
-  step_number: number 
-  preparation_method?: string 
-  cooking_time?: number 
-  notes?: string 
-  is_optional: boolean 
-  position: number 
   created_at?: string
   updated_at?: string
 }

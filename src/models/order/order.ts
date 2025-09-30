@@ -20,16 +20,9 @@ export interface Order {
   note?: string
   ranking?: number
   feedback?: string
-  total_calories?: number
-  payment_method?: PaymentMethod
-  discount_id?: number
-  discount_amount?: number
-  final_price?: number
-  delivery_address?: string
-  phone_number?: string
-  estimated_delivery_time?: string
-  actual_delivery_time?: string
-  ai_analysis?: AIAnalysisOutput
+  store_id: number
+  created_at?: string
+  updated_at?: string
 }
 
 export type OrderStatus = 

@@ -7,6 +7,7 @@ export interface User {
   status: UserStatus 
   pass: string 
   mail: string 
+  phone?: string
 }
 
 export type UserRole = 

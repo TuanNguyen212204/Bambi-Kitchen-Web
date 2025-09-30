@@ -6,12 +6,8 @@ export interface Payment {
   comple_at?: string 
   discount_id?: number
   status: PaymentStatus
-  amount: number
-  currency: "VND"
-  transaction_id?: string
-  gateway_response?: Record<string, unknown>
-  refund_id?: string
-  paid_by?: number
+  created_at?: string
+  updated_at?: string
 }
 
 export type PaymentMethod = 

@@ -5,12 +5,8 @@ export interface IngredientTransaction {
   order_id?: number
   create_at: string
   quantity: number
-  type: TransactionType
-  reason?: string
-  reference_id?: number
-  staff_id?: number
-  notes?: string
-  cost?: number
+  created_at?: string
+  updated_at?: string
 }
 
 export type TransactionType = 

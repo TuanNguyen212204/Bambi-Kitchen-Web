@@ -6,6 +6,7 @@ export interface Dish {
   name: string
   price: number
   img_url: string
+  imgUrl?: string
   account_id: number
   dish_category_id: number
   type: DishType
