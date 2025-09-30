@@ -62,10 +62,11 @@ export interface LoginPayload {
   pass: string
 }
 
-export interface RegisterPayload extends LoginPayload {
+export interface RegisterPayload {
   name: string
+  password: string
+  mail: string
   phone?: string
-  accept_terms: boolean
 }
 
 export interface AuthResponse {

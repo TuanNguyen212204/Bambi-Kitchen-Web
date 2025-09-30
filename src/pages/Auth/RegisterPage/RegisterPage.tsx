@@ -23,7 +23,6 @@ export function RegisterForm() {
     phone: "",
     password: "",
     confirmPassword: "",
-    acceptTerms: false,
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,7 +45,6 @@ export function RegisterForm() {
       email: data.email,
       password: data.password,
       phone: data.phone,
-      acceptTerms: data.acceptTerms,
     });
     
     const validation = validatePayload(payload);
@@ -74,7 +72,6 @@ export function RegisterForm() {
         email: formData.email,
         password: formData.password,
         phone: formData.phone,
-        acceptTerms: formData.acceptTerms,
       });
       await bambiApi.post(API_ENDPOINTS.AUTH_REGISTER, payload, { skipAuth: true });
       toast.success("Đăng ký thành công!", { description: "Vui lòng đăng nhập để tiếp tục." });
@@ -285,25 +282,6 @@ export function RegisterForm() {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="acceptTerms"
-                    checked={formData.acceptTerms}
-                    onChange={(e) => handleChange("acceptTerms", e.target.checked)}
-                    className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500 focus:ring-2"
-                  />
-                  <label htmlFor="acceptTerms" className="text-xs text-gray-700">
-                    Tôi đồng ý với{" "}
-                    <a href="#" className="text-orange-600 hover:underline">
-                      Điều khoản sử dụng
-                    </a>{" "}
-                    và{" "}
-                    <a href="#" className="text-orange-600 hover:underline">
-                      Chính sách bảo mật
-                    </a>
-                  </label>
-                </div>
                 </form>
               </CardContent>
             </Card>
