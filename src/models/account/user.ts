@@ -59,7 +59,7 @@ export type CuisineType =
 
 //Auth payload
 export interface LoginPayload {
-  mail: string
+  phone: string
   pass: string
 }
 

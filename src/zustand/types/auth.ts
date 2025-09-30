@@ -18,7 +18,7 @@ export interface AuthState {
   loading: boolean
   error: string | null
   
-  login: (email: string, password: string) => Promise<void>
+  login: (phone: string, password: string) => Promise<void>
   register: (userData: RegisterRequest) => Promise<void>
   logout: () => void
   verifyAuth: () => Promise<void>
@@ -28,7 +28,7 @@ export interface AuthState {
 
 // API Request/Response types
 export interface LoginRequest {
-  email: string
+  phone: string
   password: string
 }
 

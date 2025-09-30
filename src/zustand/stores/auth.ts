@@ -17,13 +17,13 @@ export const useAuthStore = create<AuthState>()(
         loading: false,
         error: null,
 
-        login: async (email, password) => {
+        login: async (phone, password) => {
           set({ loading: true, error: null })
           
           try {
             const response = await bambiApi.post<AuthResponse>(
               API_ENDPOINTS.AUTH_LOGIN,
-              { email, password },
+              { phone, password },
               { skipAuth: true }
             )
             
