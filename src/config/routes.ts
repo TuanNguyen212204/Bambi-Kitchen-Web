@@ -8,6 +8,12 @@ const Success = lazy(() => import("@pages/success"))
 const ErrorPage = lazy(() => import("@pages/error/ErrorPage"))
 
 const Home = lazy(() => import("@pages/customerPage/home/HomePage"))
+const AdminDashboard = lazy(() => import("@pages/adminPage/dashboard"))
+const AdminOrders = lazy(() => import("@pages/adminPage/orders"))
+const AdminMenu = lazy(() => import("@pages/adminPage/menu"))
+const AdminIngredients = lazy(() => import("@pages/adminPage/ingredients"))
+const AdminFeedback = lazy(() => import("@pages/adminPage/feedback"))
+const AdminSettings = lazy(() => import("@pages/adminPage/settings"))
 // const OrderBuilder = lazy(() => import("@/pages/customer/OrderBuilder"))
 // const OrderHistory = lazy(() => import("@/pages/customer/OrderHistory"))
 // const QuickOrder = lazy(() => import("@/pages/customer/QuickOrder"))
@@ -33,9 +39,10 @@ const Home = lazy(() => import("@pages/customerPage/home/HomePage"))
 export const ROLES = {
   CUSTOMER: 4, 
   STAFF: 3,       
-  KITCHEN_STAFF: 3, 
   ADMIN: 1, 
 } as const
+export type RouteLayout = "main" | "admin"
+
 export interface RouteConfig {
   path: string
   component: React.ComponentType
@@ -43,6 +50,7 @@ export interface RouteConfig {
   protected: boolean
   role?: number[]
   icon?: React.ReactNode
+  layout?: RouteLayout
 }
 
 export const AUTH_PUBLIC_ROUTES: RouteConfig[] = [
@@ -97,6 +105,57 @@ export const CUSTOMER_PUBLIC_ROUTES: RouteConfig[] = [
     label: "Trang chủ",
     protected: false,
     role: [],
+  },
+]
+
+export const PRIVATE_ROUTES: RouteConfig[] = [
+  {
+    path: "dashboard",
+    component: AdminDashboard,
+    label: "Dashboard",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "orders",
+    component: AdminOrders,
+    label: "Orders",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "menu",
+    component: AdminMenu,
+    label: "Menu",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "ingredients",
+    component: AdminIngredients,
+    label: "Ingredients",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "feedback",
+    component: AdminFeedback,
+    label: "Feedback",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "settings",
+    component: AdminSettings,
+    label: "Settings",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
   },
 ]
 // export const PRIVATE_ROUTES: RouteConfig[] = [
@@ -244,4 +303,3 @@ export const CUSTOMER_PUBLIC_ROUTES: RouteConfig[] = [
 //     icon: "💬",
 //   },
 // ]
-export const PRIVATE_ROUTES: RouteConfig[] = []

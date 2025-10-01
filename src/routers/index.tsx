@@ -3,6 +3,7 @@ import { Suspense, lazy, memo } from "react"
 import Authentication from "@/auth/Authentication" 
 import Authorization from "@/auth/Authorization"
 import MainLayout from "@components/layouts/MainLayout"
+import AdminLayout from "@components/layouts/AdminLayout"
 import { AUTH_PUBLIC_ROUTES, CUSTOMER_PUBLIC_ROUTES, PRIVATE_ROUTES, ROLES } from "@config/routes"
 import { PATHS } from "@config/path"
 import ErrorPage from "@pages/error/ErrorPage"
@@ -77,6 +78,25 @@ export const AppRoute = memo(() => {
         ),
         errorElement: ErrorFallback,
       })),
+    },
+    {
+      path: "/app/admin",
+      element: (
+        <Authentication fallback={<Unauthenticated />}>
+          <Authorization role_id={ROLES.ADMIN}>
+            <AdminLayout />
+          </Authorization>
+        </Authentication>
+      ),
+      errorElement: ErrorFallback,
+      children: PRIVATE_ROUTES
+        .filter((r) => r.protected && r.role?.includes(ROLES.ADMIN) && r.layout === "admin")
+        .map((route) => ({
+          index: route.path === "dashboard",
+          path: route.path === "dashboard" ? undefined : route.path,
+          element: createRouteElement(route.component, LoadingFallback),
+          errorElement: ErrorFallback,
+        })),
     },
 
     {
