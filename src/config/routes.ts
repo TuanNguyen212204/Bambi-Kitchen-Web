@@ -6,12 +6,13 @@ const ForgotPassword = lazy(() => import("@pages/Auth/ForgotPassword"))
 const ResetPassword = lazy(() => import("@pages/Auth/ConfirmationPage/ConfirmationPage"))
 const Success = lazy(() => import("@pages/success"))
 const ErrorPage = lazy(() => import("@pages/error/ErrorPage"))
+const OrdersPage = lazy(() => import("@pages/customerPage/orders/OrdersPage"))
 
 const Home = lazy(() => import("@pages/customerPage/home/HomePage"))
 const AdminDashboard = lazy(() => import("@pages/adminPage/dashboard"))
 const AdminOrders = lazy(() => import("@pages/adminPage/orders"))
 const AdminMenu = lazy(() => import("@pages/adminPage/menu"))
-const AdminIngredients = lazy(() => import("@pages/adminPage/ingredients"))
+const AdminIngredients = lazy(() => import("@pages/adminPage/ingredientManagement/ingredient/ingredient"))
 const AdminFeedback = lazy(() => import("@pages/adminPage/feedback"))
 const AdminSettings = lazy(() => import("@pages/adminPage/settings"))
 // const OrderBuilder = lazy(() => import("@/pages/customer/OrderBuilder"))
@@ -106,6 +107,37 @@ export const CUSTOMER_PUBLIC_ROUTES: RouteConfig[] = [
     protected: false,
     role: [],
   },
+]
+
+export const CUSTOMER_PRIVATE_ROUTES: RouteConfig[] = [
+  {
+    path: PATHS.ORDERS,
+    component: OrdersPage,
+    label: "Đơn hàng",
+    protected: true,
+    role: [ROLES.CUSTOMER],
+  },
+  // {
+  //   path: PATHS.PROFILE,
+  //   component: () => <div>Profile Page</div>,
+  //   label: "Hồ sơ cá nhân",
+  //   protected: true,
+  //   role: [ROLES.CUSTOMER],
+  // },
+  // {
+  //   path: "/cart",
+  //   component: () => <div>Cart Page</div>,
+  //   label: "Giỏ hàng",
+  //   protected: true,
+  //   role: [ROLES.CUSTOMER],
+  // },
+  // {
+  //   path: PATHS.FAVORITES,
+  //   component: () => <div>Favorites Page</div>,
+  //   label: "Món yêu thích",
+  //   protected: true,
+  //   role: [ROLES.CUSTOMER],
+  // },
 ]
 
 export const PRIVATE_ROUTES: RouteConfig[] = [

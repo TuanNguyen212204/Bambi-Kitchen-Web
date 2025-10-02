@@ -11,6 +11,8 @@ export const PATHS = {
   QUICK_ORDER: "/quick-order/:orderId",
   PROFILE: "/profile",
   FAVORITES: "/favorites",
+  ORDERS: "/orders",
+  STAFF_DASHBOARD: "/staff",
   
   STAFF: "/staff",
   STAFF_ORDERS: "/staff/orders",
