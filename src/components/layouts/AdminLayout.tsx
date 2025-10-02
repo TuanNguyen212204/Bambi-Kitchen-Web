@@ -4,10 +4,10 @@ import SidebarAdmin from "@ui/admin/SidebarAdmin";
 
 const AdminLayout = () => {
   return (
-    <div className="min-h-screen w-full flex bg-background">
-      <SidebarAdmin />
-      <div className="flex-1 flex flex-col min-w-0">
-        <HeaderAdmin />
+    <div className="min-h-screen w-full bg-background">
+      <HeaderAdmin />
+      <div className="flex">
+        <SidebarAdmin />
         <main className="flex-1 p-6">
           <Outlet />
         </main>
