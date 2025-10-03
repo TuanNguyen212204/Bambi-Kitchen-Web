@@ -22,10 +22,11 @@ export default function AddIngredientModal({ open, onClose }: Props) {
     const NAME_RE = /^[\p{L}\p{N} ]+$/u
     if (!name.trim()) e.name = "Tên nguyên liệu là bắt buộc"
     else if (!NAME_RE.test(name.trim())) e.name = "Tên chỉ gồm chữ/số và khoảng trắng"
-    if (!categoryId) e.category = "Vui lòng chọn danh mục"
+    if (categoryId == null) e.category = "Vui lòng chọn danh mục"
     setErrors(e)
     if (Object.keys(e).length) return
-    await create({ name: name.trim(), categoryId, unit })
+    const safeCategoryId = categoryId as number
+    await create({ name: name.trim(), categoryId: safeCategoryId, unit })
     onClose()
   }
 
@@ -40,7 +41,7 @@ export default function AddIngredientModal({ open, onClose }: Props) {
         </div>
         <div>
           <Label className="mb-1 block">Danh mục</Label>
-          <select className={`w-full h-10 border rounded px-3 ${errors.category? 'border-red-500': ''}`} value={categoryId ?? ""} onChange={(e)=> setCategoryId(Number(e.target.value))}>
+          <select className={`w-full h-10 border rounded px-3 ${errors.category? 'border-red-500': ''}`} value={categoryId ?? ""} onChange={(e)=> setCategoryId(e.target.value === "" ? undefined : Number(e.target.value))}>
             <option value="">Chọn danh mục</option>
             {categories.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
