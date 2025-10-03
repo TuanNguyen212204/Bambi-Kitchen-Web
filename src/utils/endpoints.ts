@@ -33,6 +33,8 @@ export const API_ENDPOINTS = {
   API_DISCOUNTS: "/api/discount",
   API_DISCOUNT_BY_ID: (id: number) => `/api/discount/${id}`,
   
+  API_INVENTORY_TRANSACTIONS: "/api/inventory-transactions",
+  
   AI_ANALYZE: "/ai/analyze",
   AI_SUGGESTIONS: "/ai/suggestions",
   

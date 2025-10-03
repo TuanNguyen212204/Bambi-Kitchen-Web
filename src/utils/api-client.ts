@@ -1,6 +1,6 @@
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosRequestHeaders, AxiosRequestConfig } from "axios"
 import { http } from "@utils/http"
-import { ApiError } from "@utils/errors"
+import { ApiError, shouldToast } from "@utils/errors"
 import { toast } from "sonner"
 import { useAuthStore } from "@zustand/stores/auth"
 
@@ -63,7 +63,19 @@ export class BambiApiClient {
           this.logout()
         }
 
-        this.handleError(error)
+        // Cho phép tắt toast lỗi theo header tùy biến
+        const silent = originalRequest?.headers && (originalRequest.headers as AxiosRequestHeaders)["x-silent-error"]
+        if (!silent) {
+          // Kiểm soát lỗi tìm kiếm: gom về 1 thông báo thân thiện
+          const url = originalRequest?.url || ""
+          if (url.includes("/api/ingredient/search")) {
+            if (shouldToast("search_error")) {
+              toast.error("Tìm kiếm thất bại")
+            }
+          } else {
+            this.handleError(error)
+          }
+        }
         return Promise.reject(new ApiError(error))
       }
     )
@@ -77,23 +89,23 @@ export class BambiApiClient {
 
     switch (status) {
       case 401:
-        toast.error("Phiên đăng nhập hết hạn", {
+        if (shouldToast("401")) toast.error("Phiên đăng nhập hết hạn", {
           description: `[401] Vui lòng đăng nhập lại`,
           action: { label: "Đăng nhập", onClick: () => window.location.href = "/login" },
         })
         break
       case 403:
-        toast.error("Không có quyền truy cập", { description: `[403] ${message}` })
+        if (shouldToast("403")) toast.error("Không có quyền truy cập", { description: `[403] ${message}` })
         window.location.href = "/unauthorized"
         break
       case 404:
-        toast.warning("Không tìm thấy", { description: `[404] ${message}` })
+        if (shouldToast("404")) toast.warning("Không tìm thấy", { description: `[404] ${message}` })
         break
       case 500:
-        toast.error("Lỗi server", { description: `[500] Vui lòng thử lại sau` })
+        if (shouldToast("500")) toast.error("Lỗi server", { description: `[500] Vui lòng thử lại sau` })
         break
       default:
-        toast.error("Lỗi không xác định", { description: `[${status ?? "N/A"}] ${message}` })
+        if (shouldToast(String(status ?? "N/A"))) toast.error("Lỗi không xác định", { description: `[${status ?? "N/A"}] ${message}` })
     }
   }
 

@@ -57,6 +57,16 @@ export class ApiError extends Error {
   }
 }
 
+let lastErrorMsg = ""
+let lastErrorAt = 0
+export function shouldToast(msg: string, windowMs = 800): boolean {
+  const now = Date.now()
+  if (msg === lastErrorMsg && now - lastErrorAt < windowMs) return false
+  lastErrorMsg = msg
+  lastErrorAt = now
+  return true
+}
+
 export class OrderError extends ApiError {
   constructor(error: AxiosError, orderId?: string) {
     super(error)
