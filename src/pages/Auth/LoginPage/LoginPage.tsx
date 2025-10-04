@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { PATHS } from "@config/path"
 import { Card, CardContent, CardHeader } from "@components/ui/card/card"
 import { Button } from "@components/ui/button/index"
 import { Input } from "@components/ui/input"
@@ -14,7 +15,7 @@ import { validateLoginPayload, createLoginPayload } from "@utils/auth-validation
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { login, loading } = useAuthStore()
+  const { login, loading, user } = useAuthStore()
 
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
@@ -42,14 +43,31 @@ export default function LoginPage() {
     try {
       setError("")
       await login(phone, password)
-      setTimeout(() => {
-        navigate("/app", { replace: true })
-      }, 2000)
+
+      const { user: currentUser } = useAuthStore.getState()
+      const destination = currentUser?.role === "ADMIN"
+        ? PATHS.ADMIN
+        : currentUser?.role === "STAFF"
+        ? PATHS.STAFF
+        : PATHS.HOME
+
+      navigate(destination, { replace: true })
       
     } catch {
       setError("Số điện thoại hoặc mật khẩu không đúng")
     }
   }
+
+  useEffect(() => {
+    if (user) {
+      const destination = user.role === "ADMIN"
+        ? PATHS.ADMIN
+        : user.role === "STAFF"
+        ? PATHS.STAFF
+        : PATHS.HOME
+      navigate(destination, { replace: true })
+    }
+  }, [user, navigate])
 
   return (
     <div className="h-screen w-full bg-white grid place-items-center overflow-hidden">
