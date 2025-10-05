@@ -3,6 +3,8 @@ import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import { useIngredientStore } from "@zustand/stores/ingredients"
+import { Upload, X } from "lucide-react"
+import { toast } from "sonner"
 
 interface Props { open: boolean; onClose: () => void }
 
@@ -11,9 +13,45 @@ export default function AddIngredientModal({ open, onClose }: Props) {
   const [name, setName] = useState("")
   const [unit, setUnit] = useState("GRAM")
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [errors, setErrors] = useState<{ name?: string; category?: string }>({})
 
   useEffect(() => { if (open) fetchCategories() }, [open, fetchCategories])
+
+  useEffect(() => {
+    if (!open) {
+      setName("")
+      setUnit("GRAM")
+      setCategoryId(undefined)
+      setSelectedFile(null)
+      setPreviewUrl(null)
+      setErrors({})
+    }
+  }, [open])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('File quá lớn. Vui lòng chọn file nhỏ hơn 2MB.')
+        e.target.value = ''
+        return
+      }
+      
+      setSelectedFile(file)
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+    }
+  }
+
+  const removeFile = () => {
+    setSelectedFile(null)
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(null)
+    }
+  }
 
   if (!open) return null
 
@@ -26,7 +64,7 @@ export default function AddIngredientModal({ open, onClose }: Props) {
     setErrors(e)
     if (Object.keys(e).length) return
     const safeCategoryId = categoryId as number
-    await create({ name: name.trim(), categoryId: safeCategoryId, unit })
+            await create({ name: name.trim(), categoryId: safeCategoryId, unit, file: selectedFile || undefined })
     onClose()
   }
 
@@ -57,6 +95,49 @@ export default function AddIngredientModal({ open, onClose }: Props) {
             <option value="LITER">LITER</option>
             <option value="PCS">PCS</option>
           </select>
+        </div>
+
+        <div>
+          <Label className="mb-1 block">Hình ảnh (tùy chọn)</Label>
+          <div className="space-y-3">
+            {!previewUrl ? (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <label htmlFor="file-upload" className="cursor-pointer">
+                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Nhấp để chọn hình ảnh</p>
+                  <p className="text-xs text-gray-500">JPG, PNG, GIF (tối đa 2MB)</p>
+                </label>
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
+                  <img src={previewUrl} alt="Preview" className="w-12 h-12 object-cover rounded" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">{selectedFile?.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {selectedFile && `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={removeFile}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>Hủy</Button>

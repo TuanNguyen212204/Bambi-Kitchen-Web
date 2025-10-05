@@ -18,10 +18,6 @@ export const API_ENDPOINTS = {
   API_INGREDIENTS: "/api/ingredient",
   API_INGREDIENT_BY_ID: (id: number) => `/api/ingredient/${id}`,
   API_INGREDIENT_SEARCH_BY_NAME: (name: string) => `/api/ingredient/search?name=${encodeURIComponent(name)}`,
-  API_INGREDIENT_DETAILS: "/api/ingredient-details",
-  API_INGREDIENT_DETAIL_BY_ID: (id: number) => `/api/ingredient-details/${id}`,
-  API_INGREDIENT_DETAILS_BY_INGREDIENT: (ingredientId: number) => `/api/ingredient-details/ingredient/${ingredientId}`,
-  API_INGREDIENT_DETAIL_TOGGLE_ACTIVE: (id: number) => `/api/ingredient-details/toggle-active/${id}`,
   API_INGREDIENT_CATEGORIES: "/api/ingredient-categories",
   API_INGREDIENT_CATEGORY_BY_ID: (id: number) => `/api/ingredient-categories/${id}`,
 

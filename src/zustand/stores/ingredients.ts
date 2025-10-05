@@ -4,9 +4,66 @@ import { toast } from "sonner"
 import { bambiApi, API_ENDPOINTS } from "@/utils/api"
 import type { Ingredient } from "@models/ingredient/ingredient"
 
+const validateFileSize = (file: File): boolean => {
+  return file.size <= 2 * 1024 * 1024
+}
+
+const resizeImage = (file: File, maxWidth = 800, maxHeight = 600, quality = 0.8): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
+    
+    img.onload = () => {
+      let { width, height } = img
+    
+      if (width > height) {
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width
+          width = maxWidth
+        }
+      } else {
+        if (height > maxHeight) {
+          width = (width * maxHeight) / height
+          height = maxHeight
+        }
+      }
+      
+      canvas.width = width
+      canvas.height = height
+      
+      ctx?.drawImage(img, 0, 0, width, height)
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const resizedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now()
+          })
+          resolve(resizedFile)
+        } else {
+          reject(new Error('Canvas to blob conversion failed'))
+        }
+      }, 'image/jpeg', quality)
+    }
+    
+    img.onerror = reject
+    img.src = URL.createObjectURL(file)
+  })
+}
+
+
 type StockStatus = "out" | "low" | "normal"
 type StoreIngredient = Omit<Ingredient, "category"> & { category: string; stock?: number; stockStatus?: StockStatus; active?: boolean }
-type IngredientDetail = { id?: number; entryDate?: string; expireDate?: string; quantity?: number; active?: boolean; ingredient?: { id: number } }
+
+interface InventoryTransaction {
+  id: number
+  ingredient: { id: number }
+  orders?: { id: number }
+  createAt: string
+  quantity: number
+  transactionType: boolean
+}
 
 export interface IngredientState {
   items: StoreIngredient[]
@@ -23,11 +80,11 @@ export interface IngredientState {
   searchByName: (name: string) => Promise<void>
   fetchCategories: () => Promise<void>
   createCategory: (payload: { name: string; description?: string }) => Promise<{ id: number; name: string; description?: string } | undefined>
-  create: (payload: { name: string; categoryId: number; unit: string }) => Promise<void>
-  update: (payload: { id: number; name: string; categoryId?: number; unit?: string; active?: boolean }) => Promise<void>
+          create: (payload: { name: string; categoryId: number; unit: string; file?: File }) => Promise<void>
+          update: (payload: { id: number; name: string; categoryId?: number; unit?: string; active?: boolean; file?: File; removeImage?: boolean }) => Promise<void>
   remove: (id: number) => Promise<void>
   adjustStock: (ingredientId: number, delta: number) => Promise<void>
-
+  getStockHistory: (ingredientId: number) => Promise<InventoryTransaction[]>
 
   setQuery: (q: string) => void
   setSelectedCategoryId: (id?: number) => void
@@ -66,22 +123,34 @@ export const useIngredientStore = create<IngredientState>()(
             return { ...(rest as Omit<Ingredient, "category">), category: String(category ?? "") }
           })
 
-          const withStock: StoreIngredient[] = []
-          for (const ing of normalized) {
-            try {
-              const details = await bambiApi.get<IngredientDetail[]>(API_ENDPOINTS.API_INGREDIENT_DETAILS_BY_INGREDIENT(ing.id))
-              const now = Date.now()
-              const valid = (details.data || []).filter((d) => !d.expireDate || new Date(d.expireDate).getTime() > now)
-              const stock = (valid as IngredientDetail[]).reduce((sum: number, d) => sum + (Number(d.quantity) || 0), 0)
+          const transactionsRes = await bambiApi.get<InventoryTransaction[]>(API_ENDPOINTS.API_INVENTORY_TRANSACTIONS)
+          const transactions = transactionsRes.data || []
 
-              const isOut = stock <= 0
-              const isLow = !isOut && stock <= 5
-              const stockStatus: StockStatus = isOut ? "out" : isLow ? "low" : "normal"
-              withStock.push({ ...ing, stock, stockStatus })
-            } catch {
-              withStock.push({ ...ing, stock: undefined, stockStatus: "normal" })
+          const withStock: StoreIngredient[] = normalized.map(ing => {
+            const ingredientTransactions = transactions.filter(t => 
+              t.ingredient && t.ingredient.id === ing.id
+            )
+            
+            let totalStock = 0
+            ingredientTransactions.forEach(t => {
+              if (t.transactionType === true) { 
+                totalStock += t.quantity || 0
+              } else { 
+                totalStock -= t.quantity || 0
+              }
+            })
+
+            const isOut = totalStock <= 0
+            const isLow = !isOut && totalStock <= 5
+            const stockStatus: StockStatus = isOut ? "out" : isLow ? "low" : "normal"
+
+            return { 
+              ...ing, 
+              stock: totalStock,
+              stockStatus 
             }
-          }
+          })
+
           set({ items: withStock, loading: false })
         } catch {
           set({ loading: false })
@@ -129,9 +198,27 @@ export const useIngredientStore = create<IngredientState>()(
         }
       },
 
-      create: async (payload) => {
-        try {
-          const res = await bambiApi.post<Ingredient>(API_ENDPOINTS.API_INGREDIENTS, payload)
+          create: async (payload) => {
+            try {
+              const formData = new FormData()
+              formData.append('name', payload.name)
+              formData.append('categoryId', payload.categoryId.toString())
+              formData.append('unit', payload.unit)
+              
+              if (payload.file) {
+                if (!validateFileSize(payload.file)) {
+                  toast.error('File quá lớn. Vui lòng chọn file nhỏ hơn 2MB.')
+                  return
+                }
+                const resizedFile = await resizeImage(payload.file)
+                formData.append('file', resizedFile)
+              }
+
+              const res = await bambiApi.post<Ingredient>(API_ENDPOINTS.API_INGREDIENTS, formData, {
+                headers: {
+                  'Content-Type': 'multipart/form-data'
+                }
+              })
           const created = res.data
           const catObj = (created as unknown as { category?: { name?: string } }).category
           const category = typeof catObj === 'object' && catObj?.name ? String(catObj.name) : String((created as unknown as { category?: string }).category ?? "")
@@ -143,13 +230,103 @@ export const useIngredientStore = create<IngredientState>()(
         }
       },
 
-      update: async (payload) => {
-        try {
-          const res = await bambiApi.put<Ingredient>(API_ENDPOINTS.API_INGREDIENTS, payload)
-          set({
-            items: get().items.map((i) => (i.id === res.data.id ? { ...i, ...res.data } as StoreIngredient : i)),
-          })
-          toast.success("Đã cập nhật nguyên liệu")
+          update: async (payload) => {
+            try {
+              if (!payload.file) {
+                const currentIngredient = get().items.find(i => i.id === payload.id)
+                const categoryIdToUse = payload.categoryId !== undefined ? payload.categoryId : ((currentIngredient as unknown as { categoryId?: number })?.categoryId || 1)
+                
+                const ingredientData: Record<string, unknown> = {
+                  name: payload.name,
+                  categoryId: categoryIdToUse,
+                  unit: payload.unit,
+                  active: payload.active
+                }
+                
+                if (payload.removeImage) {
+                  ingredientData.file = ""
+                }
+                
+                const res = await bambiApi.put<Ingredient>(API_ENDPOINTS.API_INGREDIENTS, ingredientData, {
+                  params: {
+                    id: payload.id,
+                    ingredient: JSON.stringify(ingredientData)
+                  }
+                })
+                
+                const created = res.data
+                const catObj = (created as unknown as { category?: { name?: string } }).category
+                const category = typeof catObj === 'object' && catObj?.name ? String(catObj.name) : String((created as unknown as { category?: string }).category ?? "")
+                const { category: _omit3, ...rest } = created as Ingredient; void _omit3
+                
+                const updatedIngredient = { ...(rest as Omit<Ingredient, "category">), category }
+                if (payload.removeImage) {
+                  updatedIngredient.imgUrl = undefined
+                } else if (updatedIngredient.imgUrl) {
+                  const url = new URL(updatedIngredient.imgUrl)
+                  url.searchParams.set('t', Date.now().toString())
+                  updatedIngredient.imgUrl = url.toString()
+                }
+                
+                set({
+                  items: get().items.map((i) => (i.id === res.data.id ? updatedIngredient as StoreIngredient : i)),
+                })
+                toast.success("Đã cập nhật nguyên liệu")
+                return
+              }
+
+              const formData = new FormData()
+              formData.append('name', payload.name)
+              const currentIngredient = get().items.find(i => i.id === payload.id)
+              const categoryIdToUse = payload.categoryId !== undefined ? payload.categoryId : ((currentIngredient as unknown as { categoryId?: number })?.categoryId || 1)
+              formData.append('categoryId', categoryIdToUse.toString())
+              if (payload.unit !== undefined) {
+                formData.append('unit', payload.unit)
+              }
+              if (payload.active !== undefined) {
+                formData.append('active', payload.active.toString())
+              }
+              
+              if (payload.removeImage) {
+                formData.append('removeImage', 'true')
+              }
+              
+              if (payload.file) {
+                if (!validateFileSize(payload.file)) {
+                  toast.error('File quá lớn. Vui lòng chọn file nhỏ hơn 2MB.')
+                  return
+                }
+                const resizedFile = await resizeImage(payload.file)
+                formData.append('file', resizedFile)
+              }
+
+              const res = await bambiApi.put<Ingredient>(API_ENDPOINTS.API_INGREDIENTS, formData, {
+                params: {
+                  id: payload.id
+                },
+                headers: {
+                  'Content-Type': 'multipart/form-data'
+                }
+              })
+              
+              const created = res.data
+              const catObj = (created as unknown as { category?: { name?: string } }).category
+              const category = typeof catObj === 'object' && catObj?.name ? String(catObj.name) : String((created as unknown as { category?: string }).category ?? "")
+              const { category: _omit3, ...rest } = created as Ingredient; void _omit3
+              
+              const updatedIngredient = { ...(rest as Omit<Ingredient, "category">), category }
+              if (updatedIngredient.imgUrl) {
+                const url = new URL(updatedIngredient.imgUrl)
+                url.searchParams.set('t', Date.now().toString())
+                updatedIngredient.imgUrl = url.toString()
+              } else               if (payload.removeImage) {
+                updatedIngredient.imgUrl = undefined
+              }
+              
+              set({
+                items: get().items.map((i) => (i.id === res.data.id ? updatedIngredient as StoreIngredient : i)),
+              })
+              toast.success("Đã cập nhật nguyên liệu")
         } catch {
           toast.error("Cập nhật nguyên liệu thất bại")
         }
@@ -157,10 +334,18 @@ export const useIngredientStore = create<IngredientState>()(
 
       remove: async (id: number) => {
         try {
-          await bambiApi.delete<string>(API_ENDPOINTS.API_INGREDIENT_BY_ID(id))
+          const response = await bambiApi.delete(API_ENDPOINTS.API_INGREDIENT_BY_ID(id))
+          console.log('Delete response:', response)
+          
           set({ items: get().items.filter((i) => i.id !== id) })
+          
+          setTimeout(() => {
+            get().fetchAll()
+          }, 1000)
+          
           toast.success("Đã xóa nguyên liệu")
-        } catch {
+        } catch (error) {
+          console.error('Delete error:', error)
           toast.error("Xóa nguyên liệu thất bại")
         }
       },
@@ -168,68 +353,63 @@ export const useIngredientStore = create<IngredientState>()(
       adjustStock: async (ingredientId, delta) => {
         if (!delta) return
         try {
-
-          const txPayload = { id: 0, ingredient: { id: ingredientId } as unknown as Ingredient, quantity: Math.abs(delta), transactionType: delta > 0 }
+          const txPayload = { 
+            id: 0, 
+            ingredient: { id: ingredientId } as unknown as Ingredient, 
+            quantity: Math.abs(delta), 
+            transactionType: delta > 0 
+          }
           await bambiApi.post(API_ENDPOINTS.API_INVENTORY_TRANSACTIONS, txPayload)
 
-          if (delta > 0) {
-            const nowIso = new Date().toISOString()
-            const expireIso = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-            const detailPayload: Partial<IngredientDetail> & { ingredient: { id: number } } = {
-              ingredient: { id: ingredientId },
-              entryDate: nowIso,
-              expireDate: expireIso,
-              quantity: delta,
-              active: true,
+          const transactionsRes = await bambiApi.get<InventoryTransaction[]>(API_ENDPOINTS.API_INVENTORY_TRANSACTIONS)
+          const transactions = transactionsRes.data || []
+          
+          const ingredientTransactions = transactions.filter(t => 
+            t.ingredient && t.ingredient.id === ingredientId
+          )
+          
+          let totalStock = 0
+          ingredientTransactions.forEach(t => {
+            if (t.transactionType === true) {
+              totalStock += t.quantity || 0
+            } else {
+              totalStock -= t.quantity || 0
             }
-            await bambiApi.post(API_ENDPOINTS.API_INGREDIENT_DETAILS, detailPayload as unknown as IngredientDetail)
-          } else {
-            let remaining = Math.abs(delta)
-            const resp = await bambiApi.get<IngredientDetail[]>(API_ENDPOINTS.API_INGREDIENT_DETAILS_BY_INGREDIENT(ingredientId))
-            const fifo = [...(resp.data || [])]
-              .filter((d) => (Number(d.quantity) || 0) > 0)
-              .sort((a, b) => new Date(a.entryDate || 0).getTime() - new Date(b.entryDate || 0).getTime())
+          })
 
-            for (const d of fifo) {
-              if (!remaining) break
-              const currentQty = Number(d.quantity) || 0
-              const used = Math.min(currentQty, remaining)
-              const newQty = currentQty - used
-              remaining -= used
-              if (d.id == null) continue
-
-              const updateDetail: IngredientDetail = {
-                id: d.id,
-                ingredient: { id: ingredientId },
-                entryDate: d.entryDate,
-                expireDate: d.expireDate,
-                quantity: Math.max(0, newQty),
-                active: d.active !== false,
-              }
-
-              if (newQty === 0) {
-                try {
-                  await bambiApi.delete(API_ENDPOINTS.API_INGREDIENT_DETAIL_BY_ID(d.id))
-                } catch {
-                  await bambiApi.put(API_ENDPOINTS.API_INGREDIENT_DETAILS, updateDetail)
-                }
-              } else {
-                await bambiApi.put(API_ENDPOINTS.API_INGREDIENT_DETAILS, updateDetail)
-              }
-            }
-          }
-
-          const details = await bambiApi.get<IngredientDetail[]>(API_ENDPOINTS.API_INGREDIENT_DETAILS_BY_INGREDIENT(ingredientId))
-          const now = Date.now()
-          const valid = (details.data || []).filter((d) => !d.expireDate || new Date(d.expireDate).getTime() > now)
-          const stock = (valid as IngredientDetail[]).reduce((sum: number, d) => sum + (Number(d.quantity) || 0), 0)
-          const isOut = stock <= 0
-          const isLow = !isOut && stock <= 5
+          const isOut = totalStock <= 0
+          const isLow = !isOut && totalStock <= 5
           const stockStatus: StockStatus = isOut ? "out" : isLow ? "low" : "normal"
-          set({ items: get().items.map(i => i.id === ingredientId ? { ...i, stock, stockStatus } : i) })
+
+          // Cập nhật state
+          set({ 
+            items: get().items.map(i => 
+              i.id === ingredientId 
+                ? { ...i, stock: totalStock, stockStatus } 
+                : i
+            ) 
+          })
+          
           toast.success("Đã cập nhật tồn kho")
         } catch {
           toast.error("Cập nhật tồn kho thất bại")
+        }
+      },
+
+      getStockHistory: async (ingredientId: number) => {
+        try {
+          const transactionsRes = await bambiApi.get<InventoryTransaction[]>(API_ENDPOINTS.API_INVENTORY_TRANSACTIONS)
+          const allTransactions = transactionsRes.data || []
+          
+          // Lọc transactions của ingredient cụ thể và sắp xếp theo thời gian
+          const ingredientTransactions = allTransactions
+            .filter(t => t.ingredient && t.ingredient.id === ingredientId)
+            .sort((a, b) => new Date(b.createAt).getTime() - new Date(a.createAt).getTime())
+          
+          return ingredientTransactions
+        } catch {
+          toast.error("Không thể tải lịch sử tồn kho")
+          return []
         }
       },
 
