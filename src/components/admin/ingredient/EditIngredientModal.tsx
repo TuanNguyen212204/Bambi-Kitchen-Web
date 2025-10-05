@@ -3,8 +3,10 @@ import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import { useIngredientStore } from "@zustand/stores/ingredients"
+import { Upload, X } from "lucide-react"
+import { toast } from "sonner"
 
-interface Props { open: boolean; onClose: () => void; ingredient: { id: number; name: string; unit?: string; active?: boolean; category?: unknown } }
+interface Props { open: boolean; onClose: () => void; ingredient: { id: number; name: string; unit?: string; active?: boolean; category?: unknown; imgUrl?: string } }
 
 export default function EditIngredientModal({ open, onClose, ingredient }: Props) {
   const { categories, fetchCategories, update, adjustStock } = useIngredientStore()
@@ -13,6 +15,9 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
   const [unit, setUnit] = useState(ingredient?.unit ?? "GRAM")
   const [active, setActive] = useState<boolean>(ingredient?.active ?? true)
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [removeCurrentImage, setRemoveCurrentImage] = useState(false)
   const [nameError, setNameError] = useState<string>("")
   const [deltaError, setDeltaError] = useState<string>("")
 
@@ -22,22 +27,51 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       setName(ingredient?.name ?? "")
       setUnit(ingredient?.unit ?? "GRAM")
       setActive(ingredient?.active ?? true)
+      setSelectedFile(null)
+      setPreviewUrl(null)
     }
   }, [open, fetchCategories, ingredient])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('File quá lớn. Vui lòng chọn file nhỏ hơn 2MB.')
+        e.target.value = ''
+        return
+      }
+      
+      setSelectedFile(file)
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+    }
+  }
+
+  const removeFile = () => {
+    if (selectedFile) {
+      setSelectedFile(null)
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(null)
+      }
+    } else if (ingredient.imgUrl) {
+      setRemoveCurrentImage(true)
+    }
+  }
 
   if (!open) return null
 
   const submit = async () => {
     if (!ingredient?.id) return
-    // Chỉ gọi update nếu có thay đổi trường thông tin
     const changedInfo =
       name !== (ingredient.name ?? "") ||
       unit !== (ingredient.unit ?? "GRAM") ||
       active !== (ingredient.active ?? true) ||
-      typeof categoryId === "number"
+      typeof categoryId === "number" ||
+      selectedFile !== null ||
+      removeCurrentImage
 
     try {
-      // validate
       setNameError("")
       setDeltaError("")
       const NAME_RE = /^[\p{L}\p{N} ]+$/u
@@ -47,7 +81,15 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       if (delta.trim() !== "" && !DELTA_RE.test(delta.trim())) { setDeltaError("Số điều chỉnh chỉ là số nguyên, có thể có 1 dấu trừ ở đầu"); return }
       const deltaNum = Number(delta || 0)
       if (changedInfo) {
-        await update({ id: ingredient.id, name, unit, active, categoryId })
+              await update({ 
+                id: ingredient.id, 
+                name, 
+                unit, 
+                active, 
+                categoryId, 
+                file: selectedFile || undefined,
+                removeImage: removeCurrentImage
+              })
       }
       if (deltaNum) {
         await adjustStock(ingredient.id, deltaNum)
@@ -88,6 +130,75 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
         <div className="flex items-center gap-2">
           <input id="active" type="checkbox" checked={active} onChange={(e)=> setActive(e.target.checked)} />
           <Label htmlFor="active">Đang hoạt động</Label>
+        </div>
+
+        <div>
+          <Label className="mb-1 block">Hình ảnh (tùy chọn)</Label>
+          <div className="space-y-3">
+            {!previewUrl && (!ingredient.imgUrl || removeCurrentImage) ? (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="edit-file-upload"
+                />
+                <label htmlFor="edit-file-upload" className="cursor-pointer">
+                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Nhấp để chọn hình ảnh mới</p>
+                  <p className="text-xs text-gray-500">JPG, PNG, GIF (tối đa 2MB)</p>
+                </label>
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
+                  <img 
+                    key={`edit-${ingredient.id}-${previewUrl || ingredient.imgUrl || 'no-image'}`}
+                    src={previewUrl || (removeCurrentImage ? undefined : ingredient.imgUrl)} 
+                    alt={ingredient.name}
+                    className="w-12 h-12 object-cover rounded" 
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">
+                      {selectedFile?.name || "Hình ảnh hiện tại"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {selectedFile && `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                      id="edit-file-replace"
+                    />
+                    <label htmlFor="edit-file-replace">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <Upload className="w-4 h-4" />
+                      </Button>
+                    </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={removeFile}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div className="border-t pt-3 space-y-2">
           <div className="font-medium">Điều chỉnh tồn kho</div>
