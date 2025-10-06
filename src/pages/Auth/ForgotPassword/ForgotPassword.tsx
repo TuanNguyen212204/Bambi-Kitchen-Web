@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { PATHS } from "@config/path";
 import { Button } from "@components/ui/button/index";
 import { Card, CardContent, CardHeader } from "@components/ui/card/card";
 import { Input } from "@components/ui/input";
@@ -40,7 +41,7 @@ export const ForgotPassword = () => {
 
       await sendConfirmationCode(email);
 
-      navigate("/confirm-password", { state: { email } });
+      navigate(PATHS.RESET_PASSWORD, { state: { email } });
       
     } catch (err) {
       setError(err instanceof Error ? err.message : "Có lỗi xảy ra, vui lòng thử lại sau.");
@@ -107,7 +108,7 @@ export const ForgotPassword = () => {
                     <button 
                       type="button"
                       className="text-[#0d7a9b] hover:underline text-sm"
-                      onClick={() => navigate("/login")}
+                      onClick={() => navigate(PATHS.LOGIN)}
                     >
                       Login
                     </button>

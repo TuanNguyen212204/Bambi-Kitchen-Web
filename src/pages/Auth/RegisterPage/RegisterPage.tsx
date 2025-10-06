@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { PATHS } from "@config/path";
 import { toast } from "sonner";
 import { bambiApi } from "@utils/api";
 import { API_ENDPOINTS } from "@utils/endpoints";
@@ -75,7 +76,7 @@ export function RegisterForm() {
       });
       await bambiApi.post(API_ENDPOINTS.AUTH_REGISTER, payload, { skipAuth: true });
       toast.success("Đăng ký thành công!", { description: "Vui lòng đăng nhập để tiếp tục." });
-      navigate("/login");
+      navigate(PATHS.LOGIN);
     } catch (err: unknown) {
 
       const axiosError = err as { 
@@ -234,7 +235,7 @@ export function RegisterForm() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
                   <div>
                     <span className="text-black">Already have an account? </span>
-                    <a href="/login" className="text-[#0d7a9b] hover:underline">Login</a>
+                    <a href={PATHS.LOGIN} className="text-[#0d7a9b] hover:underline">Login</a>
                   </div>
                 </div>
 

@@ -30,11 +30,11 @@ const Header = () => {
         </div>
 
         <nav className="flex-1 hidden md:flex justify-center gap-10">
-          <NavLink to="/" end className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Home</NavLink>
-          <NavLink to="/menu" className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Menu</NavLink>
-          <NavLink to="/about" className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>About Us</NavLink>
-          <NavLink to="/specials" className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Our specials</NavLink>
-          <NavLink to="/contact" className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Contact</NavLink>
+          <NavLink to={PATHS.HOME} end className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Home</NavLink>
+          <NavLink to={"/menu"} className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Menu</NavLink>
+          <NavLink to={"/about"} className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>About Us</NavLink>
+          <NavLink to={"/specials"} className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Our specials</NavLink>
+          <NavLink to={"/contact"} className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Contact</NavLink>
         </nav>
 
         <div className="flex items-center gap-4">
@@ -61,7 +61,7 @@ const Header = () => {
                       onClick={() => {
                         setMenuOpen(false);
                         if (user?.role_id === ROLES.ADMIN) {
-                          navigate("/admin/profile");
+                          navigate(`${PATHS.ADMIN}/profile`);
                         } else {
                           navigate(PATHS.PROFILE);
                         }
@@ -84,7 +84,7 @@ const Header = () => {
                 </button>
                 {menuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                    <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2" onClick={() => navigate("/login")}>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2" onClick={() => navigate(PATHS.LOGIN)}>
                       <LogIn size={16} />
                       Đăng nhập
                     </button>

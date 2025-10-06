@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { PATHS } from "@config/path"
+import { API_BASE_URL } from "@utils/http"
+import { API_ENDPOINTS } from "@utils/endpoints"
 import { Card, CardContent, CardHeader } from "@components/ui/card/card"
 import { Button } from "@components/ui/button/index"
 import { Input } from "@components/ui/input"
@@ -161,10 +163,10 @@ export default function LoginPage() {
                 </Button>
 
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
-                  <button className="hover:underline" onClick={() => navigate("/forgot-password")}>Forgot password?</button>
+                  <button className="hover:underline" onClick={() => navigate(PATHS.FORGOT_PASSWORD)}>Forgot password?</button>
                   <div>
                     <span className="text-black">Does not have account? </span>
-                    <button className="text-[#0d7a9b] hover:underline" onClick={() => navigate("/register")}>Register</button>
+                    <button className="text-[#0d7a9b] hover:underline" onClick={() => navigate(PATHS.REGISTER)}>Register</button>
                   </div>
                 </div>
 
@@ -179,6 +181,9 @@ export default function LoginPage() {
                     <Button
                       variant="outline"
                       className="w-full h-10 bg-white border-[#5b86e5] hover:bg-gray-50 justify-center"
+                      onClick={() => {
+                        window.location.assign(`${API_BASE_URL}${API_ENDPOINTS.AUTH_GOOGLE}`)
+                      }}
                     >
                       <svg className="w-5 h-5 mr-2 flex-shrink-0" viewBox="0 0 24 24">
                         <path 
