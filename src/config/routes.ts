@@ -7,6 +7,7 @@ const ResetPassword = lazy(() => import("@pages/Auth/ConfirmationPage/Confirmati
 const Success = lazy(() => import("@pages/success"))
 const ErrorPage = lazy(() => import("@pages/error/ErrorPage"))
 const OrdersPage = lazy(() => import("@pages/customerPage/orders/OrdersPage"))
+const ProfilePage = lazy(() => import("@pages/customerPage/profile/ProfilePage"))
 
 const Home = lazy(() => import("@pages/customerPage/home/HomePage"))
 const AdminDashboard = lazy(() => import("@pages/adminPage/dashboard"))
@@ -117,6 +118,13 @@ export const CUSTOMER_PRIVATE_ROUTES: RouteConfig[] = [
     protected: true,
     role: [ROLES.CUSTOMER],
   },
+  {
+    path: PATHS.PROFILE,
+    component: ProfilePage,
+    label: "Hồ sơ cá nhân",
+    protected: true,
+    role: [ROLES.CUSTOMER, ROLES.ADMIN, ROLES.STAFF],
+  },
   // {
   //   path: PATHS.PROFILE,
   //   component: () => <div>Profile Page</div>,
@@ -185,6 +193,14 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     path: "settings",
     component: AdminSettings,
     label: "Settings",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "profile",
+    component: ProfilePage,
+    label: "Profile",
     protected: true,
     role: [ROLES.ADMIN],
     layout: "admin",
