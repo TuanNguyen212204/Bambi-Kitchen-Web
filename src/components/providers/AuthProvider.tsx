@@ -6,13 +6,11 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { verifyAuth, user } = useAuthStore()
+  const { verifyAuth } = useAuthStore()
 
   useEffect(() => {
-    if (!user) {
-      verifyAuth()
-    }
-  }, [user, verifyAuth])
+    verifyAuth()
+  }, [verifyAuth])
 
   return <>{children}</>
 }
