@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { PATHS } from "@config/path";
 import { Button } from "@components/ui/button/index";
 import { Label } from "@components/ui/label";
 import { Input } from "@components/ui/input";
@@ -22,7 +23,7 @@ export const ConfirmationPage = () => {
     if (emailFromState) {
       setEmail(emailFromState);
     } else {
-      navigate("/forgot-password");
+      navigate(PATHS.FORGOT_PASSWORD);
     }
   }, [location.state, navigate]);
 
@@ -46,7 +47,7 @@ export const ConfirmationPage = () => {
       const isValid = await verifyConfirmationCode(email, confirmationCode);
       
       if (isValid) {
-        navigate("/reset-password", { state: { email, code: confirmationCode } });
+        navigate(PATHS.RESET_PASSWORD, { state: { email, code: confirmationCode } });
       } else {
         setError("Mã xác nhận không đúng hoặc đã hết hạn. Vui lòng thử lại.");
       }
@@ -146,7 +147,7 @@ export const ConfirmationPage = () => {
                     <button 
                       type="button"
                       className="text-[#0d7a9b] hover:underline text-sm"
-                      onClick={() => navigate("/login")}
+                      onClick={() => navigate(PATHS.LOGIN)}
                     >
                       Đăng nhập
                     </button>
