@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { PATHS } from "@config/path"
 import { API_BASE_URL } from "@utils/http"
 import { API_ENDPOINTS } from "@utils/endpoints"
@@ -17,6 +17,7 @@ import { validateLoginPayload, createLoginPayload } from "@utils/auth-validation
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login, loading, user } = useAuthStore()
 
   const [phone, setPhone] = useState("")
@@ -24,6 +25,7 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ phone?: string; password?: string }>({})
+  const [successMessage, setSuccessMessage] = useState("")
 
   const handleSubmit = async (e: React.FormEvent<HTMLButtonElement>) => {
     e.preventDefault()
@@ -70,6 +72,14 @@ export default function LoginPage() {
       navigate(destination, { replace: true })
     }
   }, [user, navigate])
+
+  useEffect(() => {
+    const message = location.state?.message
+    if (message) {
+      setSuccessMessage(message)
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location.state, navigate, location.pathname])
   
   return (
     <div className="h-screen w-full bg-white grid place-items-center overflow-hidden">
@@ -100,6 +110,12 @@ export default function LoginPage() {
               </CardHeader>
 
               <CardContent className="space-y-4">
+                {successMessage && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-green-700 text-sm">{successMessage}</p>
+                  </div>
+                )}
+                
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Số điện thoại</Label>

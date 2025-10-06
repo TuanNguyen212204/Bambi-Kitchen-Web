@@ -7,13 +7,13 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import logo from "@assets/logo.png";
 import forgotPasswordImage from "@assets/ForgotPassword/ForgotPassword.png";
-import { checkEmailExists, sendConfirmationCode } from "@utils/auth-service";
+import { useAuthStore } from "@zustand/stores/auth";
 
 export const ForgotPassword = () => {
   const navigate = useNavigate();
+  const { forgotPassword, loading } = useAuthStore();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,26 +27,12 @@ export const ForgotPassword = () => {
     }
     
     setError("");
-    setLoading(true);
     
     try {
-
-      const emailExists = await checkEmailExists(email);
-      
-      if (!emailExists) {
-        setError("Email này không tồn tại trong hệ thống. Vui lòng kiểm tra lại.");
-        return;
-      }
-
-
-      await sendConfirmationCode(email);
-
-      navigate(PATHS.RESET_PASSWORD, { state: { email } });
-      
+      await forgotPassword(email);
+      navigate(PATHS.CONFIRM_PASSWORD, { state: { email } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Có lỗi xảy ra, vui lòng thử lại sau.");
-    } finally {
-      setLoading(false);
     }
   };
 

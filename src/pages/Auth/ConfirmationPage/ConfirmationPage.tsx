@@ -7,15 +7,15 @@ import { Input } from "@components/ui/input";
 import { Card, CardContent, CardHeader } from "@components/ui/card/card";
 import logo from "@assets/logo.png";
 import confirmationBg from "@assets/ConfirmPage/ConfirmPic.png";
-import { sendConfirmationCode, verifyConfirmationCode } from "@utils/auth-service";
+import { useAuthStore } from "@zustand/stores/auth";
 
 export const ConfirmationPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { verifyOtp, forgotPassword, loading } = useAuthStore();
   const [email, setEmail] = useState("");
   const [confirmationCode, setConfirmationCode] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
 
@@ -40,11 +40,9 @@ export const ConfirmationPage = () => {
     }
     
     setError("");
-    setLoading(true);
     
     try {
-
-      const isValid = await verifyConfirmationCode(email, confirmationCode);
+      const isValid = await verifyOtp(email, confirmationCode);
       
       if (isValid) {
         navigate(PATHS.RESET_PASSWORD, { state: { email, code: confirmationCode } });
@@ -53,21 +51,15 @@ export const ConfirmationPage = () => {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Có lỗi xảy ra. Vui lòng thử lại sau.");
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleResend = async () => {
-    setLoading(true);
     try {
-      await sendConfirmationCode(email);
+      await forgotPassword(email);
       setError(""); 
-
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể gửi lại mã xác nhận. Vui lòng thử lại sau.");
-    } finally {
-      setLoading(false);
     }
   };
 

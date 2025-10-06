@@ -3,7 +3,8 @@ import { PATHS } from "@config/path"
 const Login = lazy(() => import("@pages/Auth/LoginPage"))
 const Register = lazy(() => import("@pages/Auth/RegisterPage/RegisterPage"))
 const ForgotPassword = lazy(() => import("@pages/Auth/ForgotPassword"))
-const ResetPassword = lazy(() => import("@pages/Auth/ConfirmationPage/ConfirmationPage"))
+const ConfirmationPage = lazy(() => import("@pages/Auth/ConfirmationPage/ConfirmationPage"))
+const ResetPassword = lazy(() => import("@pages/Auth/ResetPassword"))
 const Success = lazy(() => import("@pages/success"))
 const ErrorPage = lazy(() => import("@pages/error/ErrorPage"))
 const OrdersPage = lazy(() => import("@pages/customerPage/orders/OrdersPage"))
@@ -74,6 +75,13 @@ export const AUTH_PUBLIC_ROUTES: RouteConfig[] = [
     path: PATHS.FORGOT_PASSWORD,
     component: ForgotPassword,
     label: "Quên mật khẩu",
+    protected: false,
+    role: [],
+  },
+  {
+    path: PATHS.CONFIRM_PASSWORD,
+    component: ConfirmationPage,
+    label: "Xác nhận mã",
     protected: false,
     role: [],
   },

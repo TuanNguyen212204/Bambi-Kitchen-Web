@@ -4,6 +4,9 @@ export const API_ENDPOINTS = {
   AUTH_ME: "/api/user/me",
   AUTH_GOOGLE: "/api/user/google",
   AUTH_CHECK_EMAIL: "/api/account", 
+  AUTH_FORGOT_PASSWORD: "/api/user/forgot-password",
+  AUTH_VERIFY_OTP: "/api/mail/verify-otp",
+  AUTH_RESET_PASSWORD: "/api/user/reset-password",
   
   ORDERS: "/orders",
   ORDER_CREATE: "/orders",
