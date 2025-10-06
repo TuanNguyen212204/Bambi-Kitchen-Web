@@ -68,7 +68,7 @@ export default function LoginPage() {
       navigate(destination, { replace: true })
     }
   }, [user, navigate])
-
+  
   return (
     <div className="h-screen w-full bg-white grid place-items-center overflow-hidden">
       <div className="w-full px-4">

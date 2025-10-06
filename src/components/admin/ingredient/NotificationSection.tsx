@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card/card";
+import { Button } from "@components/ui/button";
+import { Card, CardContent } from "@components/ui/card/card";
 import { AlertTriangle } from "lucide-react";
 
 const ingredientData = [

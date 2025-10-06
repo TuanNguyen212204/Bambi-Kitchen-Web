@@ -63,18 +63,19 @@ export const useAuthStore = create<AuthState>()(
 
           } catch (error) {
             const apiError = error as ApiError
-            const message = apiError.userFriendlyMessage || "Đăng nhập thất bại"
-            
+            const isUnauthorized = apiError.status === 401
+            const message = isUnauthorized ? "Số điện thoại hoặc mật khẩu không đúng" : (apiError.userFriendlyMessage || "Đăng nhập thất bại")
+
             set({ 
               loading: false, 
               error: message,
               isAuthenticated: false 
             })
-            
+
             toast.error("Đăng nhập thất bại", {
               description: message,
             })
-            
+
             throw error
           }
         },

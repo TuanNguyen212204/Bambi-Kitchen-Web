@@ -57,22 +57,21 @@ export class BambiApiClient {
       },
       async (error) => {
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: number; skipAuth?: boolean }
+        const status = error.response?.status
+        const url = (originalRequest?.url || "") as string
 
-
-        if (error.response?.status === 401 && !originalRequest.skipAuth) {
+        const isLoginRequest = url.includes("/login") || originalRequest?.skipAuth
+        if (status === 401 && !isLoginRequest) {
           this.logout()
         }
 
-        // Cho phép tắt toast lỗi theo header tùy biến
         const silent = originalRequest?.headers && (originalRequest.headers as AxiosRequestHeaders)["x-silent-error"]
         if (!silent) {
-          // Kiểm soát lỗi tìm kiếm: gom về 1 thông báo thân thiện
-          const url = originalRequest?.url || ""
           if (url.includes("/api/ingredient/search")) {
             if (shouldToast("search_error")) {
               toast.error("Tìm kiếm thất bại")
             }
-          } else {
+          } else if (!(status === 401 && isLoginRequest)) {
             this.handleError(error)
           }
         }
