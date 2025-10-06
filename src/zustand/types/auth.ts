@@ -30,6 +30,9 @@ export interface AuthState {
   verifyAuth: () => Promise<void>
   clearError: () => void
   updateProfile: (profileData: Partial<User>) => Promise<void>
+  forgotPassword: (email: string) => Promise<void>
+  verifyOtp: (email: string, otp: string) => Promise<boolean>
+  resetPassword: (email: string, otp: string, newPassword: string) => Promise<void>
 }
 
 // API Request/Response types
@@ -52,4 +55,19 @@ export interface AuthResponse {
   user: User
   token: string
   refresh_token: string
+}
+
+export interface ForgotPasswordRequest {
+  email: string
+}
+
+export interface VerifyOtpRequest {
+  email: string
+  otp: string
+}
+
+export interface ResetPasswordRequest {
+  email: string
+  otp: string
+  newPassword: string
 }

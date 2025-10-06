@@ -207,6 +207,108 @@ export const useAuthStore = create<AuthState>()(
         },
 
         clearError: () => set({ error: null }),
+        forgotPassword: async (email: string) => {
+          set({ loading: true, error: null })
+          
+          try {
+            await bambiApi.get(
+              `${API_ENDPOINTS.AUTH_FORGOT_PASSWORD}?email=${encodeURIComponent(email)}`,
+              { skipAuth: true }
+            )
+            
+            set({ loading: false })
+            
+            toast.success("Mã xác nhận đã được gửi!", {
+              description: `Vui lòng kiểm tra email ${email}`,
+            })
+
+          } catch (error) {
+            const apiError = error as ApiError
+            const message = apiError.userFriendlyMessage || "Không thể gửi mã xác nhận"
+            
+            set({ 
+              loading: false, 
+              error: message 
+            })
+            
+            toast.error("Gửi mã xác nhận thất bại", {
+              description: message,
+            })
+            
+            throw error
+          }
+        },
+
+        verifyOtp: async (email: string, otp: string) => {
+          set({ loading: true, error: null })
+          
+          try {
+            await bambiApi.post(
+              API_ENDPOINTS.AUTH_VERIFY_OTP,
+              null,
+              {
+                params: { email, otp },
+                skipAuth: true
+              }
+            )
+            
+            set({ loading: false })
+            
+            toast.success("Mã xác nhận hợp lệ!")
+            return true
+
+          } catch (error) {
+            const apiError = error as ApiError
+            const message = apiError.userFriendlyMessage || "Mã xác nhận không đúng hoặc đã hết hạn"
+            
+            set({ 
+              loading: false, 
+              error: message 
+            })
+            
+            toast.error("Xác thực mã thất bại", {
+              description: message,
+            })
+            
+            return false
+          }
+        },
+
+        resetPassword: async (email: string, otp: string, newPassword: string) => {
+          set({ loading: true, error: null })
+          
+          try {
+            await bambiApi.post(
+              API_ENDPOINTS.AUTH_RESET_PASSWORD,
+              null,
+              {
+                params: { email, otp, newPassword },
+                skipAuth: true
+              }
+            )
+            
+            set({ loading: false })
+            
+            toast.success("Đặt lại mật khẩu thành công!", {
+              description: "Bạn có thể đăng nhập với mật khẩu mới",
+            })
+
+          } catch (error) {
+            const apiError = error as ApiError
+            const message = apiError.userFriendlyMessage || "Không thể đặt lại mật khẩu"
+            
+            set({ 
+              loading: false, 
+              error: message 
+            })
+            
+            toast.error("Đặt lại mật khẩu thất bại", {
+              description: message,
+            })
+            
+            throw error
+          }
+        },
       }),
       {
         name: "bambi-auth-storage",

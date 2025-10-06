@@ -50,8 +50,10 @@ export const getAccountByEmail = async (email: string): Promise<Account | null> 
 
 export const sendConfirmationCode = async (email: string): Promise<boolean> => {
   try {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log(`Gửi mã xác nhận đến email: ${email}`);
+    await bambiApi.get(
+      `${API_ENDPOINTS.AUTH_FORGOT_PASSWORD}?email=${encodeURIComponent(email)}`,
+      { skipAuth: true }
+    );
     return true;
   } catch (error) {
     console.error("Error sending confirmation code:", error);
@@ -61,15 +63,17 @@ export const sendConfirmationCode = async (email: string): Promise<boolean> => {
 
 export const verifyConfirmationCode = async (email: string, code: string): Promise<boolean> => {
   try {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log(`Xác nhận mã ${code} cho email: ${email}`);
-    
-    if (code.length === 6 && /^\d+$/.test(code)) {
-      return true;
-    }
-    return false;
+    await bambiApi.post(
+      API_ENDPOINTS.AUTH_VERIFY_OTP,
+      null,
+      {
+        params: { email, otp: code },
+        skipAuth: true
+      }
+    );
+    return true;
   } catch (error) {
     console.error("Error verifying confirmation code:", error);
-    throw new Error("Không thể xác nhận mã. Vui lòng thử lại sau.");
+    return false;
   }
 };
