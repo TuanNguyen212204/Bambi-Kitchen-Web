@@ -6,6 +6,7 @@ export const PATHS = {
   RESET_PASSWORD: "/reset-password",
   
   HOME: "/",
+  ABOUT: "/about",
   ORDER: "/order",
   ORDER_STEP: "/order/:step", 
   ORDER_HISTORY: "/orders",
