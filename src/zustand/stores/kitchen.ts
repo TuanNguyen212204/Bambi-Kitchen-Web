@@ -11,8 +11,8 @@ import type {
   OrderItem, 
   Ingredient, 
   QuickOrderTemplate
-} from "@/zustand/types"
-import { ORDER_STEPS } from "@/zustand/types"
+} from "@/zustand/types/kitchen"
+import { ORDER_STEPS } from "@/zustand/types/kitchen"
 
 export const useKitchenStore = create<KitchenState>()(
   subscribeWithSelector(

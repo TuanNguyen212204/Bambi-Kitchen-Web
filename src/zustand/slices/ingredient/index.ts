@@ -1,0 +1,5 @@
+export * from "@zustand/slices/ingredient/list.slice"
+export * from "@zustand/slices/ingredient/category.slice"
+export * from "@zustand/slices/ingredient/form.slice"
+export * from "@zustand/slices/ingredient/stock.slice"
+export * from "@zustand/slices/ingredient/filter.slice"
