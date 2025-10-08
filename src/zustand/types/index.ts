@@ -1,5 +1,6 @@
-// Re-export all types for convenience
 export * from "./auth"
-export * from "./kitchen" 
-export * from "./common"
-
+export * from "./ingredient"
+export * from "./kitchen"
+export type { User } from "./auth"
+export type { StoreIngredient, IngredientCategory } from "./ingredient"
+export type { KitchenState, Order } from "./kitchen"

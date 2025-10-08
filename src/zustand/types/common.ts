@@ -35,5 +35,5 @@ export interface AppError {
   code: string
   message: string
   userFriendlyMessage?: string
-  details?: any
+  details?: unknown
 }
