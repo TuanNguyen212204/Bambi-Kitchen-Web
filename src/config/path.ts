@@ -7,6 +7,7 @@ export const PATHS = {
   
   HOME: "/",
   ABOUT: "/about",
+  CONTACT: "/contact",
   ORDER: "/order",
   ORDER_STEP: "/order/:step", 
   ORDER_HISTORY: "/orders",
