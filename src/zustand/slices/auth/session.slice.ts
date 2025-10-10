@@ -73,27 +73,17 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
     
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
-      const response = await bambiApi.post(
+      await bambiApi.post(
         API_ENDPOINTS.AUTH_REGISTER,
         userData,
         { skipAuth: true }
       )
       
-      const { token, refresh_token } = response.data as { token: string; refresh_token: string }
-      
-      set({
-        token,
-        refreshToken: refresh_token,
-        isAuthenticated: true,
-        loading: false,
-      })
-
-      localStorage.setItem("access_token", token)
-      localStorage.setItem("refresh_token", refresh_token)
+      set({ loading: false })
 
       const { toast } = await import("sonner")
       toast.success("Đăng ký thành công!", {
-        description: "Tài khoản của bạn đã được tạo",
+        description: "Vui lòng đăng nhập để tiếp tục.",
       })
 
     } catch (error) {
