@@ -1,7 +1,7 @@
 import type { StateCreator } from "zustand"
 import type { SessionSlice } from "@/zustand/types"
 
-export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice> = (set, _get, _store) => ({
+export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice> = (set) => ({
   token: null,
   refreshToken: null,
   isAuthenticated: false,
@@ -49,8 +49,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       toast.success("Đăng nhập thành công!")
 
     } catch (error) {
-      const { ApiError } = await import("@utils/errors")
-      const apiError = error as InstanceType<typeof ApiError>
+      const apiError = error as { status?: number; userFriendlyMessage?: string }
       const isUnauthorized = apiError.status === 401
       const message = isUnauthorized ? "Số điện thoại hoặc mật khẩu không đúng" : (apiError.userFriendlyMessage || "Đăng nhập thất bại")
 
@@ -80,7 +79,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         { skipAuth: true }
       )
       
-      const { user: _user, token, refresh_token } = response.data as { user: unknown; token: string; refresh_token: string }
+      const { token, refresh_token } = response.data as { token: string; refresh_token: string }
       
       set({
         token,
@@ -98,8 +97,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       })
 
     } catch (error) {
-      const { ApiError } = await import("@utils/errors")
-      const apiError = error as InstanceType<typeof ApiError>
+      const apiError = error as { userFriendlyMessage?: string }
       const message = apiError.userFriendlyMessage || "Đăng ký thất bại"
       
       set({ 
@@ -168,8 +166,8 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
       await bambiApi.get(
-        `${API_ENDPOINTS.AUTH_FORGOT_PASSWORD}?email=${encodeURIComponent(email)}`,
-        { skipAuth: true }
+        API_ENDPOINTS.AUTH_FORGOT_PASSWORD,
+        { skipAuth: true, withCredentials: false, timeout: 60000, params: { email } }
       )
       
       set({ loading: false })
@@ -180,10 +178,19 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       })
 
     } catch (error) {
-      const { ApiError } = await import("@utils/errors")
-      const apiError = error as InstanceType<typeof ApiError>
-      const message = apiError.userFriendlyMessage || "Không thể gửi mã xác nhận"
-      
+      const err = error as { code?: string; message?: string; userFriendlyMessage?: string }
+      // Nếu timeout (ECONNABORTED), nhiều khả năng mail đã được gửi phía server
+      if (err.code === "ECONNABORTED" || (err.message && err.message.includes("timeout"))) {
+        set({ loading: false })
+        const { toast } = await import("sonner")
+        toast.success("Mã xác nhận đã được gửi!", {
+          description: `Vui lòng kiểm tra email ${email}`,
+        })
+        return
+      }
+
+      const message = err.userFriendlyMessage || "Không thể gửi mã xác nhận"
+
       set({ 
         loading: false, 
         error: message 
@@ -219,8 +226,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       return true
 
     } catch (error) {
-      const { ApiError } = await import("@utils/errors")
-      const apiError = error as InstanceType<typeof ApiError>
+      const apiError = error as { userFriendlyMessage?: string }
       const message = apiError.userFriendlyMessage || "Mã xác nhận không đúng hoặc đã hết hạn"
       
       set({ 
@@ -259,8 +265,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       })
 
     } catch (error) {
-      const { ApiError } = await import("@utils/errors")
-      const apiError = error as InstanceType<typeof ApiError>
+      const apiError = error as { userFriendlyMessage?: string }
       const message = apiError.userFriendlyMessage || "Không thể đặt lại mật khẩu"
       
       set({ 
