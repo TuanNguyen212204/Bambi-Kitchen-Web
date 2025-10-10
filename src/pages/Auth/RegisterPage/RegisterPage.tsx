@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PATHS } from "@config/path";
-import { toast } from "sonner";
-import { bambiApi } from "@utils/api";
-import { API_ENDPOINTS } from "@utils/endpoints";
+ 
+import { useAuthStore } from "@zustand/stores/auth";
 import { Card, CardContent, CardHeader } from "@components/ui/card/card";
 import { Button } from "@components/ui/button/index";
 import { Input } from "@components/ui/input";
@@ -29,18 +28,17 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const register = useAuthStore((s) => s.register);
 
   const handleChange = (key: keyof typeof formData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
-  // Validation function using utility
   const validateFormData = (data: typeof formData): string | null => {
     if (!data.firstName.trim()) return "Vui lòng nhập tên";
     if (!data.lastName.trim()) return "Vui lòng nhập họ";
     if (data.password !== data.confirmPassword) return "Mật khẩu và xác nhận mật khẩu không khớp";
     
-    // Use utility validation for payload
     const payload = createPayload({
       name: `${data.firstName} ${data.lastName}`.trim(),
       email: data.email,
@@ -55,7 +53,6 @@ export function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (loading) return;
-    // Validate form data using our validation function
     const validationError = validateFormData(formData);
     if (validationError) {
       setError(validationError);
@@ -66,48 +63,17 @@ export function RegisterForm() {
 
     try {
       setLoading(true);
-      
-      // Create payload using utility function
       const payload: RegisterPayload = createPayload({
         name: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email,
         password: formData.password,
         phone: formData.phone,
       });
-      await bambiApi.post(API_ENDPOINTS.AUTH_REGISTER, payload, { skipAuth: true });
-      toast.success("Đăng ký thành công!", { description: "Vui lòng đăng nhập để tiếp tục." });
+      await register(payload);
       navigate(PATHS.LOGIN);
     } catch (err: unknown) {
-
-      const axiosError = err as { 
-        response?: { 
-          status?: number; 
-          data?: { 
-            message?: string; 
-            details?: string 
-          } 
-        }; 
-        message?: string;
-      };
-      
-      console.error("Registration error:", err);
-      console.error("Error response:", axiosError?.response);
-      console.error("Error status:", axiosError?.response?.status);
-      console.error("Error data:", axiosError?.response?.data);
-
-      if (axiosError?.response?.status === 400) {
-        toast.error("Thông tin không hợp lệ", { 
-          description: axiosError?.response?.data?.message || "Vui lòng kiểm tra lại thông tin đã nhập." 
-        });
-      } else if (axiosError?.response?.status === 409) {
-        toast.error("Email đã tồn tại", { 
-          description: "Email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác." 
-        });
-      }
-
-      const stateError = axiosError?.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
-      setError(stateError);
-      console.error("Setting form error:", stateError);
+      const axiosError = err as { response?: { status?: number; data?: { message?: string } } };
+      setError(axiosError?.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
