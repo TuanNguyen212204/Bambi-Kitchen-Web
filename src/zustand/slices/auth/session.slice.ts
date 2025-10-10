@@ -179,7 +179,6 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
 
     } catch (error) {
       const err = error as { code?: string; message?: string; userFriendlyMessage?: string }
-      // Nếu timeout (ECONNABORTED), nhiều khả năng mail đã được gửi phía server
       if (err.code === "ECONNABORTED" || (err.message && err.message.includes("timeout"))) {
         set({ loading: false })
         const { toast } = await import("sonner")
