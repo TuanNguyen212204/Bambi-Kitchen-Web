@@ -5,6 +5,7 @@ import { Label } from "@components/ui/label"
 import { useIngredientStore } from "@zustand/stores/ingredients"
 import { Upload, X } from "lucide-react"
 import { toast } from "sonner"
+import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/modal"
 
 interface Props { open: boolean; onClose: () => void }
 
@@ -16,6 +17,7 @@ export default function AddIngredientModal({ open, onClose }: Props) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [errors, setErrors] = useState<{ name?: string; category?: string }>({})
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => { if (open) fetchCategories() }, [open, fetchCategories])
 
@@ -27,6 +29,7 @@ export default function AddIngredientModal({ open, onClose }: Props) {
       setSelectedFile(null)
       setPreviewUrl(null)
       setErrors({})
+      setLoading(false)
     }
   }, [open])
 
@@ -53,8 +56,6 @@ export default function AddIngredientModal({ open, onClose }: Props) {
     }
   }
 
-  if (!open) return null
-
   const submit = async () => {
     const e: { name?: string; category?: string } = {}
     const NAME_RE = /^[\p{L}\p{N} ]+$/u
@@ -63,23 +64,45 @@ export default function AddIngredientModal({ open, onClose }: Props) {
     if (categoryId == null) e.category = "Vui lòng chọn danh mục"
     setErrors(e)
     if (Object.keys(e).length) return
-    const safeCategoryId = categoryId as number
-            await create({ name: name.trim(), categoryId: safeCategoryId, unit, file: selectedFile || undefined })
-    onClose()
+    
+    setLoading(true)
+    try {
+      const safeCategoryId = categoryId as number
+      await create({ name: name.trim(), categoryId: safeCategoryId, unit, file: selectedFile || undefined })
+      onClose()
+    } catch {
+      // Error handling is done in store
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-md shadow-lg w-full max-w-md p-6 space-y-4">
-        <div className="text-lg font-semibold">Thêm nguyên liệu</div>
+    <ReusableModal
+      open={open}
+      onClose={onClose}
+      title="Thêm nguyên liệu"
+      size="md"
+    >
+      <ModalForm onSubmit={(e) => { e.preventDefault(); submit() }}>
         <div>
           <Label className="mb-1 block">Tên nguyên liệu</Label>
-          <Input value={name} onChange={(e)=> setName(e.target.value)} placeholder="VD: Thịt bò" />
+          <Input 
+            value={name} 
+            onChange={(e)=> setName(e.target.value)} 
+            placeholder="VD: Thịt bò" 
+            className={errors.name ? 'border-red-500' : ''}
+          />
           {errors.name && <div className="text-red-600 text-xs mt-1">{errors.name}</div>}
         </div>
+        
         <div>
           <Label className="mb-1 block">Danh mục</Label>
-          <select className={`w-full h-10 border rounded px-3 ${errors.category? 'border-red-500': ''}`} value={categoryId ?? ""} onChange={(e)=> setCategoryId(e.target.value === "" ? undefined : Number(e.target.value))}>
+          <select 
+            className={`w-full h-10 border rounded px-3 ${errors.category? 'border-red-500': ''}`} 
+            value={categoryId ?? ""} 
+            onChange={(e)=> setCategoryId(e.target.value === "" ? undefined : Number(e.target.value))}
+          >
             <option value="">Chọn danh mục</option>
             {categories.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
@@ -87,9 +110,14 @@ export default function AddIngredientModal({ open, onClose }: Props) {
           </select>
           {errors.category && <div className="text-red-600 text-xs mt-1">{errors.category}</div>}
         </div>
+        
         <div>
           <Label className="mb-1 block">Đơn vị</Label>
-          <select className="w-full h-10 border rounded px-3" value={unit} onChange={(e)=> setUnit(e.target.value)}>
+          <select 
+            className="w-full h-10 border rounded px-3" 
+            value={unit} 
+            onChange={(e)=> setUnit(e.target.value)}
+          >
             <option value="GRAM">GRAM</option>
             <option value="KILOGRAM">KILOGRAM</option>
             <option value="LITER">LITER</option>
@@ -139,12 +167,17 @@ export default function AddIngredientModal({ open, onClose }: Props) {
             )}
           </div>
         </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={submit}>Tạo</Button>
-        </div>
-      </div>
-    </div>
+      </ModalForm>
+      
+      <ModalActions
+        onCancel={onClose}
+        onConfirm={submit}
+        confirmText="Tạo"
+        cancelText="Hủy"
+        loading={loading}
+        disabled={!name.trim() || categoryId === undefined}
+      />
+    </ReusableModal>
   )
 }
 

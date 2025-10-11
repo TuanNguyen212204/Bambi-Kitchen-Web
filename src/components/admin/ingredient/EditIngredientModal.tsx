@@ -5,6 +5,7 @@ import { Label } from "@components/ui/label"
 import { useIngredientStore } from "@zustand/stores/ingredients"
 import { Upload, X } from "lucide-react"
 import { toast } from "sonner"
+import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/modal"
 
 interface Props { open: boolean; onClose: () => void; ingredient: { id: number; name: string; unit?: string; active?: boolean; category?: unknown; imgUrl?: string } }
 
@@ -20,6 +21,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
   const [removeCurrentImage, setRemoveCurrentImage] = useState(false)
   const [nameError, setNameError] = useState<string>("")
   const [deltaError, setDeltaError] = useState<string>("")
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -29,6 +31,10 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       setActive(ingredient?.active ?? true)
       setSelectedFile(null)
       setPreviewUrl(null)
+      setRemoveCurrentImage(false)
+      setNameError("")
+      setDeltaError("")
+      setLoading(false)
     }
   }, [open, fetchCategories, ingredient])
 
@@ -59,8 +65,6 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
     }
   }
 
-  if (!open) return null
-
   const submit = async () => {
     if (!ingredient?.id) return
     const changedInfo =
@@ -80,55 +84,83 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       const DELTA_RE = /^-?\d+$/
       if (delta.trim() !== "" && !DELTA_RE.test(delta.trim())) { setDeltaError("Số điều chỉnh chỉ là số nguyên, có thể có 1 dấu trừ ở đầu"); return }
       const deltaNum = Number(delta || 0)
+      
+      setLoading(true)
       if (changedInfo) {
-              await update({ 
-                id: ingredient.id, 
-                name, 
-                unit, 
-                active, 
-                categoryId, 
-                file: selectedFile || undefined,
-                removeImage: removeCurrentImage
-              })
+        await update({ 
+          id: ingredient.id, 
+          name, 
+          unit, 
+          active, 
+          categoryId, 
+          file: selectedFile || undefined,
+          removeImage: removeCurrentImage
+        })
       }
       if (deltaNum) {
         await adjustStock(ingredient.id, deltaNum)
       }
       onClose()
     } catch {
-      // lỗi được toast ở store, chỉ giữ modal mở để người dùng sửa
+      // Error handling is done in store
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-md shadow-lg w-full max-w-md p-6 space-y-4">
-        <div className="text-lg font-semibold">Chỉnh sửa nguyên liệu</div>
+    <ReusableModal
+      open={open}
+      onClose={onClose}
+      title="Chỉnh sửa nguyên liệu"
+      size="lg"
+    >
+      <ModalForm onSubmit={(e) => { e.preventDefault(); submit() }}>
         <div>
           <Label className="mb-1 block">Tên nguyên liệu</Label>
-          <Input value={name} onChange={(e)=> { setName(e.target.value); setNameError("") }} className={nameError? 'border-red-500' : ''} />
+          <Input 
+            value={name} 
+            onChange={(e)=> { setName(e.target.value); setNameError("") }} 
+            className={nameError? 'border-red-500' : ''} 
+          />
           {nameError && <div className="text-red-600 text-xs mt-1">{nameError}</div>}
         </div>
+        
         <div>
           <Label className="mb-1 block">Danh mục</Label>
-          <select className="w-full h-10 border rounded px-3" value={categoryId ?? ""} onChange={(e)=> setCategoryId(e.target.value ? Number(e.target.value) : undefined)}>
+          <select 
+            className="w-full h-10 border rounded px-3" 
+            value={categoryId ?? ""} 
+            onChange={(e)=> setCategoryId(e.target.value ? Number(e.target.value) : undefined)}
+          >
             <option value="">Giữ nguyên</option>
             {categories.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         </div>
+        
         <div>
           <Label className="mb-1 block">Đơn vị</Label>
-          <select className="w-full h-10 border rounded px-3" value={unit} onChange={(e)=> setUnit(e.target.value)}>
+          <select 
+            className="w-full h-10 border rounded px-3" 
+            value={unit} 
+            onChange={(e)=> setUnit(e.target.value)}
+          >
             <option value="GRAM">GRAM</option>
             <option value="KILOGRAM">KILOGRAM</option>
             <option value="LITER">LITER</option>
             <option value="PCS">PCS</option>
           </select>
         </div>
+        
         <div className="flex items-center gap-2">
-          <input id="active" type="checkbox" checked={active} onChange={(e)=> setActive(e.target.checked)} />
+          <input 
+            id="active" 
+            type="checkbox" 
+            checked={active} 
+            onChange={(e)=> setActive(e.target.checked)} 
+          />
           <Label htmlFor="active">Đang hoạt động</Label>
         </div>
 
@@ -200,21 +232,35 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
             )}
           </div>
         </div>
+        
         <div className="border-t pt-3 space-y-2">
           <div className="font-medium">Điều chỉnh tồn kho</div>
           <div className="flex items-center gap-2">
-            <Input className={`w-32 text-center ${deltaError? 'border-red-500' : ''}`} type="text" value={delta} onChange={(e)=> { setDelta(e.target.value); setDeltaError("") }} placeholder="0" />
-            <Button variant="outline" onClick={()=> setDelta("0")}>Reset</Button>
+            <Input 
+              className={`w-32 text-center ${deltaError? 'border-red-500' : ''}`} 
+              type="text" 
+              value={delta} 
+              onChange={(e)=> { setDelta(e.target.value); setDeltaError("") }} 
+              placeholder="0" 
+            />
+            <Button type="button" variant="outline" onClick={()=> setDelta("0")}>Reset</Button>
           </div>
           {deltaError && <div className="text-red-600 text-xs">{deltaError}</div>}
-          <div className="text-xs text-gray-500">Nhập số dương để nhập kho, số âm để xuất kho. Việc điều chỉnh sẽ tạo giao dịch tồn kho và cập nhật tồn ngay sau khi bấm Lưu.</div>
+          <div className="text-xs text-gray-500">
+            Nhập số dương để nhập kho, số âm để xuất kho. Việc điều chỉnh sẽ tạo giao dịch tồn kho và cập nhật tồn ngay sau khi bấm Lưu.
+          </div>
         </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={submit}>Lưu</Button>
-        </div>
-      </div>
-    </div>
+      </ModalForm>
+      
+      <ModalActions
+        onCancel={onClose}
+        onConfirm={submit}
+        confirmText="Lưu"
+        cancelText="Hủy"
+        loading={loading}
+        disabled={!name.trim()}
+      />
+    </ReusableModal>
   )
 }
 
