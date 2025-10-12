@@ -37,8 +37,8 @@ export class BambiApiClient {
           ;(config.headers as AxiosRequestHeaders).Authorization = `Bearer ${token}`
         }
 
+        // config.withCredentials = true
         config.withCredentials = !config.skipAuth
-
         if (import.meta.env.DEV) {
           console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`)
         }
@@ -61,7 +61,8 @@ export class BambiApiClient {
         const url = (originalRequest?.url || "") as string
 
         const isLoginRequest = url.includes("/login") || originalRequest?.skipAuth
-        if (status === 401 && !isLoginRequest) {
+        const isMeRequest = url.includes("/api/user/me")
+        if (status === 401 && !isLoginRequest && !isMeRequest) {
           this.logout()
         }
 
@@ -110,7 +111,6 @@ export class BambiApiClient {
 
   private logout() {
     useAuthStore.getState().logout()
-    window.location.href = "/login"
   }
 
   async get<T>(url: string, options?: RequestOptions): Promise<ApiResponse<T>> {
