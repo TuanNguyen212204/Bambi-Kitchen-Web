@@ -47,15 +47,6 @@ export default function LoginPage() {
     try {
       setError("")
       await login(phone, password)
-
-      const { user: currentUser } = useAuthStore.getState()
-      const destination = currentUser?.role === "ADMIN"
-        ? PATHS.ADMIN
-        : currentUser?.role === "STAFF"
-        ? PATHS.STAFF
-        : PATHS.HOME
-
-      navigate(destination, { replace: true })
       
     } catch {
       setError("Số điện thoại hoặc mật khẩu không đúng")
@@ -63,15 +54,20 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    if (user) {
+    console.log("[LOGIN PAGE] User state changed:", user)
+    if (user && user.role) {
       const destination = user.role === "ADMIN"
         ? PATHS.ADMIN
         : user.role === "STAFF"
         ? PATHS.STAFF
         : PATHS.HOME
+      
+      console.log("[LOGIN PAGE] Navigating to:", destination)
       navigate(destination, { replace: true })
+    } else if (user === null && !loading) {
+      console.log("[LOGIN PAGE] User logged out, staying on login page")
     }
-  }, [user, navigate])
+  }, [user, navigate, loading])
 
   useEffect(() => {
     const message = location.state?.message
