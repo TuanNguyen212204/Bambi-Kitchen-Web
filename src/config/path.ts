@@ -27,7 +27,8 @@ export const PATHS = {
   ADMIN_REVENUE: "/admin/revenue",
   ADMIN_MENU: "/admin/menu",
   ADMIN_INGREDIENTS: "/admin/ingredients", 
-  ADMIN_USERS: "/admin/users",
+  ADMIN_SOLD_INGREDIENTS: "/admin/sold-ingredients",
+  ADMIN_ACCOUNTS: "/admin/accounts",
   ADMIN_ORDERS: "/admin/orders",
   ADMIN_FEEDBACK: "/admin/feedback",
   

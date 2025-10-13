@@ -19,6 +19,7 @@ const AdminMenu = lazy(() => import("@pages/adminPage/menu"))
 const AdminIngredients = lazy(() => import("@pages/adminPage/ingredientManagement/ingredient/ingredient"))
 const AdminFeedback = lazy(() => import("@pages/adminPage/feedback"))
 const AdminSettings = lazy(() => import("@pages/adminPage/settings"))
+const AdminAccounts = lazy(() => import("@pages/adminPage/accountManagement"))
 // const OrderBuilder = lazy(() => import("@/pages/customer/OrderBuilder"))
 // const OrderHistory = lazy(() => import("@/pages/customer/OrderHistory"))
 // const QuickOrder = lazy(() => import("@/pages/customer/QuickOrder"))
@@ -209,6 +210,14 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     path: "feedback",
     component: AdminFeedback,
     label: "Feedback",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "accounts",
+    component: AdminAccounts,
+    label: "Quản lý Tài khoản",
     protected: true,
     role: [ROLES.ADMIN],
     layout: "admin",
