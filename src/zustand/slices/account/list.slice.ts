@@ -14,6 +14,8 @@ export const createAccountListSlice: StateCreator<AccountListSlice> = (set, get)
       const response = await bambiApi.get("/api/account")
       const accounts: StoreAccount[] = (response.data as any[]).map((account: any) => ({
         ...account,
+        name: account.name || account.fullName || account.username || account.displayName || 'Người dùng',
+        mail: account.mail || account.email || account.emailAddress || 'Chưa có email',
         status: account.active ? "active" : "inactive"
       }))
       set({ items: accounts, loading: false })
@@ -31,6 +33,8 @@ export const createAccountListSlice: StateCreator<AccountListSlice> = (set, get)
       const response = await bambiApi.get(`/api/account?name=${encodeURIComponent(name)}`)
       const accounts: StoreAccount[] = (response.data as any[]).map((account: any) => ({
         ...account,
+        name: account.name || account.fullName || account.username || account.displayName || 'Người dùng',
+        mail: account.mail || account.email || account.emailAddress || 'Chưa có email',
         status: account.active ? "active" : "inactive"
       }))
       set({ items: accounts, loading: false })

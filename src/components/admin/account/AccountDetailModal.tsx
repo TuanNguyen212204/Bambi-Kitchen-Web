@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -35,6 +35,19 @@ export function AccountDetailModal({
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (account) {
+      setFormData({
+        name: account.name || "",
+        mail: account.mail || "",
+        phone: account.phone || "",
+        role: account.role || "USER",
+        active: account.active !== false
+      });
+      setIsEditing(false);
+    }
+  }, [account]);
 
   const handleSave = async () => {
     if (!account || !onSave) return;

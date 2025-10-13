@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/modal";
+import ReusableModal, { ModalForm } from "@components/ui/modal/modal";
 import { useAccountStore } from "@zustand/stores/account";
 import { toast } from "sonner";
 
@@ -70,15 +70,6 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
       title="Thêm tài khoản mới"
       description="Tạo tài khoản mới cho người dùng, nhân viên hoặc quản trị viên."
       size="md"
-      footer={
-        <ModalActions
-          onCancel={handleClose}
-          onConfirm={undefined}
-          confirmText="Tạo tài khoản"
-          cancelText="Hủy"
-          loading={loading}
-        />
-      }
     >
       <ModalForm onSubmit={handleSubmit}>
         <div className="space-y-2">
@@ -146,7 +137,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
           />
         </div>
         
-        <div className="flex justify-end gap-2 pt-4">
+        <div className="flex justify-end gap-3 pt-4">
           <Button
             type="button"
             variant="outline"

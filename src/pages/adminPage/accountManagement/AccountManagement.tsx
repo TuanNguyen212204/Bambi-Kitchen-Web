@@ -14,7 +14,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useAccountStore } from "@zustand/stores/account";
 import { AddAccountModal } from "@components/admin/account/AddAccountModal";
 import { AccountDetailModal } from "@components/admin/account/AccountDetailModal";
-import { MoreVertical, Edit3, Trash2 as TrashIcon, User as UserIcon } from "lucide-react";
+import { MoreVertical, Trash2 as TrashIcon, User as UserIcon } from "lucide-react";
 
 export default function AccountManagement() {
   const currentDate = new Date().toLocaleString("vi-VN", {
@@ -31,13 +31,15 @@ export default function AccountManagement() {
     error,
     query,
     setQuery,
+    searchByName,
     selectedRole,
     setSelectedRole,
     statusFilter,
     setStatusFilter,
     viewMode,
     setViewMode,
-    remove
+    remove,
+    update
   } = useAccountStore();
 
   const store = useAccountStore();
@@ -51,7 +53,9 @@ export default function AccountManagement() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
+  const [accountToDelete, setAccountToDelete] = useState<any>(null);
 
   useEffect(() => {
     fetchAll();
@@ -115,9 +119,17 @@ export default function AccountManagement() {
     setShowDetailModal(true);
   };
 
-  const handleSaveAccount = async (_updatedAccount: any) => {
+  const handleSaveAccount = async (updatedAccount: any) => {
     try {
-      await fetchAll();
+      if (updatedAccount.id) {
+        await update({
+          id: updatedAccount.id,
+          name: updatedAccount.name,
+          mail: updatedAccount.mail,
+          role: updatedAccount.role,
+          active: updatedAccount.active
+        });
+      }
     } catch (error) {
       console.error("Error saving account:", error);
       throw error;
@@ -128,10 +140,17 @@ export default function AccountManagement() {
     try {
       await remove(accountId);
       await fetchAll();
+      setShowDeleteModal(false);
+      setAccountToDelete(null);
     } catch (error) {
       console.error("Error deleting account:", error);
       throw error;
     }
+  };
+
+  const openDeleteModal = (account: any) => {
+    setAccountToDelete(account);
+    setShowDeleteModal(true);
   };
 
   const getStatusBadge = (account: any) => {
@@ -251,11 +270,20 @@ export default function AccountManagement() {
               <label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm leading-[21px]">
                 Tìm kiếm
               </label>
-              <Button className="w-full bg-orange-600 hover:bg-orange-700 h-auto py-2">
-                <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-white text-sm">
-                  Tìm kiếm
-                </span>
-              </Button>
+                          <Button 
+                            className="w-full bg-orange-600 hover:bg-orange-700 h-auto py-2"
+                            onClick={() => {
+                              if (query.trim()) {
+                                searchByName(query.trim());
+                              } else {
+                                fetchAll();
+                              }
+                            }}
+                          >
+                            <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-white text-sm">
+                              Tìm kiếm
+                            </span>
+                          </Button>
             </div>
           </div>
         </div>
@@ -294,13 +322,13 @@ export default function AccountManagement() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
             </div>
           ) : (
-            <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" : "grid grid-cols-1 gap-3"}>
+            <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : "grid grid-cols-1 gap-3"}>
               {accounts.map((account, index) => {
                 const statusBadge = getStatusBadge(account);
                 return (
                   <Card key={index} className="bg-white border-2 border-gray-200">
                     <CardContent className="p-6 space-y-4">
-                                  <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-start justify-between gap-3 mb-3">
                                     <div className="flex items-start gap-3 flex-1 min-w-0">
                                       <div className="relative flex-shrink-0">
                                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
@@ -311,24 +339,19 @@ export default function AccountManagement() {
                                         }`} />
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-lg leading-[27px] truncate" title={account.name}>
-                                          {account.name}
+                                        <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px] mb-1 line-clamp-2" title={account.name}>
+                                          {account.name || 'Chưa có tên'}
                                         </h3>
-                                        <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-sm leading-[21px] opacity-75 truncate" title={account.mail}>
-                                          {account.mail}
+                                        <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75 line-clamp-2" title={account.mail}>
+                                          {account.mail || 'Chưa có email'}
                                         </p>
                                       </div>
                                     </div>
 
                                     <div className="flex items-center gap-2 flex-shrink-0">
-                                      <Badge variant="secondary" className="bg-[#0000001a] hover:bg-[#0000001a] px-3 py-1 whitespace-nowrap">
-                                        <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-gray-700 text-sm text-center">
-                                          {getRoleLabel(account.role)}
-                                        </span>
-                                      </Badge>
                                       <div className="relative">
-                                        <button 
-                                          className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center" 
+                                        <button
+                                          className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center"
                                           onClick={(e) => {
                                             const menu = (e.currentTarget.nextSibling as HTMLElement);
                                             if (menu) menu.classList.toggle('hidden');
@@ -337,30 +360,15 @@ export default function AccountManagement() {
                                           <MoreVertical className="w-4 h-4" />
                                         </button>
                                         <div className="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10 min-w-[120px]">
-                                          <button 
-                                            className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100 text-sm whitespace-nowrap" 
+                                          <button
+                                            className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100 text-sm whitespace-nowrap"
                                             onClick={() => handleViewDetail(account)}
                                           >
                                             <Eye className="w-4 h-4" /> Xem chi tiết
                                           </button>
                                           <button 
                                             className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100 text-sm whitespace-nowrap" 
-                                            onClick={() => {
-                                              setSelectedAccount(account);
-                                              setShowDetailModal(true);
-                                            }}
-                                          >
-                                            <Edit3 className="w-4 h-4" /> Chỉnh sửa
-                                          </button>
-                                          <button 
-                                            className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100 text-sm whitespace-nowrap" 
-                                            onClick={() => {
-                                              if (confirm(`Bạn có chắc chắn muốn xóa tài khoản "${account.name}"?`)) {
-                                                if (account.id) {
-                                                  handleDeleteAccount(account.id);
-                                                }
-                                              }
-                                            }}
+                                            onClick={() => openDeleteModal(account)}
                                           >
                                             <TrashIcon className="w-4 h-4 text-red-600" /> Xóa
                                           </button>
@@ -386,19 +394,16 @@ export default function AccountManagement() {
                             <span className="text-sm text-gray-700">{account.phone}</span>
                           </div>
                         )}
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm text-gray-700">Vai trò</span>
+                          <Badge variant="secondary" className="bg-[#0000001a] hover:bg-[#0000001a] px-3 py-1">
+                            <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-gray-700 text-sm text-center">
+                              {getRoleLabel(account.role)}
+                            </span>
+                          </Badge>
+                        </div>
                       </div>
 
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="secondary" 
-                          className="h-auto bg-blue-100 hover:bg-blue-200 px-3 py-1 text-blue-700"
-                          onClick={() => handleViewDetail(account)}
-                        >
-                          <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-xs text-center">
-                            Xem chi tiết
-                          </span>
-                        </Button>
-                      </div>
 
                                   <div className="bg-[#0000001a] rounded-md p-3 space-y-2">
                                     <h4 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-sm">
@@ -412,10 +417,6 @@ export default function AccountManagement() {
                                       <div className="flex justify-between items-center">
                                         <span className="[font-family:'Inter-Bold',Helvetica] font-bold text-gray-700 text-xs opacity-80">Lần đăng nhập cuối:</span>
                                         <span className="[font-family:'Inter-Regular',Helvetica] text-gray-700 text-xs opacity-80 truncate ml-2">N/A</span>
-                                      </div>
-                                      <div className="flex justify-between items-center">
-                                        <span className="[font-family:'Inter-Bold',Helvetica] font-bold text-gray-700 text-xs opacity-80">Quyền hạn:</span>
-                                        <span className="[font-family:'Inter-Regular',Helvetica] text-gray-700 text-xs opacity-80 truncate ml-2">{getRoleLabel(account.role)}</span>
                                       </div>
                                     </div>
                                   </div>
@@ -447,6 +448,54 @@ export default function AccountManagement() {
         onSave={handleSaveAccount}
         onDelete={handleDeleteAccount}
       />
+
+      {/* Delete Confirmation Modal */}
+      {accountToDelete && (
+        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${showDeleteModal ? 'block' : 'hidden'}`}>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                <TrashIcon className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
+                <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-700">
+                Bạn có chắc chắn muốn xóa tài khoản <span className="font-semibold">"{accountToDelete.name || 'Chưa có tên'}"</span>?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Tất cả dữ liệu liên quan đến tài khoản này sẽ bị xóa vĩnh viễn.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setAccountToDelete(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  if (accountToDelete.id) {
+                    handleDeleteAccount(accountToDelete.id);
+                  }
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

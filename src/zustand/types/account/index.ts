@@ -45,6 +45,7 @@ export interface AccountFormSlice {
   create: (payload: AccountCreateRequest) => Promise<void>
   update: (payload: AccountUpdateRequest) => Promise<void>
   remove: (id: number) => Promise<void>
+  toggleStatus: (id: number, active: boolean) => Promise<void>
 }
 
 export interface AccountFilterSlice {
