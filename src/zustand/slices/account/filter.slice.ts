@@ -27,12 +27,10 @@ export const createAccountFilterSlice: StateCreator<AccountFilterSlice> = (set, 
     const state = get() as any
     let filtered = [...state.items]
     
-    // Filter by role
     if (state.selectedRole) {
       filtered = filtered.filter(item => item.role === state.selectedRole)
     }
     
-    // Filter by status
     if (state.statusFilter !== "all") {
       filtered = filtered.filter(item => {
         const isActive = item.active ?? true
@@ -40,7 +38,6 @@ export const createAccountFilterSlice: StateCreator<AccountFilterSlice> = (set, 
       })
     }
     
-    // Filter by search query
     if (state.query) {
       const query = state.query.toLowerCase()
       filtered = filtered.filter(item => 
@@ -50,7 +47,6 @@ export const createAccountFilterSlice: StateCreator<AccountFilterSlice> = (set, 
       )
     }
     
-    // Sort
     filtered.sort((a, b) => {
       switch (state.sortBy) {
         case "name_asc":

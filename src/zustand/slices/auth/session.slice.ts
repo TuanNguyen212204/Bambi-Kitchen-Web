@@ -34,8 +34,8 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         formData,
         { 
           skipAuth: true,
-          // headers: {},
-          withCredentials: true
+          headers: {},
+          // withCredentials: true
         }
       )
       

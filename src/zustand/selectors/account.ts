@@ -10,7 +10,7 @@ export const accountSelectors = {
   selectQuery: (state: AccountStore) => state.query,
   
   // Filter selectors
-  selectFilteredAccounts: (state: AccountStore) => state.filteredItems(),
+  selectFilteredAccounts: (state: AccountStore) => state.getFilteredItems(),
   selectSelectedRole: (state: AccountStore) => state.selectedRole,
   selectStatusFilter: (state: AccountStore) => state.statusFilter,
   selectViewMode: (state: AccountStore) => state.viewMode,
@@ -25,7 +25,7 @@ export const accountSelectors = {
   
   // Computed selectors
   selectAccountsByRole: (state: AccountStore) => {
-    const accounts = state.filteredItems()
+    const accounts = state.getFilteredItems()
     return {
       ADMIN: accounts.filter(acc => acc.role === "ADMIN"),
       STAFF: accounts.filter(acc => acc.role === "STAFF"),
@@ -34,8 +34,8 @@ export const accountSelectors = {
   },
   
   selectActiveAccountsOnly: (state: AccountStore) => 
-    state.filteredItems().filter(acc => acc.active !== false),
+    state.getFilteredItems().filter(acc => acc.active !== false),
     
   selectInactiveAccountsOnly: (state: AccountStore) => 
-    state.filteredItems().filter(acc => acc.active === false),
+    state.getFilteredItems().filter(acc => acc.active === false),
 }

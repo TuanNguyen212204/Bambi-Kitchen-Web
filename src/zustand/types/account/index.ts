@@ -74,8 +74,6 @@ export type AccountStore =
   AccountListSlice & 
   AccountFormSlice & 
   AccountFilterSlice & 
-  AccountStatsSlice & {
-  filteredItems: () => StoreAccount[]
-}
+  AccountStatsSlice
 
 export type AccountState = AccountStore

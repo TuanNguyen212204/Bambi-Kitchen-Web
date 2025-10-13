@@ -18,11 +18,6 @@ export const useAccountStore = create<AccountStore>()(
           ...createAccountFormSlice(set, get, store),
           ...createAccountFilterSlice(set, get, store),
           ...createAccountStatsSlice(set, get, store),
-          
-          filteredItems: () => {
-            const state = get()
-            return state.getFilteredItems()
-          },
         }),
         {
           name: "bambi-account-storage",
