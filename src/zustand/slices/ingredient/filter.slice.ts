@@ -21,9 +21,11 @@ export const createIngredientFilterSlice: StateCreator<IngredientFilterSlice, []
 
     // Category filter
     if (state.selectedCategoryId) {
-      filtered = filtered.filter((item: StoreIngredient) => 
-        item.category === state.selectedCategoryId?.toString()
-      )
+      filtered = filtered.filter((item: StoreIngredient) => {
+        if (typeof item.categoryId === 'number') return item.categoryId === state.selectedCategoryId
+        // fallback: when categoryId not present, try compare string name id
+        return item.category === state.selectedCategoryId?.toString()
+      })
     }
 
     // Status filter

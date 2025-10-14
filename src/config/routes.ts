@@ -20,6 +20,7 @@ const AdminIngredients = lazy(() => import("@pages/adminPage/ingredientManagemen
 const AdminFeedback = lazy(() => import("@pages/adminPage/feedback"))
 const AdminSettings = lazy(() => import("@pages/adminPage/settings"))
 const AdminAccounts = lazy(() => import("@pages/adminPage/accountManagement"))
+const AdminIngredientsSold = lazy(() => import("@pages/adminPage/ingredientManagement/ingredientsSold/IngredientSold"))
 // const OrderBuilder = lazy(() => import("@/pages/customer/OrderBuilder"))
 // const OrderHistory = lazy(() => import("@/pages/customer/OrderHistory"))
 // const QuickOrder = lazy(() => import("@/pages/customer/QuickOrder"))
@@ -234,6 +235,14 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     path: "profile",
     component: ProfilePage,
     label: "Profile",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "sold-ingredients",
+    component: AdminIngredientsSold,
+    label: "sold-ingredients",
     protected: true,
     role: [ROLES.ADMIN],
     layout: "admin",

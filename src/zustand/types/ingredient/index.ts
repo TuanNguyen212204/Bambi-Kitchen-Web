@@ -4,6 +4,7 @@ import type { Ingredient } from "@models/ingredient/ingredient"
 export type StockStatus = "out" | "low" | "normal"
 export type StoreIngredient = Omit<Ingredient, "category"> & { 
   category: string
+  categoryId?: number
   stock?: number
   stockStatus?: StockStatus
   active?: boolean 

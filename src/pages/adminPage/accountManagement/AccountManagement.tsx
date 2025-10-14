@@ -206,8 +206,8 @@ export default function AccountManagement() {
         </div>
       </section>
 
-                  <section className="w-full bg-white rounded-xl border border-solid border-gray-200 shadow-[0px_1px_3px_#0000001a] overflow-hidden">
-                    <div className="bg-gradient-to-r from-orange-100 to-amber-100 p-6">
+      <section className="w-full bg-white rounded-xl border border-solid border-gray-200 shadow-[0px_1px_3px_#0000001a] overflow-hidden">
+          <div className="bg-gradient-to-r from-orange-100 to-amber-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-lg leading-[27px]">
               Quản lý Tài khoản
