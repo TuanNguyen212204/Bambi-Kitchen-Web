@@ -17,7 +17,7 @@ const navItems = [
   { to: PATHS.ADMIN, label: "Dashboard", icon: LayoutDashboard },
   { to: PATHS.ADMIN_ORDERS, label: "Quản lý Đơn hàng", icon: Package },
   { to: PATHS.ADMIN_MENU, label: "Menu", icon: MenuIcon },
-  { to: PATHS.ADMIN_INGREDIENTS, label: "Thành phần", icon: Carrot },
+  { to: PATHS.ADMIN_INGREDIENTS, label: "Nguyên liệu", icon: Carrot },
   { to: PATHS.ADMIN_SOLD_INGREDIENTS, label: "Nguyên liệu đã bán", icon: Box },
   { to: PATHS.ADMIN_ACCOUNTS, label: "Quản lý Tài khoản", icon: Users },
   { to: PATHS.ADMIN_FEEDBACK, label: "Feedback", icon: MessageSquare },

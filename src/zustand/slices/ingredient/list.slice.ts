@@ -19,11 +19,14 @@ export const createIngredientListSlice: StateCreator<IngredientListSlice, [], []
       const normalized: StoreIngredient[] = res.data.map((i) => {
         const cat: unknown = (i as unknown as { category?: unknown }).category
         let category: string | unknown = cat as unknown
-        if (cat && typeof cat === "object" && (cat as { name?: unknown }).name) {
-          category = String((cat as { name?: unknown }).name)
+        let categoryId: number | undefined = undefined
+        if (cat && typeof cat === "object") {
+          const c = cat as { name?: unknown; id?: unknown }
+          if (c.name) category = String(c.name)
+          if (typeof c.id === 'number') categoryId = c.id as number
         }
         const { category: _omit1, ...rest } = i as Ingredient; void _omit1
-        return { ...(rest as Omit<Ingredient, "category">), category: String(category ?? "") }
+        return { ...(rest as Omit<Ingredient, "category">), category: String(category ?? ""), categoryId }
       })
 
       const transactionsRes = await bambiApi.get<InventoryTransaction[]>(API_ENDPOINTS.API_INVENTORY_TRANSACTIONS)
