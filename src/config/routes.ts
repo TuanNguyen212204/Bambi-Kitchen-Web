@@ -15,12 +15,14 @@ const AboutPage = lazy(() => import("@pages/customerPage/about/AboutPage"))
 const ContactPage = lazy(() => import("@pages/customerPage/contact/ContactPage"))
 const AdminDashboard = lazy(() => import("@pages/adminPage/dashboard"))
 const AdminOrders = lazy(() => import("@pages/adminPage/orders"))
-const AdminMenu = lazy(() => import("@pages/adminPage/menu"))
+const AdminMenu = lazy(() => import("@pages/adminPage/dish"))
 const AdminIngredients = lazy(() => import("@pages/adminPage/ingredientManagement/ingredient/ingredient"))
 const AdminFeedback = lazy(() => import("@pages/adminPage/feedback"))
 const AdminSettings = lazy(() => import("@pages/adminPage/settings"))
 const AdminAccounts = lazy(() => import("@pages/adminPage/accountManagement"))
 const AdminIngredientsSold = lazy(() => import("@pages/adminPage/ingredientManagement/ingredientsSold/IngredientSold"))
+const AdminDishCategory = lazy(() => import("@pages/adminPage/dishCategory"))
+const AdminDishTemplate = lazy(() => import("@pages/adminPage/dishTemplate"))
 // const OrderBuilder = lazy(() => import("@/pages/customer/OrderBuilder"))
 // const OrderHistory = lazy(() => import("@/pages/customer/OrderHistory"))
 // const QuickOrder = lazy(() => import("@/pages/customer/QuickOrder"))
@@ -195,6 +197,22 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     path: "menu",
     component: AdminMenu,
     label: "Menu",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "dish-categories",
+    component: AdminDishCategory,
+    label: "Dish Categories",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "dish-templates",
+    component: AdminDishTemplate,
+    label: "Dish Templates",
     protected: true,
     role: [ROLES.ADMIN],
     layout: "admin",

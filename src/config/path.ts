@@ -31,6 +31,8 @@ export const PATHS = {
   ADMIN_ACCOUNTS: "/admin/accounts",
   ADMIN_ORDERS: "/admin/orders",
   ADMIN_FEEDBACK: "/admin/feedback",
+  ADMIN_DISH_CATEGORIES: "/admin/dish-categories",
+  ADMIN_DISH_TEMPLATES: "/admin/dish-templates",
   
   UNAUTHORIZED: "/unauthorized",
   UNAUTHENTICATED: "/unauthenticated",
