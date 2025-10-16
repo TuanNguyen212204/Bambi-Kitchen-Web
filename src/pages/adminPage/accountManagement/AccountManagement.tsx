@@ -44,7 +44,7 @@ export default function AccountManagement() {
 
   const store = useAccountStore();
   
-  const accounts = useMemo(() => store.getFilteredItems(), [store.items, store.selectedRole, store.statusFilter, store.sortBy]);
+  const accounts = useMemo(() => store.getFilteredItems(), [store]);
   const totalAccounts = useMemo(() => store.items.length, [store.items]);
   const activeAccounts = useMemo(() => store.items.filter(acc => acc.active !== false).length, [store.items]);
   const adminAccounts = useMemo(() => store.items.filter(acc => acc.role === "ADMIN").length, [store.items]);

@@ -1,4 +1,5 @@
 export * from "@zustand/stores/auth"
 export * from "@zustand/stores/ingredients"
 export * from "@zustand/stores/kitchen"
+export * from "@zustand/stores/dish"
 
