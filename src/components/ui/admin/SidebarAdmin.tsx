@@ -19,6 +19,7 @@ const navItems = [
   { to: PATHS.ADMIN_MENU, label: "Món ăn", icon: MenuIcon },
   { to: PATHS.ADMIN_DISH_CATEGORIES, label: "Danh mục món", icon: Box },
   { to: PATHS.ADMIN_DISH_TEMPLATES, label: "Mẫu tô", icon: Box },
+  { to: PATHS.ADMIN_INGREDIENT_CATEGORIES, label: "Danh mục nguyên liệu", icon: Box },
   { to: PATHS.ADMIN_INGREDIENTS, label: "Nguyên liệu", icon: Carrot },
   { to: PATHS.ADMIN_SOLD_INGREDIENTS, label: "Nguyên liệu đã bán", icon: Box },
   { to: PATHS.ADMIN_ACCOUNTS, label: "Quản lý Tài khoản", icon: Users },

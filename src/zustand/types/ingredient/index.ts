@@ -42,6 +42,8 @@ export interface IngredientCategorySlice {
   
   fetchCategories: () => Promise<void>
   createCategory: (payload: { name: string; description?: string }) => Promise<IngredientCategory | undefined>
+  updateCategory: (payload: { id: number; name: string; description?: string }) => Promise<void>
+  removeCategory: (id: number) => Promise<void>
 }
 
 export interface IngredientFormSlice {
