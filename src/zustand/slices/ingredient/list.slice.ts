@@ -15,6 +15,7 @@ export const createIngredientListSlice: StateCreator<IngredientListSlice, [], []
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
       const res = await bambiApi.get<Ingredient[]>(API_ENDPOINTS.API_INGREDIENTS)
+      
 
       const normalized: StoreIngredient[] = res.data.map((i) => {
         const cat: unknown = (i as unknown as { category?: unknown }).category

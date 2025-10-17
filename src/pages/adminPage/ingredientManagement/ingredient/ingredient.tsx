@@ -11,7 +11,7 @@ import EditIngredientModal from "@components/admin/ingredient/EditIngredientModa
 import StockHistoryModal from "@components/admin/ingredient/StockHistoryModal";
 import { Grid3X3, List, Plus, Search, MoreVertical, Edit3, Trash2 as TrashIcon, Image as ImageIcon } from "lucide-react";
 import { useIngredientStore } from "@zustand/stores/ingredients";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 export const AdminIngredientsPage = () => {
   const currentDate = new Date().toLocaleString("vi-VN", {
@@ -28,9 +28,20 @@ export const AdminIngredientsPage = () => {
   const [editing, setEditing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; category?: unknown }>(null)
   const [stockHistory, setStockHistory] = useState<null | { id: number; name: string; unit?: string }>(null)
   const [deleting, setDeleting] = useState<null | { id: number; name: string }>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [imageRefreshKey, setImageRefreshKey] = useState(0)
 
   useEffect(() => { fetchAll() }, [fetchAll])
   useEffect(() => { fetchCategories() }, [fetchCategories])
+  
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1)
+    setImageRefreshKey(prev => prev + 1)
+  }, [items])
+  
+  const getIngredientKey = useMemo(() => {
+    return (ingredient: { id: number; imgUrl?: string }) => `${ingredient.id}-${ingredient.imgUrl}-${refreshKey}`
+  }, [refreshKey])
 
   const total = items.length
   const activeCount = items.filter((i: { active?: boolean }) => i.active ?? true).length
@@ -207,18 +218,19 @@ export const AdminIngredientsPage = () => {
 
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' : 'grid grid-cols-1 gap-3'}>
             {filteredItems().map((ingredient: { id: number; name: string; unit?: string; category?: unknown; stock?: number; stockStatus?: 'out'|'low'|'normal'; imgUrl?: string; publicId?: string }) => (
-              <Card key={ingredient.id} className={`bg-white border-2 border-gray-200`}>
+              <Card key={getIngredientKey(ingredient)} className={`bg-white border-2 border-gray-200`}>
                 <CardContent className="p-6 space-y-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
                       <div className="relative">
                         {ingredient.imgUrl ? (
                           <img 
-                            key={`${ingredient.id}-${ingredient.imgUrl}`}
-                            src={ingredient.imgUrl} 
+                            key={`img-${ingredient.id}-${ingredient.imgUrl}-${imageRefreshKey}`}
+                            src={ingredient.imgUrl || ''} 
                             alt={ingredient.name}
                             className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
-                            onError={(e)=>{
+                            loading="eager"
+                            onError={(e) => {
                               const target = e.currentTarget as HTMLImageElement
                               target.onerror = null
                               target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='10'%3ENo Image%3C/text%3E%3C/svg%3E"
@@ -310,7 +322,27 @@ export const AdminIngredientsPage = () => {
       </section>
 
       {editing && (
-        <EditIngredientModal open={true} onClose={()=> setEditing(null)} ingredient={editing} />
+        <EditIngredientModal 
+          open={true} 
+          onClose={()=> setEditing(null)} 
+          ingredient={((): { id: number; name: string; unit?: string; active?: boolean; ingredient_category_id?: number; categoryId?: number; category?: { id: number } | null; imgUrl?: string } => {
+            const maybeAny = editing as unknown as { ingredient_category_id?: number; categoryId?: number; category?: { id?: number } | null; imgUrl?: string }
+            const mappedCategory = (maybeAny.category && typeof maybeAny.category === 'object' && typeof maybeAny.category.id === 'number')
+              ? { id: maybeAny.category.id }
+              : null
+            return {
+              id: editing.id,
+              name: editing.name,
+              unit: editing.unit,
+              active: editing.active,
+              // ưu tiên categoryId đã chuẩn hóa từ store, fallback ingredient_category_id
+              ingredient_category_id: typeof maybeAny.categoryId === 'number' ? maybeAny.categoryId : (typeof maybeAny.ingredient_category_id === 'number' ? maybeAny.ingredient_category_id : undefined),
+              categoryId: typeof maybeAny.categoryId === 'number' ? maybeAny.categoryId : undefined,
+              category: mappedCategory ?? null,
+              imgUrl: typeof maybeAny.imgUrl === 'string' ? maybeAny.imgUrl : undefined,
+            }
+          })()}
+        />
       )}
       {stockHistory && (
         <StockHistoryModal open={true} onClose={()=> setStockHistory(null)} ingredient={stockHistory} />

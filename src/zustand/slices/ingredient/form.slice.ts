@@ -56,8 +56,7 @@ const resizeImage = (file: File): Promise<File> => {
   })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], [], IngredientFormSlice> = (_set, _get, _store) => ({
+export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], [], IngredientFormSlice> = () => ({
   create: async (payload) => {
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
@@ -88,6 +87,9 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
         }
       })
       
+      const { useIngredientStore } = await import("@zustand/stores/ingredients")
+      await useIngredientStore.getState().fetchAll()
+      
       const { toast } = await import("sonner")
       toast.success("Đã thêm nguyên liệu")
     } catch {
@@ -100,16 +102,16 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
       const formData = new FormData()
-      formData.append('name', payload.name)
       
-      if (payload.categoryId !== undefined) {
-        formData.append('categoryId', payload.categoryId.toString())
-      }
-      
-      if (payload.unit !== undefined) {
-        formData.append('unit', payload.unit)
-      }
-      
+      formData.append('id', String(payload.id))
+      formData.append('name', payload.name ?? '')
+      if (typeof payload.categoryId === 'number') formData.append('categoryId', String(payload.categoryId))
+      formData.append('unit', payload.unit ?? '')
+      formData.append('active', payload.active !== undefined ? String(payload.active) : '')
+      formData.append('available', String(payload.available ?? 0))
+      formData.append('quantity', String(payload.quantity ?? 0))
+      formData.append('reserve', String(payload.reserve ?? 0))
+
       if (payload.file) {
         if (!validateFileSize(payload.file)) {
           const { toast } = await import("sonner")
@@ -125,19 +127,20 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
         
         const resizedFile = await resizeImage(payload.file)
         formData.append('file', resizedFile)
+      } else if (payload.removeImage) {
+        formData.append('file', new File([], "empty", { type: "image/jpeg" }))
+      } else {
+        formData.append('file', new File([""], "empty", { type: "application/octet-stream" }))
       }
       
-      if (payload.active !== undefined) {
-        formData.append('active', payload.active.toString())
-      }
-      
-      if (payload.removeImage) {
-        formData.append('file', "")
-      }
-      
+      // Gửi đúng chuẩn multipart/form-data (không dùng params)
       await bambiApi.put(API_ENDPOINTS.API_INGREDIENTS, formData, {
-        params: { ingredient: { id: payload.id } }
+        headers: { 'Content-Type': 'multipart/form-data' }
       })
+      
+      // Refresh the ingredient list after updating
+      const { useIngredientStore } = await import("@zustand/stores/ingredients")
+      useIngredientStore.getState().fetchAll()
       
       const { toast } = await import("sonner")
       toast.success("Đã cập nhật nguyên liệu")
@@ -153,6 +156,10 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
       await bambiApi.delete(API_ENDPOINTS.API_INGREDIENTS, {
         params: { ingredient: { id } }
       })
+      
+      // Refresh the ingredient list after deleting
+      const { useIngredientStore } = await import("@zustand/stores/ingredients")
+      useIngredientStore.getState().fetchAll()
       
       const { toast } = await import("sonner")
       toast.success("Đã xóa nguyên liệu")
