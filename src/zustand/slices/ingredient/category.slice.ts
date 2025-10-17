@@ -1,8 +1,7 @@
 import type { StateCreator } from "zustand"
 import type { IngredientCategorySlice, IngredientCategory } from "@/zustand/types"
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const createIngredientCategorySlice: StateCreator<IngredientCategorySlice, [], [], IngredientCategorySlice> = (set, _get, _store) => ({
+export const createIngredientCategorySlice: StateCreator<IngredientCategorySlice, [], [], IngredientCategorySlice> = (set) => ({
   categories: [],
   
   fetchCategories: async () => {
@@ -16,7 +15,7 @@ export const createIngredientCategorySlice: StateCreator<IngredientCategorySlice
     }
   },
 
-  createCategory: async (payload) => {
+  createCategory: async (payload: { name: string; description?: string }) => {
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
       const res = await bambiApi.post<IngredientCategory>(API_ENDPOINTS.API_INGREDIENT_CATEGORIES, payload)
@@ -28,6 +27,32 @@ export const createIngredientCategorySlice: StateCreator<IngredientCategorySlice
       const { toast } = await import("sonner")
       toast.error("Tạo danh mục thất bại")
       return undefined
+    }
+  },
+
+  updateCategory: async (payload: { id: number; name: string; description?: string }) => {
+    try {
+      const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
+      const res = await bambiApi.put<IngredientCategory>(API_ENDPOINTS.API_INGREDIENT_CATEGORIES, payload)
+      set((state) => ({ categories: state.categories.map(c => c.id === res.data.id ? res.data : c) }))
+      const { toast } = await import("sonner")
+      toast.success("Đã cập nhật danh mục")
+    } catch {
+      const { toast } = await import("sonner")
+      toast.error("Cập nhật danh mục thất bại")
+    }
+  },
+
+  removeCategory: async (id: number) => {
+    try {
+      const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
+      await bambiApi.delete(API_ENDPOINTS.API_INGREDIENT_CATEGORY_BY_ID(id))
+      set((state) => ({ categories: state.categories.filter(c => c.id !== id) }))
+      const { toast } = await import("sonner")
+      toast.success("Đã xóa danh mục")
+    } catch {
+      const { toast } = await import("sonner")
+      toast.error("Xóa danh mục thất bại")
     }
   },
 })
