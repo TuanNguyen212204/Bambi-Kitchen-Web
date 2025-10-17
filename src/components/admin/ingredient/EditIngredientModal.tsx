@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
@@ -7,7 +7,19 @@ import { Upload, X } from "lucide-react"
 import { toast } from "sonner"
 import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/modal"
 
-interface Props { open: boolean; onClose: () => void; ingredient: { id: number; name: string; unit?: string; active?: boolean; category?: unknown; imgUrl?: string } }
+interface Props { 
+  open: boolean; 
+  onClose: () => void; 
+  ingredient: { 
+    id: number; 
+    name: string; 
+    unit?: string; 
+    active?: boolean; 
+    ingredient_category_id?: number; 
+    category?: { id: number } | null; 
+    imgUrl?: string 
+  } 
+}
 
 export default function EditIngredientModal({ open, onClose, ingredient }: Props) {
   const { categories, fetchCategories, update, adjustStock } = useIngredientStore()
@@ -15,7 +27,13 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
   const [name, setName] = useState(ingredient?.name ?? "")
   const [unit, setUnit] = useState(ingredient?.unit ?? "GRAM")
   const [active, setActive] = useState<boolean>(ingredient?.active ?? true)
-  const [categoryId, setCategoryId] = useState<number | undefined>(undefined)
+  const originalCategoryId = (
+    ingredient.ingredient_category_id ??
+    (ingredient as unknown as { categoryId?: number }).categoryId ??
+    ingredient.category?.id ??
+    undefined
+  )
+  const [categoryId, setCategoryId] = useState<number | undefined>(originalCategoryId)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [removeCurrentImage, setRemoveCurrentImage] = useState(false)
@@ -23,12 +41,21 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
   const [deltaError, setDeltaError] = useState<string>("")
   const [loading, setLoading] = useState(false)
 
+  const initializedRef = useRef(false)
   useEffect(() => {
-    if (open) {
+    if (!open) { initializedRef.current = false; return }
+    if (!initializedRef.current) {
+      initializedRef.current = true
       fetchCategories()
       setName(ingredient?.name ?? "")
       setUnit(ingredient?.unit ?? "GRAM")
       setActive(ingredient?.active ?? true)
+      const cid = (
+        ingredient.ingredient_category_id ??
+        (ingredient as unknown as { categoryId?: number }).categoryId ??
+        ingredient.category?.id
+      )
+      setCategoryId(typeof cid === 'number' ? cid : undefined)
       setSelectedFile(null)
       setPreviewUrl(null)
       setRemoveCurrentImage(false)
@@ -36,7 +63,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       setDeltaError("")
       setLoading(false)
     }
-  }, [open, fetchCategories, ingredient])
+  }, [open])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -92,7 +119,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           name, 
           unit, 
           active, 
-          categoryId, 
+          categoryId: typeof categoryId === 'number' ? categoryId : originalCategoryId, 
           file: selectedFile || undefined,
           removeImage: removeCurrentImage
         })
@@ -102,7 +129,6 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       }
       onClose()
     } catch {
-      // Error handling is done in store
     } finally {
       setLoading(false)
     }
@@ -130,10 +156,9 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           <Label className="mb-1 block">Danh mục</Label>
           <select 
             className="w-full h-10 border rounded px-3" 
-            value={categoryId ?? ""} 
+            value={categoryId ?? originalCategoryId ?? ""} 
             onChange={(e)=> setCategoryId(e.target.value ? Number(e.target.value) : undefined)}
           >
-            <option value="">Giữ nguyên</option>
             {categories.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
@@ -186,7 +211,6 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
               <div className="relative">
                 <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
                   <img 
-                    key={`edit-${ingredient.id}-${previewUrl || ingredient.imgUrl || 'no-image'}`}
                     src={previewUrl || (removeCurrentImage ? undefined : ingredient.imgUrl)} 
                     alt={ingredient.name}
                     className="w-12 h-12 object-cover rounded" 
