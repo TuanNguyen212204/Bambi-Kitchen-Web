@@ -133,8 +133,15 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
         formData.append('file', new File([""], "empty", { type: "application/octet-stream" }))
       }
       
-      // Gửi đúng chuẩn multipart/form-data (không dùng params)
+      const ingredientParams = {
+        id: payload.id,
+        name: payload.name,
+        ...(typeof payload.categoryId === 'number' ? { categoryId: payload.categoryId } : {}),
+        ...(payload.unit ? { unit: payload.unit } : {}),
+        ...(typeof payload.active === 'boolean' ? { active: payload.active } : {}),
+      }
       await bambiApi.put(API_ENDPOINTS.API_INGREDIENTS, formData, {
+        params: { ingredient: ingredientParams },
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       

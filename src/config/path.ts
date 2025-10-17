@@ -33,6 +33,7 @@ export const PATHS = {
   ADMIN_FEEDBACK: "/admin/feedback",
   ADMIN_DISH_CATEGORIES: "/admin/dish-categories",
   ADMIN_DISH_TEMPLATES: "/admin/dish-templates",
+  ADMIN_INGREDIENT_CATEGORIES: "/admin/ingredient-categories",
   
   UNAUTHORIZED: "/unauthorized",
   UNAUTHENTICATED: "/unauthenticated",

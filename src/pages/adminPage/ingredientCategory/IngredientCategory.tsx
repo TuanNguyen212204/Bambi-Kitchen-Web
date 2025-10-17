@@ -4,11 +4,11 @@ import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/modal"
-import { useDishStore } from "@zustand/stores/dish"
+import { useIngredientStore } from "@zustand/stores/ingredients"
 
-export default function AdminDishCategoryPage() {
-  const { categories, fetchCategories, createCategory, updateCategory, removeCategory } = useDishStore()
-  const [openAdd, setOpenAdd] = useState(false)
+export default function AdminIngredientCategoryPage() {
+  const { categories, fetchCategories, createCategory, updateCategory, removeCategory } = useIngredientStore()
+  const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -20,14 +20,14 @@ export default function AdminDishCategoryPage() {
     if (!name.trim()) return
     if (editingId) await updateCategory({ id: editingId, name: name.trim(), description: description.trim() || undefined })
     else await createCategory({ name: name.trim(), description: description.trim() || undefined })
-    setOpenAdd(false); setEditingId(null); setName(""); setDescription("")
+    setOpen(false); setEditingId(null); setName(""); setDescription("")
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">
-        <h1 className="[font-family:'Inter-Bold',Helvetica] font-bold text-gray-800 text-[28px]">Danh mục món</h1>
-        <Button className="bg-orange-600 hover:bg-orange-700" onClick={()=> { setOpenAdd(true); setEditingId(null) }}>Thêm danh mục</Button>
+        <h1 className="[font-family:'Inter-Bold',Helvetica] font-bold text-gray-800 text-[28px]">Danh mục nguyên liệu</h1>
+        <Button className="bg-orange-600 hover:bg-orange-700" onClick={()=> { setOpen(true); setEditingId(null) }}>Thêm danh mục</Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -40,7 +40,7 @@ export default function AdminDishCategoryPage() {
                   {c.description && <div className="text-sm text-gray-600">{c.description}</div>}
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={()=> { setEditingId(c.id); setName(c.name); setDescription(c.description || ""); setOpenAdd(true) }}>Sửa</Button>
+                  <Button size="sm" variant="outline" onClick={()=> { setEditingId(c.id); setName(c.name); setDescription(c.description || ""); setOpen(true) }}>Sửa</Button>
                   <Button size="sm" variant="destructive" onClick={()=> setConfirm({ id: c.id, name: c.name })}>Xóa</Button>
                 </div>
               </div>
@@ -50,8 +50,8 @@ export default function AdminDishCategoryPage() {
       </div>
 
       <ReusableModal 
-        open={openAdd} 
-        onClose={()=> { setOpenAdd(false); setEditingId(null); setName(""); setDescription("") }} 
+        open={open} 
+        onClose={()=> { setOpen(false); setEditingId(null); setName(""); setDescription("") }} 
         title={editingId? "Sửa danh mục" : "Thêm danh mục"}
         size="xl"
         contentClassName="sm:max-w-[480px] md:max-w-[640px] lg:max-w-[800px] max-h-[80vh] overflow-y-auto"
@@ -67,7 +67,7 @@ export default function AdminDishCategoryPage() {
           </div>
         </ModalForm>
         <ModalActions 
-          onCancel={()=> { setOpenAdd(false); setEditingId(null); setName(""); setDescription("") }} 
+          onCancel={()=> { setOpen(false); setEditingId(null); setName(""); setDescription("") }} 
           onConfirm={submit}
           confirmText={editingId? "Lưu" : "Tạo"}
         />

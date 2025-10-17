@@ -6,7 +6,6 @@ import { Label } from "@components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select";
 import { NotificationSection } from "@components/admin/ingredient/NotificationSection";
 import AddIngredientModal from "@components/admin/ingredient/AddIngredientModal";
-import AddCategoryModal from "@components/admin/ingredient/AddCategoryModal";
 import EditIngredientModal from "@components/admin/ingredient/EditIngredientModal";
 import StockHistoryModal from "@components/admin/ingredient/StockHistoryModal";
 import { Grid3X3, List, Plus, Search, MoreVertical, Edit3, Trash2 as TrashIcon, Image as ImageIcon } from "lucide-react";
@@ -23,7 +22,6 @@ export const AdminIngredientsPage = () => {
   const store = useIngredientStore()
   const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, setStatusFilter, searchByName, selectedCategoryId, statusFilter, loading, filteredItems, viewMode, setViewMode, setSortBy, remove } = store
   const [openAdd, setOpenAdd] = useState(false)
-  const [openCategory, setOpenCategory] = useState(false)
   const [keyword, setKeyword] = useState("")
   const [editing, setEditing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; category?: unknown }>(null)
   const [stockHistory, setStockHistory] = useState<null | { id: number; name: string; unit?: string }>(null)
@@ -44,6 +42,14 @@ export const AdminIngredientsPage = () => {
   }, [refreshKey])
 
   const total = items.length
+  const now = new Date()
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const newThisWeek = items.filter((i: { created_at?: string; createdAt?: string }) => {
+    const created = i?.created_at || i?.createdAt
+    if (!created) return false
+    const d = new Date(created)
+    return !isNaN(d.getTime()) && d >= sevenDaysAgo && d <= now
+  }).length
   const activeCount = items.filter((i: { active?: boolean }) => i.active ?? true).length
   const lowCount = items.filter((i: { stockStatus?: string }) => i.stockStatus === 'low').length
   const outCount = items.filter((i: { stockStatus?: string }) => i.stockStatus === 'out').length
@@ -52,7 +58,7 @@ export const AdminIngredientsPage = () => {
     {
       title: "Tổng nguyên liệu",
       value: String(total),
-      subtitle: total > 0 ? `+${Math.max(0, 0)} loại mới tuần này` : "",
+      subtitle: total > 0 ? `+${newThisWeek} loại mới tuần này` : "",
       icon: "📦",
       iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
@@ -129,16 +135,12 @@ export const AdminIngredientsPage = () => {
 
       <section className="w-full bg-white rounded-xl border border-solid border-gray-200 shadow-[0px_1px_3px_#0000001a] overflow-hidden">
         <div className="bg-gradient-to-r from-orange-100 to-amber-100 p-6">
-          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4">
             <h2 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-lg leading-[27px]">Quản lý Nguyên liệu</h2>
             <div className="flex gap-2">
               <Button className="bg-orange-600 hover:bg-orange-700 text-white h-auto px-3 py-1 text-sm" onClick={()=> setOpenAdd(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 <span className="[font-family:'Arial-Narrow',Helvetica] text-sm">Thêm nguyên liệu mới</span>
-              </Button>
-              <Button className="bg-gray-600 hover:bg-gray-700 text-white h-auto px-3 py-1 text-sm" onClick={()=> setOpenCategory(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                <span className="[font-family:'Arial-Narrow',Helvetica] text-sm">Thêm danh mục</span>
               </Button>
             </div>
           </div>
@@ -202,7 +204,7 @@ export const AdminIngredientsPage = () => {
         </div>
 
         <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4">
             <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-lg leading-[27px]">Danh sách Nguyên liệu ({filteredItems().length} loại)</h3>
             <div className="flex gap-2">
               <Button className={`h-auto ${viewMode==='grid'?'bg-orange-600 text-white':'bg-white text-black'} hover:bg-orange-700 border border-solid px-3 py-1 text-sm`} size="sm" onClick={()=> setViewMode('grid')}>
@@ -335,7 +337,6 @@ export const AdminIngredientsPage = () => {
               name: editing.name,
               unit: editing.unit,
               active: editing.active,
-              // ưu tiên categoryId đã chuẩn hóa từ store, fallback ingredient_category_id
               ingredient_category_id: typeof maybeAny.categoryId === 'number' ? maybeAny.categoryId : (typeof maybeAny.ingredient_category_id === 'number' ? maybeAny.ingredient_category_id : undefined),
               categoryId: typeof maybeAny.categoryId === 'number' ? maybeAny.categoryId : undefined,
               category: mappedCategory ?? null,
@@ -348,7 +349,6 @@ export const AdminIngredientsPage = () => {
         <StockHistoryModal open={true} onClose={()=> setStockHistory(null)} ingredient={stockHistory} />
       )}
       <AddIngredientModal open={openAdd} onClose={()=> setOpenAdd(false)} />
-      <AddCategoryModal open={openCategory} onClose={()=> setOpenCategory(false)} />
       {deleting && (
         <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50`}>
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">

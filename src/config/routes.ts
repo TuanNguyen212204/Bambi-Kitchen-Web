@@ -23,6 +23,7 @@ const AdminAccounts = lazy(() => import("@pages/adminPage/accountManagement"))
 const AdminIngredientsSold = lazy(() => import("@pages/adminPage/ingredientManagement/ingredientsSold/IngredientSold"))
 const AdminDishCategory = lazy(() => import("@pages/adminPage/dishCategory"))
 const AdminDishTemplate = lazy(() => import("@pages/adminPage/dishTemplate"))
+const AdminIngredientCategory = lazy(() => import("@pages/adminPage/ingredientCategory"))
 // const OrderBuilder = lazy(() => import("@/pages/customer/OrderBuilder"))
 // const OrderHistory = lazy(() => import("@/pages/customer/OrderHistory"))
 // const QuickOrder = lazy(() => import("@/pages/customer/QuickOrder"))
@@ -205,6 +206,14 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     path: "dish-categories",
     component: AdminDishCategory,
     label: "Dish Categories",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "ingredient-categories",
+    component: AdminIngredientCategory,
+    label: "Ingredient Categories",
     protected: true,
     role: [ROLES.ADMIN],
     layout: "admin",
