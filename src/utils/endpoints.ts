@@ -1,8 +1,8 @@
 export const API_ENDPOINTS = {
-  AUTH_LOGIN: "/login",
+  AUTH_LOGIN: "/api/user/login",
   AUTH_REGISTER: "/api/account/register",
   AUTH_ME: "/api/user/me",
-  AUTH_GOOGLE: "/api/user/google",
+  AUTH_GOOGLE: "/api/user/login-with-google",
   AUTH_CHECK_EMAIL: "/api/account", 
   API_ACCOUNTS: "/api/account",
   API_ACCOUNT_BY_ID: (id: number) => `/api/account/${id}`,

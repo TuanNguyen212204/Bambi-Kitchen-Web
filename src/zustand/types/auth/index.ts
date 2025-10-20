@@ -10,9 +10,11 @@ export interface User {
 }
 
 export interface UserMeResponse {
-  userId: number
+  id: number
   name: string
-  role: Array<{ authority: string }>
+  mail?: string
+  phone?: string
+  role: "USER" | "STAFF" | "ADMIN"
 }
 
 export interface LoginRequest {
@@ -68,11 +70,12 @@ export interface SessionSlice {
   isAuthenticated: boolean
   loading: boolean
   error: string | null
+  user?: User | null
   
   setSession: (token: string | null, refreshToken?: string | null) => void
   clearSession: () => void
   login: (phone: string, password: string) => Promise<void>
-  register: (userData: any) => Promise<void>
+  register: (userData: RegisterRequest) => Promise<void>
   logout: () => void
   verifyAuth: () => Promise<void>
   forgotPassword: (email: string) => Promise<void>
