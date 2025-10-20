@@ -1,4 +1,4 @@
-import type { IngredientCategory } from "@models/ingredient/ingredient"
+import type { IngredientCategoryType } from "@models/ingredient/ingredient"
 export interface IngredientTransaction {
   id: number
   ingredient_id: number
@@ -36,5 +36,5 @@ export interface InventoryValuation {
   cost_of_goods_available: number
   inventory_turnover: number
   days_inventory_outstanding: number
-  by_category: Record<IngredientCategory, number>
+  by_category: Record<IngredientCategoryType, number>
 }

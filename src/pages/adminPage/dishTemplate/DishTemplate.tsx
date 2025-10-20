@@ -31,6 +31,25 @@ export default function AdminDishTemplatePage() {
 
   const upsert = async () => {
     if (!editing) return
+    
+    if (!editing.name.trim()) {
+      const { toast } = await import("sonner")
+      toast.error("Vui lòng nhập tên mẫu tô")
+      return
+    }
+    
+    if (editing.priceRatio <= 0) {
+      const { toast } = await import("sonner")
+      toast.error("Tỷ lệ giá phải lớn hơn 0")
+      return
+    }
+    
+    if (editing.quantityRatio <= 0) {
+      const { toast } = await import("sonner")
+      toast.error("Tỷ lệ số lượng phải lớn hơn 0")
+      return
+    }
+    
     setLoading(true)
     try {
       await upsertTemplate(editing)
@@ -180,7 +199,9 @@ export default function AdminDishTemplatePage() {
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                   placeholder="Nhập tên hiển thị..."
                   disabled={loading}
+                  maxLength={50}
                 />
+                <p className="text-xs text-gray-500 mt-1">{editing.name.length}/50 ký tự</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -190,11 +211,13 @@ export default function AdminDishTemplatePage() {
                   <Input 
                     type="number" 
                     step="0.1"
+                    min="0.1"
                     value={editing.priceRatio} 
                     onChange={(e) => setEditing({ ...editing, priceRatio: Number(e.target.value) })}
                     placeholder="1.0"
                     disabled={loading}
                   />
+                  <p className="text-xs text-gray-500 mt-1">Tỷ lệ giá so với mẫu chuẩn</p>
                 </div>
                 <div>
                   <Label className="mb-2 block text-sm font-medium text-gray-700">
@@ -203,11 +226,13 @@ export default function AdminDishTemplatePage() {
                   <Input 
                     type="number" 
                     step="0.1"
+                    min="0.1"
                     value={editing.quantityRatio} 
                     onChange={(e) => setEditing({ ...editing, quantityRatio: Number(e.target.value) })}
                     placeholder="1.0"
                     disabled={loading}
                   />
+                  <p className="text-xs text-gray-500 mt-1">Tỷ lệ số lượng so với mẫu chuẩn</p>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
@@ -217,11 +242,13 @@ export default function AdminDishTemplatePage() {
                   </Label>
                   <Input 
                     type="number" 
+                    min="0"
                     value={editing.max_Carb || 0} 
                     onChange={(e) => setEditing({ ...editing, max_Carb: Number(e.target.value) })}
                     placeholder="0"
                     disabled={loading}
                   />
+                  <p className="text-xs text-gray-500 mt-1">Số lượng tối đa (tùy chọn)</p>
                 </div>
                 <div>
                   <Label className="mb-2 block text-sm font-medium text-gray-700">
@@ -229,11 +256,13 @@ export default function AdminDishTemplatePage() {
                   </Label>
                   <Input 
                     type="number" 
+                    min="0"
                     value={editing.max_Protein || 0} 
                     onChange={(e) => setEditing({ ...editing, max_Protein: Number(e.target.value) })}
                     placeholder="0"
                     disabled={loading}
                   />
+                  <p className="text-xs text-gray-500 mt-1">Số lượng tối đa (tùy chọn)</p>
                 </div>
                 <div>
                   <Label className="mb-2 block text-sm font-medium text-gray-700">
@@ -241,11 +270,13 @@ export default function AdminDishTemplatePage() {
                   </Label>
                   <Input 
                     type="number" 
+                    min="0"
                     value={editing.max_Vegetable || 0} 
                     onChange={(e) => setEditing({ ...editing, max_Vegetable: Number(e.target.value) })}
                     placeholder="0"
                     disabled={loading}
                   />
+                  <p className="text-xs text-gray-500 mt-1">Số lượng tối đa (tùy chọn)</p>
                 </div>
               </div>
             </div>

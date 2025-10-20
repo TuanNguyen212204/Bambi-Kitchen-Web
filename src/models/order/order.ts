@@ -1,4 +1,4 @@
-import type { IngredientCategory } from "@models/ingredient/ingredient"
+import type { IngredientCategoryType } from "@models/ingredient/ingredient"
 import type { PaymentMethod } from "@models/payment/payment"
 
 
@@ -68,7 +68,7 @@ export interface OrderIngredient {
   order_item_id?: number
   ingredient_id: number
   ingredient_name: string
-  category: IngredientCategory
+  category: IngredientCategoryType
   quantity: number
   unit: string
   price_per_unit: number

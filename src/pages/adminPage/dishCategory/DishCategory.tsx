@@ -15,6 +15,7 @@ export default function AdminDishCategoryPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [confirm, setConfirm] = useState<{ id: number; name: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
 
   useEffect(() => { 
     const loadCategories = async () => {
@@ -29,7 +30,22 @@ export default function AdminDishCategoryPage() {
   }, [fetchCategories])
 
   const submit = async () => {
-    if (!name.trim()) return
+    if (!name.trim()) {
+      const { toast } = await import("sonner")
+      toast.error("Vui lòng nhập tên danh mục")
+      return
+    }
+    
+    const isDuplicate = categories.some(cat => 
+      cat.name.toLowerCase() === name.trim().toLowerCase() && cat.id !== editingId
+    )
+    
+    if (isDuplicate) {
+      const { toast } = await import("sonner")
+      toast.error("Tên danh mục đã tồn tại")
+      return
+    }
+    
     setLoading(true)
     try {
       if (editingId) {
@@ -63,6 +79,11 @@ export default function AdminDishCategoryPage() {
     }
   }
 
+  const filteredCategories = categories.filter(category => 
+    category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">
@@ -79,6 +100,23 @@ export default function AdminDishCategoryPage() {
         </Button>
       </div>
 
+      <div className="bg-white p-4 rounded-lg border">
+        <div className="flex items-center space-x-4">
+          <div className="flex-1">
+            <Label className="text-sm font-medium text-gray-700 mb-2 block">Tìm kiếm danh mục</Label>
+            <Input
+              placeholder="Nhập tên hoặc mô tả danh mục..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div className="text-sm text-gray-500">
+            {filteredCategories.length} / {categories.length} danh mục
+          </div>
+        </div>
+      </div>
+
       {loading && categories.length === 0 ? (
         <div className="flex justify-center items-center py-12">
           <div className="text-center">
@@ -86,15 +124,22 @@ export default function AdminDishCategoryPage() {
             <p className="text-gray-600">Đang tải danh mục...</p>
           </div>
         </div>
-      ) : categories.length === 0 ? (
+      ) : filteredCategories.length === 0 ? (
         <div className="text-center py-12">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có danh mục nào</h3>
-          <p className="text-gray-600 mb-4">Bắt đầu bằng cách tạo danh mục món ăn đầu tiên</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {searchTerm ? "Không tìm thấy danh mục" : "Chưa có danh mục nào"}
+          </h3>
+          <p className="text-gray-600 mb-4">
+            {searchTerm 
+              ? `Không có danh mục nào khớp với "${searchTerm}"`
+              : "Bắt đầu bằng cách tạo danh mục món ăn đầu tiên"
+            }
+          </p>
           <Button 
             className="bg-orange-600 hover:bg-orange-700" 
             onClick={() => { setOpenAdd(true); setEditingId(null); setName(""); setDescription("") }}
@@ -104,14 +149,21 @@ export default function AdminDishCategoryPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((c) => (
+          {filteredCategories.map((c) => (
             <Card key={c.id} className="border hover:shadow-md transition-shadow duration-200">
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg text-gray-900 mb-1">{c.name}</h3>
+                    <div className="flex items-center mb-2">
+                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                      </div>
+                      <h3 className="font-semibold text-lg text-gray-900">{c.name}</h3>
+                    </div>
                     {c.description && (
-                      <p className="text-sm text-gray-600 line-clamp-2">{c.description}</p>
+                      <p className="text-sm text-gray-600 line-clamp-2 ml-11">{c.description}</p>
                     )}
                   </div>
                 </div>
@@ -166,19 +218,24 @@ export default function AdminDishCategoryPage() {
                 placeholder="Nhập tên danh mục..."
                 disabled={loading}
                 className="w-full"
+                maxLength={100}
               />
+              <p className="text-xs text-gray-500 mt-1">{name.length}/100 ký tự</p>
             </div>
             <div>
               <Label className="mb-2 block text-sm font-medium text-gray-700">
                 Mô tả
               </Label>
-              <Input 
+              <textarea 
                 value={description} 
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Nhập mô tả cho danh mục (tùy chọn)..."
                 disabled={loading}
-                className="w-full"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                rows={3}
+                maxLength={500}
               />
+              <p className="text-xs text-gray-500 mt-1">{description.length}/500 ký tự</p>
             </div>
           </div>
         </ModalForm>

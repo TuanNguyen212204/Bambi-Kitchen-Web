@@ -4,6 +4,12 @@ export interface DishCategory {
   description?: string
 }
 
+export interface IngredientCategory {
+  id: number
+  name: string
+  description?: string
+}
+
 export interface IngredientCategoryEntity {
   id: number
   name: string
