@@ -1,5 +1,6 @@
 import type { StateCreator } from "zustand"
-import type { IngredientCategorySlice, IngredientCategory } from "@/zustand/types"
+import type { IngredientCategorySlice } from "@/zustand/types"
+import type { IngredientCategory } from "@models/category/category"
 
 export const createIngredientCategorySlice: StateCreator<IngredientCategorySlice, [], [], IngredientCategorySlice> = (set) => ({
   categories: [],
