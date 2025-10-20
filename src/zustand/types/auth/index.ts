@@ -1,3 +1,4 @@
+import type { RegisterPayload } from "@models/account/user"
 export interface User {
   id: number
   name: string
@@ -75,7 +76,7 @@ export interface SessionSlice {
   setSession: (token: string | null, refreshToken?: string | null) => void
   clearSession: () => void
   login: (phone: string, password: string) => Promise<void>
-  register: (userData: RegisterRequest) => Promise<void>
+  register: (userData: RegisterRequest | RegisterPayload) => Promise<void>
   logout: () => void
   verifyAuth: () => Promise<void>
   forgotPassword: (email: string) => Promise<void>
