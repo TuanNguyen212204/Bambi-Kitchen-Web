@@ -160,9 +160,7 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
   remove: async (id) => {
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
-      await bambiApi.delete(API_ENDPOINTS.API_INGREDIENTS, {
-        params: { ingredient: { id } }
-      })
+      await bambiApi.delete(`${API_ENDPOINTS.API_INGREDIENTS}/${id}`)
       
       // Refresh the ingredient list after deleting
       const { useIngredientStore } = await import("@zustand/stores/ingredients")
