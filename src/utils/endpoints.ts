@@ -29,8 +29,8 @@ export const API_ENDPOINTS = {
   API_DISH_BY_ID: (id: number) => `/api/dish/${id}`,
   API_DISH_CATEGORIES: "/api/dish-category",
   API_DISH_CATEGORY_BY_ID: (id: number) => `/api/dish-category/${id}`,
-  API_DISH_TEMPLATES: "/api/dish-templates",
-  API_DISH_TEMPLATE_BY_SIZE: (sizeCode: "S"|"M"|"L") => `/api/dish-templates/${sizeCode}`,
+  API_DISH_TEMPLATES: "/api/dish-template",
+  API_DISH_TEMPLATE_BY_SIZE: (sizeCode: "S"|"M"|"L") => `/api/dish-template/${sizeCode}`,
 
   API_DISCOUNTS: "/api/discount",
   API_DISCOUNT_BY_ID: (id: number) => `/api/discount/${id}`,
