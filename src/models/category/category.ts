@@ -2,13 +2,6 @@ export interface DishCategory {
   id: number
   name: string
   description?: string
-  icon?: string
-  order: number
-  is_active: boolean
-  dish_count: number
-  featured?: boolean
-  color?: string
-  created_at?: string
 }
 
 export interface IngredientCategoryEntity {
@@ -30,18 +23,15 @@ export type IngredientCategoryType =
   | "soup"
   | "dessert"
 
-export interface CreateDishCategoryPayload {
+export interface DishCategoryCreateRequest {
   name: string
   description?: string
-  icon?: string
-  order?: number
-  featured?: boolean
-  color?: string
 }
 
-export interface UpdateDishCategoryPayload extends Partial<CreateDishCategoryPayload> {
+export interface DishCategoryUpdateRequest {
   id: number
-  is_active?: boolean
+  name: string
+  description?: string
 }
 
 export interface CategoryAnalytics {
