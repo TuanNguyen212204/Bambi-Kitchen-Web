@@ -27,6 +27,9 @@ export const API_ENDPOINTS = {
 
   API_DISHES: "/api/dish",
   API_DISH_BY_ID: (id: number) => `/api/dish/${id}`,
+  API_DISH_TOGGLE_PUBLIC: (id: number) => `/api/dish/toggle-public/${id}`,
+  API_DISH_TOGGLE_ACTIVE: (id: number) => `/api/dish/toggle-active/${id}`,
+  API_DISH_SAVE_CUSTOM: "/api/dish/save-custom-dish",
   API_DISH_CATEGORIES: "/api/dish-category",
   API_DISH_CATEGORY_BY_ID: (id: number) => `/api/dish-category/${id}`,
   API_DISH_TEMPLATES: "/api/dish-template",

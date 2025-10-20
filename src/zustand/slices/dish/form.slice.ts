@@ -16,6 +16,7 @@ export interface DishFormPayload {
 
 export interface DishFormSlice {
   createOrUpdate: (payload: DishFormPayload) => Promise<void>
+  saveCustomDish: (id: number, isPublic: boolean) => Promise<void>
 }
 
 export const createDishFormSlice: StateCreator<
@@ -25,7 +26,12 @@ export const createDishFormSlice: StateCreator<
   DishFormSlice
 > = () => ({
   createOrUpdate: async (payload: DishFormPayload) => {
-    await bambiApi.post(API_ENDPOINTS.API_DISHES, payload)
+    // API v3: POST /api/dish với DishCreateRequest truyền qua query
+    await bambiApi.post(API_ENDPOINTS.API_DISHES, undefined, { params: payload })
+  },
+  saveCustomDish: async (id: number, isPublic: boolean) => {
+    // API v3: PUT /api/dish/save-custom-dish?id=..&isPublic=..
+    await bambiApi.put(API_ENDPOINTS.API_DISH_SAVE_CUSTOM, undefined, { params: { id, isPublic } })
   },
 })
 
