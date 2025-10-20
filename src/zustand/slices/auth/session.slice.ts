@@ -25,45 +25,27 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
     
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
-      const formData = new FormData()
-      formData.append('username', phone)
-      formData.append('password', password)
-      
-      await bambiApi.post<unknown>(
+      const loginRes = await bambiApi.post<string>(
         API_ENDPOINTS.AUTH_LOGIN,
-        formData,
-        { 
-          skipAuth: true,
-          headers: {},
-          // withCredentials: true
-        }
+        { username: phone, password },
+        { skipAuth: true }
       )
-      
-      set({
-        token: "session-based",
-        refreshToken: null,
-        isAuthenticated: true,
-        loading: false,
-      })
-       await new Promise(resolve => setTimeout(resolve, 100))
-       console.log("[LOGIN] Loading user data...")
-       const userResponse = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME)
-       const userMe = userResponse.data
-       
-       const roleAuthority = userMe.role?.[0]?.authority?.replace("ROLE_", "") || "USER"
-       const user = {
-         id: userMe.userId,
-         name: userMe.name,
-         role: roleAuthority as "USER" | "ADMIN" | "STAFF",
-         email: undefined, 
-         role_id: userMe.role?.[0]?.authority === "ROLE_ADMIN" ? 1 : 
-                  userMe.role?.[0]?.authority === "ROLE_STAFF" ? 3 : 4
-       }
-       
-       console.log("[LOGIN] Setting user data:", user)
-       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-       set({ user } as any)
-       console.log("[LOGIN] User data set successfully")
+
+      const accessToken = loginRes.data
+      set({ token: accessToken, refreshToken: null, isAuthenticated: true, loading: false })
+
+      const userResponse = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME)
+      const userMe = userResponse.data
+      const normalizedRole = (userMe.role || "USER") as "USER" | "ADMIN" | "STAFF"
+      const user = {
+        id: userMe.id,
+        name: userMe.name,
+        role: normalizedRole,
+        email: userMe.mail,
+        role_id: normalizedRole === "ADMIN" ? 1 : normalizedRole === "STAFF" ? 3 : 4,
+      }
+
+      set({ user } as any)
 
       const { toast } = await import("sonner")
       toast.success("Đăng nhập thành công!")
@@ -132,7 +114,6 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       isAuthenticated: false,
       loading: false,
       error: null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
 
     localStorage.removeItem("access_token")
