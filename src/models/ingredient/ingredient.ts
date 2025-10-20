@@ -4,14 +4,14 @@ export interface Ingredient {
   ingredient_category_id: number
   unit: string
   status: IngredientStatus
-  category: IngredientCategory
+  category: IngredientCategoryType
   imgUrl?: string
   store_id: number
   created_at?: string
   updated_at?: string
 }
 
-export type IngredientCategory = 
+export type IngredientCategoryType = 
   | "rice"
   | "protein"
   | "vegetables"
@@ -43,7 +43,7 @@ export interface PricedIngredient extends Ingredient {
 
 export interface CreateIngredientPayload {
   name: string
-  category: IngredientCategory
+  category: IngredientCategoryType
   unit: string
   status?: IngredientStatus
   price_per_unit: number

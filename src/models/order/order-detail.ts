@@ -1,5 +1,5 @@
 import type { Dish } from "@models/dish/dish"
-import type { IngredientCategory } from "@models/ingredient/ingredient"
+import type { IngredientCategoryType } from "@models/ingredient/ingredient"
 export interface OrderDetail {
   id: number
   dish_id: number
@@ -15,7 +15,7 @@ export interface CustomOrderItem {
   order_detail_id?: number
   ingredient_id: number
   ingredient_name: string
-  category: IngredientCategory
+  category: IngredientCategoryType
   quantity: number
   unit: string
   price_per_unit: number
