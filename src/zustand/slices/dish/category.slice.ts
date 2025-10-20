@@ -1,11 +1,6 @@
 import type { StateCreator } from "zustand"
 import { bambiApi, API_ENDPOINTS } from "@/utils/api"
-
-export interface DishCategory {
-  id: number
-  name: string
-  description?: string
-}
+import type { DishCategory, DishCategoryCreateRequest, DishCategoryUpdateRequest } from "@/models/category/category"
 
 export interface DishCategoryForm {
   id?: number
@@ -33,11 +28,20 @@ export const createDishCategorySlice: StateCreator<
     set({ categories: data })
   },
   createCategory: async (payload) => {
-    const { data } = await bambiApi.post<DishCategory>(API_ENDPOINTS.API_DISH_CATEGORIES, payload)
+    const createRequest: DishCategoryCreateRequest = {
+      name: payload.name,
+      description: payload.description
+    }
+    const { data } = await bambiApi.post<DishCategory>(API_ENDPOINTS.API_DISH_CATEGORIES, createRequest)
     set((s) => ({ categories: [data, ...s.categories] }))
   },
   updateCategory: async (payload) => {
-    const { data } = await bambiApi.put<DishCategory>(API_ENDPOINTS.API_DISH_CATEGORIES, payload)
+    const updateRequest: DishCategoryUpdateRequest = {
+      id: payload.id!,
+      name: payload.name,
+      description: payload.description
+    }
+    const { data } = await bambiApi.put<DishCategory>(API_ENDPOINTS.API_DISH_CATEGORIES, updateRequest)
     set((s) => ({ categories: s.categories.map((c) => (c.id === data.id ? data : c)) }))
   },
   removeCategory: async (id: number) => {
