@@ -4,6 +4,7 @@ export const PATHS = {
   FORGOT_PASSWORD: "/forgot-password",
   CONFIRM_PASSWORD: "/confirm-password",
   RESET_PASSWORD: "/reset-password",
+  OAUTH_CALLBACK: "/oauth2/callback",
   
   HOME: "/",
   ABOUT: "/about",

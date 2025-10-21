@@ -7,6 +7,7 @@ export * from "@models/notification"
 export * from "@models/nutrition"
 export * from "@models/transaction"
 export * from "@models/category"
+export type { IngredientCategory } from "@models/category/category"
 export * from "@models/store"
 export * from "@models/shared"
 

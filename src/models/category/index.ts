@@ -1,6 +1,6 @@
 export * from "@models/category/category"
 export type { 
-  DishCategory, IngredientCategoryEntity,
-  IngredientCategoryType, CreateDishCategoryPayload,
-  UpdateDishCategoryPayload, CategoryAnalytics 
+  DishCategory, IngredientCategory, IngredientCategoryEntity,
+  IngredientCategoryType, DishCategoryCreateRequest,
+  DishCategoryUpdateRequest, CategoryAnalytics 
 } from "@models/category/category"

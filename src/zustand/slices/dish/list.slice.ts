@@ -18,6 +18,8 @@ export interface DishListSlice {
   error?: string
   fetchAll: () => Promise<void>
   remove: (id: number) => Promise<void>
+  togglePublic: (id: number) => Promise<void>
+  toggleActive: (id: number) => Promise<void>
 }
 
 export const createDishListSlice: StateCreator<
@@ -44,6 +46,26 @@ export const createDishListSlice: StateCreator<
     try {
       set((s) => ({ items: s.items.filter((x) => x.id !== id) }))
     } catch {
+    }
+  },
+
+  togglePublic: async (id: number) => {
+    try {
+      const { data } = await bambiApi.get<boolean>(API_ENDPOINTS.API_DISH_TOGGLE_PUBLIC(id))
+      set((s) => ({ items: s.items.map((d) => (d.id === id ? { ...d, public: data } : d)) }))
+    } catch {
+      const { toast } = await import("sonner")
+      toast.error("Đổi trạng thái công khai thất bại")
+    }
+  },
+
+  toggleActive: async (id: number) => {
+    try {
+      const { data } = await bambiApi.get<boolean>(API_ENDPOINTS.API_DISH_TOGGLE_ACTIVE(id))
+      set((s) => ({ items: s.items.map((d) => (d.id === id ? { ...d, active: data } : d)) }))
+    } catch {
+      const { toast } = await import("sonner")
+      toast.error("Đổi trạng thái hoạt động thất bại")
     }
   },
 })

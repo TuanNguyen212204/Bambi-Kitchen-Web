@@ -1,10 +1,9 @@
-export * from "@models/ingredient/ingredient"
-export * from "@models/ingredient/stock"
 export type { 
-  Ingredient, IngredientCategory, 
+  Ingredient,
   IngredientStatus, PricedIngredient,
   CreateIngredientPayload, UpdateIngredientPayload 
 } from "@models/ingredient/ingredient"
+export * from "@models/ingredient/stock"
 
 export type { 
   IngredientStock, StockTransaction,
