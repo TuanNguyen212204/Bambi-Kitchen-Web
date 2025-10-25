@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import Slider from "react-slick";
-import { FaBookOpen, FaUserMd, FaShieldAlt } from "react-icons/fa";
+import { BookOpen, User, Shield } from "lucide-react";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
@@ -101,7 +101,7 @@ const Hero = () => {
           <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
-                <FaBookOpen className="text-[#FC8A06] text-xl" />
+                <BookOpen className="text-[#FC8A06] text-xl" />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Món ăn đa dạng</h3>
             </div>
@@ -115,7 +115,7 @@ const Hero = () => {
           <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
-                <FaShieldAlt className="text-[#FC8A06] text-xl" />
+                <Shield className="text-[#FC8A06] text-xl" />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Chất lượng cao</h3>
             </div>
@@ -129,7 +129,7 @@ const Hero = () => {
           <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
-                <FaUserMd className="text-[#FC8A06] text-xl" />
+                <User className="text-[#FC8A06] text-xl" />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Giao hàng nhanh</h3>
             </div>

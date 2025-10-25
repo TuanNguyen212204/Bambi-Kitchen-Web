@@ -24,6 +24,9 @@ export default function Unauthenticated() {
           <Button variant="outline" asChild className="w-full">
             <Link to={PATHS.REGISTER}>Tạo tài khoản mới</Link>
           </Button>
+          <Button variant="outline" asChild className="w-full">
+            <Link to={PATHS.HOME}>Về trang chủ</Link>
+          </Button>
           <div className="text-xs text-center text-muted-foreground">
             Đặt món ăn healthy với AI cá nhân hóa • Hệ thống quản lý bếp thông minh
           </div>

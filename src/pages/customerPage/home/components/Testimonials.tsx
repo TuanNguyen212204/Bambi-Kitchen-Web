@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaQuoteLeft, FaStar, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { Quote, Star, ChevronLeft, ChevronRight } from "lucide-react";
 
 // Types
 interface Testimonial {
@@ -79,7 +79,7 @@ const TestimonialCard: React.FC<{ testimonial: Testimonial }> = ({ testimonial }
     const stars = [];
     for (let i = 0; i < 5; i++) {
       stars.push(
-        <FaStar
+        <Star
           key={i}
           className={`w-4 h-4 ${
             i < rating ? 'text-yellow-400' : 'text-gray-300'
@@ -110,7 +110,7 @@ const TestimonialCard: React.FC<{ testimonial: Testimonial }> = ({ testimonial }
       </div>
       
       <div className="relative">
-        <FaQuoteLeft className="absolute -top-2 -left-2 text-orange-200 text-2xl" />
+        <Quote className="absolute -top-2 -left-2 text-orange-200 text-2xl" />
         <p className="text-gray-700 italic pl-6">{testimonial.comment}</p>
       </div>
     </div>
@@ -153,14 +153,14 @@ const Testimonials: React.FC<TestimonialsProps> = ({ testimonials = mockTestimon
             onClick={prevTestimonials}
             className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-shadow"
           >
-            <FaChevronLeft className="w-5 h-5 text-gray-600" />
+            <ChevronLeft className="w-5 h-5 text-gray-600" />
           </button>
           
           <button
             onClick={nextTestimonials}
             className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-shadow"
           >
-            <FaChevronRight className="w-5 h-5 text-gray-600" />
+            <ChevronRight className="w-5 h-5 text-gray-600" />
           </button>
 
           {/* Testimonials Grid */}
