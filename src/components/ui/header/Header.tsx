@@ -6,9 +6,12 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import logo from "@assets/logo.png";
 import { PATHS } from "@config/path";
 import { ROLES } from "@config/routes";
+import NotificationIcon from "@/components/ui/notification/NotificationIcon";
+import NotificationDropdown from "@/components/ui/notification/NotificationDropdown";
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuthStore();
   const navigate = useNavigate();
   const toggleMenu = () => setMenuOpen((prev) => !prev);
@@ -47,6 +50,17 @@ const Header = () => {
             </button>
             <Badge className="absolute -top-1 -right-1 w-5 h-5 bg-[#ea6d27] text-white p-0 flex items-center justify-center">2</Badge>
           </div>
+          {isAuthenticated && (
+            <div className="relative">
+              <NotificationIcon 
+                onClick={() => setNotificationOpen(!notificationOpen)}
+              />
+              <NotificationDropdown 
+                isOpen={notificationOpen}
+                onClose={() => setNotificationOpen(false)}
+              />
+            </div>
+          )}
           <div className="relative">
             {isAuthenticated ? (
               <>

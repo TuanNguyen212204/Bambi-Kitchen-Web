@@ -8,6 +8,7 @@ import { NotificationSection } from "@components/admin/ingredient/NotificationSe
 import AddIngredientModal from "@components/admin/ingredient/AddIngredientModal";
 import EditIngredientModal from "@components/admin/ingredient/EditIngredientModal";
 import StockHistoryModal from "@components/admin/ingredient/StockHistoryModal";
+import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal";
 import { Grid3X3, List, Plus, Search, MoreVertical, Edit3, Trash2 as TrashIcon, Image as ImageIcon } from "lucide-react";
 import { useIngredientStore } from "@zustand/stores/ingredients";
 import { useEffect, useState, useMemo } from "react";
@@ -349,30 +350,23 @@ export const AdminIngredientsPage = () => {
         <StockHistoryModal open={true} onClose={()=> setStockHistory(null)} ingredient={stockHistory} />
       )}
       <AddIngredientModal open={openAdd} onClose={()=> setOpenAdd(false)} />
-      {deleting && (
-        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50`}>
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                <TrashIcon className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
-                <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
-              </div>
-            </div>
-            <div className="mb-6">
-              <p className="text-gray-700">
-                Bạn có chắc chắn muốn xóa nguyên liệu <span className="font-semibold">"{deleting.name}"</span>?
-              </p>
-            </div>
-            <div className="flex justify-end space-x-3">
-              <Button variant="outline" onClick={()=> setDeleting(null)}>Hủy</Button>
-              <Button className="bg-red-600 hover:bg-red-700" onClick={()=> { remove(deleting.id); setDeleting(null); }}>Xóa</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={async () => {
+          if (deleting) {
+            try {
+              await remove(deleting.id);
+              setDeleting(null);
+            } catch (error) {
+              console.error("Error deleting ingredient:", error);
+            }
+          }
+        }}
+        title="Xác nhận xóa nguyên liệu"
+        itemName={deleting?.name || 'Không có tên'}
+        itemType="nguyên liệu"
+      />
     </div>
   );
 };

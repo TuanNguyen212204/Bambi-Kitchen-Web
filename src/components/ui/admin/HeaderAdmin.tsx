@@ -5,9 +5,12 @@ import logo from "@/assets/logo.png";
 import { useAuthStore } from "@/zustand/stores/auth";
 import { useNavigate } from "react-router-dom";
 import { PATHS } from "@config/path";
+import NotificationIcon from "@/components/ui/notification/NotificationIcon";
+import NotificationDropdown from "@/components/ui/notification/NotificationDropdown";
 
 const HeaderAdmin = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
@@ -40,6 +43,16 @@ const HeaderAdmin = () => {
         <div className="flex items-center gap-4 relative">
           <div className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-800 text-sm text-right tracking-[0] leading-[21px] whitespace-nowrap">
             Xin chào, {user?.name ?? "Admin"}
+          </div>
+
+          <div className="relative">
+            <NotificationIcon 
+              onClick={() => setNotificationOpen(!notificationOpen)}
+            />
+            <NotificationDropdown 
+              isOpen={notificationOpen}
+              onClose={() => setNotificationOpen(false)}
+            />
           </div>
 
           <button
