@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
 import Slider from "react-slick";
-import { FaBookOpen, FaUserMd, FaShieldAlt } from "react-icons/fa";
+import { BookOpen, User, Shield } from "lucide-react";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 const ImageList = [
   {
     id: 1,
-    img: "https://i.pinimg.com/1200x/af/7d/8c/af7d8c1815f9b0ea8fb0698e091e7d69.jpg",
+    img: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1332&q=80",
     title: "🍽️ Chào mừng đến với Bambi Kitchen",
     description: "Khám phá những món ăn ngon nhất với nguyên liệu tươi ngon và chế biến cẩn thận",
     buttonText: "Xem Menu",
@@ -15,7 +15,7 @@ const ImageList = [
   },
   {
     id: 2,
-    img: "https://plus.unsplash.com/premium_photo-1745341286727-aac626a65670?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1332",
+    img: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1332&q=80",
     title: "🎉 Ưu đãi đặc biệt",
     description: "Giảm giá 20% cho tất cả món ăn trong tháng này. Đặt hàng ngay để không bỏ lỡ!",
     buttonText: "Xem Menu",
@@ -23,7 +23,7 @@ const ImageList = [
   },
   {
     id: 3,
-    img: "https://cdn-merchant.vinid.net/images/gallery/vinshop-seo/1743999380_Picture12.png",
+    img: "https://images.unsplash.com/photo-1551782450-a2132b4ba21d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1332&q=80",
     title: "🚚 Giao hàng miễn phí",
     description: "Miễn phí giao hàng cho đơn hàng từ 200.000đ. Đặt hàng ngay hôm nay!",
     buttonText: "Xem Menu",
@@ -101,7 +101,7 @@ const Hero = () => {
           <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
-                <FaBookOpen className="text-[#FC8A06] text-xl" />
+                <BookOpen className="text-[#FC8A06] text-xl" />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Món ăn đa dạng</h3>
             </div>
@@ -115,7 +115,7 @@ const Hero = () => {
           <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
-                <FaShieldAlt className="text-[#FC8A06] text-xl" />
+                <Shield className="text-[#FC8A06] text-xl" />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Chất lượng cao</h3>
             </div>
@@ -129,7 +129,7 @@ const Hero = () => {
           <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
-                <FaUserMd className="text-[#FC8A06] text-xl" />
+                <User className="text-[#FC8A06] text-xl" />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Giao hàng nhanh</h3>
             </div>

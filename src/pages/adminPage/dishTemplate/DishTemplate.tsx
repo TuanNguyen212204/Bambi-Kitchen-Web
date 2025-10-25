@@ -5,7 +5,7 @@ import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import { useDishStore } from "@zustand/stores/dish"
 import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/modal"
-import { TrashIcon } from "lucide-react"
+import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal"
 import type { DishTemplateItem } from "@zustand/slices/dish/template.slice"
 
 type SizeCode = "S" | "M" | "L"
@@ -291,47 +291,23 @@ export default function AdminDishTemplatePage() {
         </ReusableModal>
       )}
 
-      {deleting && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ marginTop: 0 }}>
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-            <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                <TrashIcon className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
-                <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
-              </div>
-            </div>
-            
-            <div className="mb-6">
-              <p className="text-gray-700">
-                Bạn có chắc chắn muốn xóa mẫu tô <span className="font-semibold text-red-600">"{deleting.name} ({deleting.size})"</span>?
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Tất cả dữ liệu liên quan đến mẫu tô này sẽ bị xóa vĩnh viễn.
-              </p>
-            </div>
-
-            <div className="flex justify-end space-x-3">
-              <Button 
-                variant="outline" 
-                onClick={() => setDeleting(null)}
-                disabled={loading}
-              >
-                Hủy
-              </Button>
-              <Button 
-                className="bg-red-600 hover:bg-red-700" 
-                onClick={handleDelete}
-                disabled={loading}
-              >
-                {loading ? "Đang xóa..." : "Xóa mẫu tô"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={async () => {
+          if (deleting) {
+            try {
+              await handleDelete();
+              setDeleting(null);
+            } catch (error) {
+              console.error("Error deleting template:", error);
+            }
+          }
+        }}
+        title="Xác nhận xóa mẫu tô"
+        itemName={deleting ? `${deleting.name} (${deleting.size})` : 'Không có tên'}
+        itemType="mẫu tô"
+      />
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/modal"
+import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal"
 import { useIngredientStore } from "@zustand/stores/ingredients"
 
 export default function AdminIngredientCategoryPage() {
@@ -149,24 +150,22 @@ export default function AdminIngredientCategoryPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCategories.map((c) => (
-            <Card key={c.id} className="border hover:shadow-md transition-shadow duration-200">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center mb-2">
-                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                        </svg>
-                      </div>
-                      <h3 className="font-semibold text-lg text-gray-900">{c.name}</h3>
-                    </div>
-                    {c.description && (
-                      <p className="text-sm text-gray-600 line-clamp-2 ml-11">{c.description}</p>
-                    )}
+            <Card key={c.id} className="border hover:shadow-md transition-shadow duration-200 flex flex-col">
+              <CardContent className="p-6 flex flex-col flex-1">
+                <div className="flex items-center mb-3">
+                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+                    <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
                   </div>
+                  <h3 className="font-semibold text-lg text-gray-900">{c.name}</h3>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex-1 mb-4">
+                  {c.description && (
+                    <p className="text-sm text-gray-600 line-clamp-3">{c.description}</p>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-auto">
                   <Button 
                     size="sm" 
                     variant="outline" 
@@ -247,49 +246,23 @@ export default function AdminIngredientCategoryPage() {
         />
       </ReusableModal>
 
-      {confirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ marginTop: 0 }}>
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-            <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 6h18"/>
-                  <path d="M19 6l-1 14H6L5 6"/>
-                  <path d="M8 6V4h8v2"/>
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
-                <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
-              </div>
-            </div>
-            <div className="mb-6">
-              <p className="text-gray-700">
-                Bạn có chắc chắn muốn xóa danh mục <span className="font-semibold text-red-600">"{confirm.name}"</span>?
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Tất cả nguyên liệu trong danh mục này sẽ bị ảnh hưởng.
-              </p>
-            </div>
-            <div className="flex justify-end space-x-3">
-              <Button 
-                variant="outline" 
-                onClick={() => setConfirm(null)}
-                disabled={loading}
-              >
-                Hủy
-              </Button>
-              <Button 
-                className="bg-red-600 hover:bg-red-700" 
-                onClick={() => handleDelete(confirm.id)}
-                disabled={loading}
-              >
-                {loading ? "Đang xóa..." : "Xóa danh mục"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        open={!!confirm}
+        onClose={() => setConfirm(null)}
+        onConfirm={async () => {
+          if (confirm) {
+            try {
+              await handleDelete(confirm.id);
+              setConfirm(null);
+            } catch (error) {
+              console.error("Error deleting category:", error);
+            }
+          }
+        }}
+        title="Xác nhận xóa danh mục"
+        itemName={confirm?.name || 'Không có tên'}
+        itemType="danh mục"
+      />
     </div>
   )
 }

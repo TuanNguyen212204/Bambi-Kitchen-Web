@@ -16,10 +16,10 @@ export const API_ENDPOINTS = {
   FAVORITES: "/favorites",
   PROFILE: "/profile",
   
-  API_NOTIFICATIONS: "/api/notifications",
-  API_NOTIFICATION_BY_ID: (id: number) => `/api/notifications/${id}`,
-  API_NOTIFICATION_BY_ACCOUNT: (id: number) => `/api/notifications/account/${id}`,
-  API_NOTIFICATION_MARK_READ: (id: number) => `/api/notifications/${id}/read`,
+  API_NOTIFICATIONS: "/api/notification",
+  API_NOTIFICATION_BY_ID: (id: number) => `/api/notification/${id}`,
+  API_NOTIFICATION_BY_ACCOUNT: (id: number) => `/api/notification/to-account/${id}`,
+  API_NOTIFICATION_MARK_READ: (id: number) => `/api/notification/${id}/check-read`,
 
   API_INGREDIENTS: "/api/ingredient",
   API_INGREDIENT_BY_ID: (id: number) => `/api/ingredient/${id}`,
