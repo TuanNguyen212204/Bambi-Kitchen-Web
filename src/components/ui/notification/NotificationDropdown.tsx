@@ -36,7 +36,6 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
     
     setIsLoading(true)
     try {
-      let response
       if (user.role_id === 1) {
         setNotifications(adminNotifications.map(notif => ({
           id: notif.id,
@@ -44,7 +43,11 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
           message: notif.message,
           createdAt: notif.createdAt,
           read: notif.read,
-          account: notif.account
+          account: notif.account ? {
+            id: notif.account.id || 0,
+            name: notif.account.name || '',
+            mail: notif.account.mail || ''
+          } : undefined
         })))
       } else {
         const response = await bambiApi.get(API_ENDPOINTS.API_NOTIFICATION_BY_ACCOUNT(user.id))
