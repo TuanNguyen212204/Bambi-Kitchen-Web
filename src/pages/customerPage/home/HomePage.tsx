@@ -1,8 +1,21 @@
 
-export const HomePage = () => {
+import React from "react";
+import { Hero, Products, TopProducts, Testimonials } from "./components";
+
+const HomePage: React.FC = () => {
   return (
-    <div>
-        Home Page
+    <div className="min-h-screen">
+      {/* Hero Section */}
+      <Hero />
+      
+      {/* Top Products Section */}
+      <TopProducts />
+      
+      {/* Products Section */}
+      <Products />
+      
+      {/* Testimonials Section */}
+      <Testimonials />
     </div>
   );
 };
