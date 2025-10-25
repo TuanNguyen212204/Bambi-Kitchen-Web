@@ -2,20 +2,6 @@ import type { StateCreator } from "zustand"
 import { bambiApi, API_ENDPOINTS } from "@/utils/api"
 import type { NotificationListSlice, StoreNotification } from "@/zustand/types/notification"
 
-interface NotificationResponse {
-  id: number
-  title: string
-  message: string
-  createdAt: string
-  account?: {
-    id: number
-    name: string
-    mail: string
-    role: string
-  }
-  read: boolean
-}
-
 export const createNotificationListSlice: StateCreator<NotificationListSlice> = (set, get) => ({
   items: [],
   loading: false,
