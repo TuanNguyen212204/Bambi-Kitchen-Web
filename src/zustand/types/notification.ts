@@ -35,8 +35,8 @@ export interface NotificationFilterSlice {
 }
 
 export interface NotificationFormSlice {
-  create: (data: { title: string; message: string; account: Account }) => Promise<void>
-  update: (data: { id: number; title: string; message: string; account: Account; read: boolean }) => Promise<void>
+  create: (data: { title: string; message: string; account: Account | null }) => Promise<void>
+  update: (data: { id: number; title: string; message: string; account: Account | null; read: boolean }) => Promise<void>
   remove: (id: number) => Promise<void>
   markAsRead: (id: number) => Promise<void>
 }
