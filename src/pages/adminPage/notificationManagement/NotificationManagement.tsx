@@ -15,6 +15,7 @@ import { useNotificationStore } from "@zustand/stores/notification"
 import { useAccountStore } from "@zustand/stores/account"
 import AddNotificationModal from "@components/admin/notification/AddNotificationModal"
 import NotificationDetailModal from "@components/admin/notification/NotificationDetailModal"
+import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal"
 
 export default function NotificationManagement() {
   const currentDate = new Date().toLocaleString("vi-VN", {
@@ -434,52 +435,27 @@ export default function NotificationManagement() {
       />
 
       {/* Delete Confirmation Modal */}
-      {notificationToDelete && (
-        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${showDeleteModal ? 'block' : 'hidden'}`}>
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                <TrashIcon className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
-                <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
-              </div>
-            </div>
-            
-            <div className="mb-6">
-              <p className="text-gray-700">
-                Bạn có chắc chắn muốn xóa thông báo <span className="font-semibold">"{notificationToDelete.title || 'Không có tiêu đề'}"</span>?
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Thông báo này sẽ bị xóa vĩnh viễn.
-              </p>
-            </div>
-
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowDeleteModal(false)
-                  setNotificationToDelete(null)
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={() => {
-                  if (notificationToDelete.id) {
-                    handleDeleteNotification(notificationToDelete.id)
-                  }
-                }}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
-              >
-                Xóa
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        open={showDeleteModal && !!notificationToDelete}
+        onClose={() => {
+          setShowDeleteModal(false)
+          setNotificationToDelete(null)
+        }}
+        onConfirm={async () => {
+          if (notificationToDelete) {
+            try {
+              await handleDeleteNotification(notificationToDelete.id)
+              setShowDeleteModal(false)
+              setNotificationToDelete(null)
+            } catch (error) {
+              console.error("Error deleting notification:", error)
+            }
+          }
+        }}
+        title="Xác nhận xóa thông báo"
+        itemName={notificationToDelete?.title || 'Không có tiêu đề'}
+        itemType="thông báo"
+      />
     </div>
   )
 }
