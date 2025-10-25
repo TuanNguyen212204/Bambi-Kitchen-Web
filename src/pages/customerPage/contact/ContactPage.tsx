@@ -51,6 +51,7 @@ const ContactPage: React.FC = () => {
 
   return (
     <div className="pb-16">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
       {/* Hero Section */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center mt-8">
         <div className="order-2 md:order-1">
@@ -329,6 +330,7 @@ const ContactPage: React.FC = () => {
           </Card>
         </div>
       </section>
+      </div>
     </div>
   );
 };
