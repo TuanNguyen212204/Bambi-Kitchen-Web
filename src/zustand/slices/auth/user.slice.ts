@@ -9,14 +9,13 @@ export const createUserSlice: StateCreator<UserSlice, [], [], UserSlice> = (_set
       const response = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME)
       const userMe = response.data
 
-      const roleAuthority = userMe.role?.[0]?.authority?.replace("ROLE_", "") || "USER"
+      const normalizedRole = (userMe.role || "USER") as "USER" | "ADMIN" | "STAFF"
       const user: User = {
-        id: userMe.userId,
+        id: userMe.id,
         name: userMe.name,
-        role: roleAuthority as "USER" | "ADMIN" | "STAFF",
-        email: undefined, 
-        role_id: userMe.role?.[0]?.authority === "ROLE_ADMIN" ? 1 : 
-                 userMe.role?.[0]?.authority === "ROLE_STAFF" ? 3 : 4
+        role: normalizedRole,
+        email: userMe.mail,
+        role_id: normalizedRole === "ADMIN" ? 1 : normalizedRole === "STAFF" ? 3 : 4
       }
 
       return user

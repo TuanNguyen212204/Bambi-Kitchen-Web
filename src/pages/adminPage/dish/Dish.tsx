@@ -4,6 +4,7 @@ import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
+import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal"
 import { Grid3X3, List, Plus, Search, MoreVertical, Edit3, Trash2 as TrashIcon, Image as ImageIcon } from "lucide-react"
 import { useDishStore } from "@zustand/stores/dish"
 import AddDishModal from "@components/admin/dish/AddDishModal"
@@ -14,7 +15,7 @@ const AdminDishPage = () => {
   const currentDate = new Date().toLocaleString("vi-VN", { weekday: "long", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })
 
   const store = useDishStore()
-  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, statusFilter, setStatusFilter, viewMode, setViewMode, remove } = store as any
+  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, statusFilter, setStatusFilter, viewMode, setViewMode, remove } = store
 
   const [openAdd, setOpenAdd] = useState(false)
   const [openCategory, setOpenCategory] = useState(false)
@@ -106,7 +107,7 @@ const AdminDishPage = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả danh mục</SelectItem>
-                  {categories.map((c: any) => (
+                  {categories.map((c: { id: number; name: string }) => (
                     <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -114,7 +115,7 @@ const AdminDishPage = () => {
             </div>
             <div className="space-y-2">
               <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Trạng thái</Label>
-              <Select value={statusFilter || 'all'} onValueChange={(val)=> setStatusFilter((val as any) || 'all')}>
+              <Select value={statusFilter || 'all'} onValueChange={(val)=> setStatusFilter((val as "all" | "active" | "inactive" | "public" | "private") || 'all')}>
                 <SelectTrigger className="bg-white h-auto py-2 text-sm">
                   <SelectValue placeholder="Tất cả" />
                 </SelectTrigger>
@@ -153,7 +154,7 @@ const AdminDishPage = () => {
           </div>
 
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' : 'grid grid-cols-1 gap-3'}>
-            {filtered.map((dish: any) => (
+            {filtered.map((dish) => (
               <Card key={dish.id} className={`bg-white border-2 border-gray-200`}>
                 <CardContent className="p-6 space-y-4">
                   <div className="flex items-start justify-between">
@@ -176,11 +177,11 @@ const AdminDishPage = () => {
                             <ImageIcon className="w-6 h-6 text-gray-400" />
                           </div>
                         )}
-                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${dish.active === false ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${!dish.active ? 'bg-red-500' : 'bg-emerald-500'}`} />
                       </div>
                       <div>
                         <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px]">{dish.name}</h3>
-                        {typeof dish.price === 'number' && (
+                        {dish.price && typeof dish.price === 'number' && (
                           <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{dish.price.toLocaleString('vi-VN')} đ</p>
                         )}
                       </div>
@@ -216,30 +217,23 @@ const AdminDishPage = () => {
       {editing && (
         <EditDishModal open={true} onClose={()=> setEditing(null)} dish={{ id: editing.id, name: editing.name }} />
       )}
-      {deleting && (
-        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50`}>
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                <TrashIcon className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
-                <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
-              </div>
-            </div>
-            <div className="mb-6">
-              <p className="text-gray-700">
-                Bạn có chắc chắn muốn xóa món <span className="font-semibold">"{deleting.name}"</span>?
-              </p>
-            </div>
-            <div className="flex justify-end space-x-3">
-              <Button variant="outline" onClick={()=> setDeleting(null)}>Hủy</Button>
-              <Button className="bg-red-600 hover:bg-red-700" onClick={()=> { remove(deleting.id); setDeleting(null); }}>Xóa</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={async () => {
+          if (deleting) {
+            try {
+              await remove(deleting.id);
+              setDeleting(null);
+            } catch (error) {
+              console.error("Error deleting dish:", error);
+            }
+          }
+        }}
+        title="Xác nhận xóa món ăn"
+        itemName={deleting?.name || 'Không có tên'}
+        itemType="món ăn"
+      />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { shallow } from "zustand/shallow"
 import type { User } from "@/zustand/types"
-import type { StoreIngredient, IngredientCategory } from "@/zustand/types"
+import type { StoreIngredient } from "@/zustand/types"
+import type { IngredientCategory } from "@models/category/category"
 export { shallow }
 
 export const selectAuthUser = (s: { user: User | null }) => s.user

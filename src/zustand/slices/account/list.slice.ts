@@ -1,6 +1,7 @@
 import type { StateCreator } from "zustand"
-import { bambiApi } from "@/utils/api"
+import { bambiApi, API_ENDPOINTS } from "@/utils/api"
 import type { AccountListSlice, StoreAccount } from "@/zustand/types/account"
+import type { Account } from "@models/account/account"
 
 export const createAccountListSlice: StateCreator<AccountListSlice> = (set, get) => ({
   items: [],
@@ -11,17 +12,18 @@ export const createAccountListSlice: StateCreator<AccountListSlice> = (set, get)
   fetchAll: async () => {
     set({ loading: true, error: null })
     try {
-      const response = await bambiApi.get("/api/account")
-      const accounts: StoreAccount[] = (response.data as any[]).map((account: any) => ({
+      const response = await bambiApi.get(API_ENDPOINTS.API_ACCOUNTS)
+      const raw = response.data as Account[]
+      const accounts: StoreAccount[] = raw.map((account) => ({
         ...account,
-        name: account.name || account.fullName || account.username || account.displayName || 'Người dùng',
-        mail: account.mail || account.email || account.emailAddress || 'Chưa có email',
-        status: account.active ? "active" : "inactive"
+        name: account.name || 'Người dùng',
+        mail: account.mail || 'Chưa có email',
+        status: (account.active ?? true) ? "active" : "inactive"
       }))
       set({ items: accounts, loading: false })
-    } catch (error: any) {
+    } catch {
       set({ 
-        error: error.response?.data?.message || "Không thể tải danh sách tài khoản",
+        error: "Không thể tải danh sách tài khoản",
         loading: false 
       })
     }
@@ -30,17 +32,18 @@ export const createAccountListSlice: StateCreator<AccountListSlice> = (set, get)
   searchByName: async (name: string) => {
     set({ loading: true, error: null, query: name })
     try {
-      const response = await bambiApi.get(`/api/account?name=${encodeURIComponent(name)}`)
-      const accounts: StoreAccount[] = (response.data as any[]).map((account: any) => ({
+      const response = await bambiApi.get(API_ENDPOINTS.API_ACCOUNTS, { params: { name } })
+      const raw = response.data as Account[]
+      const accounts: StoreAccount[] = raw.map((account) => ({
         ...account,
-        name: account.name || account.fullName || account.username || account.displayName || 'Người dùng',
-        mail: account.mail || account.email || account.emailAddress || 'Chưa có email',
-        status: account.active ? "active" : "inactive"
+        name: account.name || 'Người dùng',
+        mail: account.mail || 'Chưa có email',
+        status: (account.active ?? true) ? "active" : "inactive"
       }))
       set({ items: accounts, loading: false })
-    } catch (error: any) {
+    } catch {
       set({ 
-        error: error.response?.data?.message || "Không thể tìm kiếm tài khoản",
+        error: "Không thể tìm kiếm tài khoản",
         loading: false 
       })
     }
@@ -51,7 +54,7 @@ export const createAccountListSlice: StateCreator<AccountListSlice> = (set, get)
   },
   
   filteredItems: () => {
-    const state = get() as any
+    const state = get() as unknown as { getFilteredItems: () => StoreAccount[] }
     return state.getFilteredItems()
   },
   

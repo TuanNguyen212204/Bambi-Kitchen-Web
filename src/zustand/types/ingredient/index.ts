@@ -1,6 +1,6 @@
 import type { Ingredient } from "@models/ingredient/ingredient"
+import type { IngredientCategory } from "@models/category/category"
 
-// Ingredient types
 export type StockStatus = "out" | "low" | "normal"
 export type StoreIngredient = Omit<Ingredient, "category"> & { 
   category: string
@@ -19,13 +19,6 @@ export interface InventoryTransaction {
   transactionType: boolean
 }
 
-export interface IngredientCategory {
-  id: number
-  name: string
-  description?: string
-}
-
-// Slice types
 export interface IngredientListSlice {
   items: StoreIngredient[]
   loading: boolean

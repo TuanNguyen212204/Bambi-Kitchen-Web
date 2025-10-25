@@ -9,7 +9,8 @@ import {
   Box,
   ChevronsLeft,
   ChevronsRight,
-  Users
+  Users,
+  Bell
 } from "lucide-react";
 import { PATHS } from "@/config/path";
 
@@ -23,6 +24,7 @@ const navItems = [
   { to: PATHS.ADMIN_INGREDIENTS, label: "Nguyên liệu", icon: Carrot },
   { to: PATHS.ADMIN_SOLD_INGREDIENTS, label: "Nguyên liệu đã bán", icon: Box },
   { to: PATHS.ADMIN_ACCOUNTS, label: "Quản lý Tài khoản", icon: Users },
+  { to: PATHS.ADMIN_NOTIFICATIONS, label: "Quản lý Thông báo", icon: Bell },
   { to: PATHS.ADMIN_FEEDBACK, label: "Feedback", icon: MessageSquare },
 ];
 

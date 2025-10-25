@@ -1,11 +1,6 @@
 import type { StateCreator } from "zustand"
 import { bambiApi, API_ENDPOINTS } from "@/utils/api"
-
-export interface DishCategory {
-  id: number
-  name: string
-  description?: string
-}
+import type { DishCategory, DishCategoryCreateRequest, DishCategoryUpdateRequest } from "@/models/category/category"
 
 export interface DishCategoryForm {
   id?: number
@@ -29,20 +24,55 @@ export const createDishCategorySlice: StateCreator<
 > = (set) => ({
   categories: [],
   fetchCategories: async () => {
-    const { data } = await bambiApi.get<DishCategory[]>(API_ENDPOINTS.API_DISH_CATEGORIES)
-    set({ categories: data })
+    try {
+      const { data } = await bambiApi.get<DishCategory[]>(API_ENDPOINTS.API_DISH_CATEGORIES)
+      set({ categories: data })
+    } catch {
+      const { toast } = await import("sonner")
+      toast.error("Không thể tải danh mục")
+    }
   },
   createCategory: async (payload) => {
-    const { data } = await bambiApi.post<DishCategory>(API_ENDPOINTS.API_DISH_CATEGORIES, payload)
-    set((s) => ({ categories: [data, ...s.categories] }))
+    try {
+      const createRequest: DishCategoryCreateRequest = {
+        name: payload.name,
+        description: payload.description
+      }
+      const { data } = await bambiApi.post<DishCategory>(API_ENDPOINTS.API_DISH_CATEGORIES, createRequest)
+      set((s) => ({ categories: [data, ...s.categories] }))
+      const { toast } = await import("sonner")
+      toast.success("Đã tạo danh mục")
+    } catch {
+      const { toast } = await import("sonner")
+      toast.error("Tạo danh mục thất bại")
+    }
   },
   updateCategory: async (payload) => {
-    const { data } = await bambiApi.put<DishCategory>(API_ENDPOINTS.API_DISH_CATEGORIES, payload)
-    set((s) => ({ categories: s.categories.map((c) => (c.id === data.id ? data : c)) }))
+    try {
+      const updateRequest: DishCategoryUpdateRequest = {
+        id: payload.id!,
+        name: payload.name,
+        description: payload.description
+      }
+      const { data } = await bambiApi.put<DishCategory>(API_ENDPOINTS.API_DISH_CATEGORIES, updateRequest)
+      set((s) => ({ categories: s.categories.map((c) => (c.id === data.id ? data : c)) }))
+      const { toast } = await import("sonner")
+      toast.success("Đã cập nhật danh mục")
+    } catch {
+      const { toast } = await import("sonner")
+      toast.error("Cập nhật danh mục thất bại")
+    }
   },
   removeCategory: async (id: number) => {
-    await bambiApi.delete(API_ENDPOINTS.API_DISH_CATEGORY_BY_ID(id))
-    set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }))
+    try {
+      await bambiApi.delete(API_ENDPOINTS.API_DISH_CATEGORY_BY_ID(id))
+      set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }))
+      const { toast } = await import("sonner")
+      toast.success("Đã xóa danh mục")
+    } catch {
+      const { toast } = await import("sonner")
+      toast.error("Xóa danh mục thất bại")
+    }
   },
 })
 
