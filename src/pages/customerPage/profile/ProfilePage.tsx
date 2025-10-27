@@ -15,7 +15,7 @@ import {
   Gift,
   Settings
 } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuthStore } from "@zustand/stores/auth";
 import { bambiApi } from "@utils/api";
 import { ProfileDetailModal } from "../../../components/customer/profile/ProfileDetailModal";
@@ -47,18 +47,31 @@ export default function ProfilePage() {
   // Real data states
   const [recentActivity, setRecentActivity] = useState<Notification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
-
-  const fetchProfileData = useCallback(async () => {
-    if (!user?.id) return;
-    
+  
+  // Use ref to track the last fetched user ID
+  const lastFetchedUserIdRef = useRef<number | null>(null);
+  
+  // Fetch notifications separately to avoid infinite loops
+  const fetchNotifications = useCallback(async (userId: number) => {
     try {
-      // Fetch user account details from /api/account/{id}
-      const accountResponse = await bambiApi.get(`/api/account/${user.id}`);
+      setNotificationsLoading(true);
+      const notificationsResponse = await bambiApi.get(`/api/notification/to-account/${userId}`);
+      const notifications: Notification[] = Array.isArray(notificationsResponse.data) ? notificationsResponse.data : [];
+      setRecentActivity(notifications.slice(0, 3));
+      setNotificationsLoading(false);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      setNotificationsLoading(false);
+    }
+  }, []);
+
+  // Fetch user account details
+  const fetchUserAccount = useCallback(async (userId: number) => {
+    try {
+      const accountResponse = await bambiApi.get(`/api/account/${userId}`);
       const accountData = accountResponse.data as AccountResponse;
       
-      // Update user data with account information
-      if (accountData) {
-        // Update the user object with account data
+      if (accountData && user) {
         const updatedUser = {
           ...user,
           email: accountData.mail || user.email,
@@ -67,29 +80,21 @@ export default function ProfilePage() {
           created_at: accountData.createAt || user.created_at
         };
         
-        // Update the user in the store
         setUser(updatedUser);
       }
-      
-      setNotificationsLoading(true);
-      
-      const notificationsResponse = await bambiApi.get(`/api/notification/to-account/${user.id}`);
-      const notifications: Notification[] = Array.isArray(notificationsResponse.data) ? notificationsResponse.data : [];
-      
-      setRecentActivity(notifications.slice(0, 3));
-      setNotificationsLoading(false);
-      
     } catch (error) {
-      console.error('Error fetching profile data:', error);
-      setNotificationsLoading(false);
+      console.error('Error fetching user account:', error);
     }
-  }, [setUser, user]); // Sử dụng user và setUser để tránh warning
+  }, [setUser, user]);
 
+  // Only fetch data when user ID changes
   useEffect(() => {
-    if (user?.id) {
-      fetchProfileData();
+    if (user?.id && user.id !== lastFetchedUserIdRef.current) {
+      lastFetchedUserIdRef.current = user.id;
+      fetchUserAccount(user.id);
+      fetchNotifications(user.id);
     }
-  }, [user?.id, fetchProfileData]);
+  }, [user?.id, fetchUserAccount, fetchNotifications]);
 
 
   return (
@@ -318,7 +323,9 @@ export default function ProfilePage() {
         onClose={() => setShowEditModal(false)}
         user={user}
         onSuccess={() => {
-          fetchProfileData();
+          if (user?.id) {
+            fetchUserAccount(user.id);
+          }
         }}
       />
 
@@ -326,7 +333,9 @@ export default function ProfilePage() {
         open={showChangePasswordModal}
         onClose={() => setShowChangePasswordModal(false)}
         onSuccess={() => {
-          fetchProfileData();
+          if (user?.id) {
+            fetchUserAccount(user.id);
+          }
         }}
       />
     </div>
