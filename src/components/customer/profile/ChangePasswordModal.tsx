@@ -4,7 +4,6 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { useState } from "react";
 import { Save, X, Eye, EyeOff, Lock } from "lucide-react";
-import { useAuthStore } from "@zustand/stores/auth";
 
 interface ChangePasswordModalProps {
   open: boolean;
@@ -85,7 +84,7 @@ export function ChangePasswordModal({ open, onClose, onSuccess }: ChangePassword
     }
   };
 
-  const togglePasswordVisibility = (field: string) => {
+  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
     setShowPasswords(prev => ({
       ...prev,
       [field]: !prev[field]

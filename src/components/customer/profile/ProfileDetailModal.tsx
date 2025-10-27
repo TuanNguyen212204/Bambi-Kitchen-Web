@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
-import { User, Mail, Phone, Calendar, Shield, X } from "lucide-react";
+import { User, Mail, Phone, Calendar } from "lucide-react";
 
 interface ProfileDetailModalProps {
   open: boolean;
@@ -85,7 +85,7 @@ export function ProfileDetailModal({ open, onClose, user }: ProfileDetailModalPr
                   <div>
                     <p className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Số điện thoại</p>
                     <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-600 text-sm">
-                      {'Chưa có số điện thoại'}
+                      {user?.phone || 'Chưa có số điện thoại'}
                     </p>
                   </div>
                 </div>

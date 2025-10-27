@@ -14,6 +14,15 @@ interface EditProfileModalProps {
   onSuccess: () => void;
 }
 
+interface ProfileUpdateRequest {
+  id: number;
+  name: string;
+  mail: string;
+  phone?: string;
+  role: "USER" | "STAFF" | "ADMIN";
+  active: boolean;
+}
+
 export function EditProfileModal({ open, onClose, user, onSuccess }: EditProfileModalProps) {
   const { updateProfile } = useAuthStore();
   const [loading, setLoading] = useState(false);
@@ -41,14 +50,16 @@ export function EditProfileModal({ open, onClose, user, onSuccess }: EditProfile
     setLoading(true);
     
     try {
-      await updateProfile({
+      const profileData: ProfileUpdateRequest = {
         id: user?.id,
         name: formData.name,
         mail: formData.email,
         phone: formData.phone,
         role: formData.role,
         active: user?.status === 'active'
-      });
+      };
+      
+      await updateProfile(profileData as any);
       
       onSuccess();
       onClose();
