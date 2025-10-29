@@ -6,6 +6,7 @@ export interface DishItem {
   name: string
   price?: number
   imageUrl?: string
+  description?: string
   public?: boolean
   active?: boolean
   usedQuantity?: number
