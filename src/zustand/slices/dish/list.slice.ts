@@ -6,6 +6,7 @@ export interface DishItem {
   name: string
   price?: number
   imageUrl?: string
+  description?: string
   public?: boolean
   active?: boolean
   usedQuantity?: number
@@ -44,8 +45,13 @@ export const createDishListSlice: StateCreator<
 
   remove: async (id: number) => {
     try {
+      await bambiApi.get<boolean>(API_ENDPOINTS.API_DISH_TOGGLE_ACTIVE(id))
       set((s) => ({ items: s.items.filter((x) => x.id !== id) }))
+      const { toast } = await import("sonner")
+      toast.success("Đã xóa món ăn")
     } catch {
+      const { toast } = await import("sonner")
+      toast.error("Xóa món ăn thất bại")
     }
   },
 
