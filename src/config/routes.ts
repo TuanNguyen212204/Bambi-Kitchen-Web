@@ -12,6 +12,7 @@ const OrdersPage = lazy(() => import("@pages/customerPage/orders/OrdersPage"))
 const ProfilePage = lazy(() => import("@pages/customerPage/profile/ProfilePage"))
 
 const Home = lazy(() => import("@pages/customerPage/home/HomePage"))
+const MenuPage = lazy(() => import("@pages/customerPage/menu/MenuPage"))
 const AboutPage = lazy(() => import("@pages/customerPage/about/AboutPage"))
 const ContactPage = lazy(() => import("@pages/customerPage/contact/ContactPage"))
 const AdminDashboard = lazy(() => import("@pages/adminPage/dashboard"))
@@ -129,6 +130,13 @@ export const CUSTOMER_PUBLIC_ROUTES: RouteConfig[] = [
     path: PATHS.HOME,
     component: Home,
     label: "Trang chủ",
+    protected: false,
+    role: [],
+  },
+  {
+    path: PATHS.MENU,
+    component: MenuPage,
+    label: "Menu",
     protected: false,
     role: [],
   },

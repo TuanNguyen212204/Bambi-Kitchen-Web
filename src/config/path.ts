@@ -7,6 +7,7 @@ export const PATHS = {
   OAUTH_CALLBACK: "/oauth2/callback",
   
   HOME: "/",
+  MENU: "/menu",
   ABOUT: "/about",
   CONTACT: "/contact",
   ORDER: "/order",

@@ -15,7 +15,6 @@ const OAuthCallback = () => {
   useEffect(() => {
     const handleOAuthCallback = async () => {
       try {
-        // Lấy token từ URL parameters
         const token = searchParams.get('token');
         
         if (!token) {
@@ -24,13 +23,8 @@ const OAuthCallback = () => {
           return;
         }
 
-        // Lưu token vào localStorage
-        localStorage.setItem('token', token);
-        
-        // Cập nhật auth store với session
         setSession(token);
 
-        // Lấy thông tin user từ token (decode JWT)
         let userFromToken = null;
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
@@ -41,15 +35,12 @@ const OAuthCallback = () => {
             role: payload.roles?.[0] || 'USER',
             role_id: (payload.roles?.[0] === 'ADMIN' ? 1 : payload.roles?.[0] === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
           };
-        } catch {
-          // Không thể decode token
-        }
+        } catch { void 0 }
 
-        // Gọi API để lấy thông tin user đầy đủ từ backend
         let finalUser = null;
         try {
-          const userResponse = await bambiApi.get(API_ENDPOINTS.AUTH_ME);
-          const userMe = userResponse.data as any;
+          const userResponse = await bambiApi.get<{ id: number; name?: string; mail?: string; role?: 'ADMIN'|'STAFF'|'USER' }>(API_ENDPOINTS.AUTH_ME);
+          const userMe = userResponse.data;
           
           finalUser = {
             id: userMe.id,
@@ -61,12 +52,10 @@ const OAuthCallback = () => {
           
           setUser(finalUser);
         } catch {
-          // Fallback về thông tin từ token
           if (userFromToken) {
             finalUser = userFromToken;
             setUser(userFromToken);
           } else {
-            // Tạo user mặc định nếu không có thông tin nào
             finalUser = {
               id: 0,
               name: 'User',
@@ -78,7 +67,6 @@ const OAuthCallback = () => {
           }
         }
 
-        // Redirect dựa trên role của user
         const redirectTo = localStorage.getItem('redirectAfterLogin') || 
           (finalUser?.role === 'ADMIN' ? PATHS.ADMIN : 
            finalUser?.role === 'STAFF' ? PATHS.STAFF : 
