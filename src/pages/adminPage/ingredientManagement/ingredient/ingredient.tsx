@@ -139,7 +139,7 @@ export const AdminIngredientsPage = () => {
             <div className="flex items-center justify-between mb-4">
             <h2 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-lg leading-[27px]">Quản lý Nguyên liệu</h2>
             <div className="flex gap-2">
-              <Button className="bg-orange-600 hover:bg-orange-700 text-white h-auto px-3 py-1 text-sm" onClick={()=> setOpenAdd(true)}>
+              <Button className="bg-orange-600 hover:bg-orange-700 text-white h-auto px-3 py-2 text-sm" onClick={()=> setOpenAdd(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 <span className="[font-family:'Arial-Narrow',Helvetica] text-sm">Thêm nguyên liệu mới</span>
               </Button>
