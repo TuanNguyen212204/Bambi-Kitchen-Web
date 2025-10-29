@@ -4,12 +4,13 @@
 
 /* Ổn định chiều rộng khi hiện/ẩn thanh cuộn dọc để không làm layout giật khi mở dropdown */
 body {
-  scrollbar-gutter: stable both-edges;
+  scrollbar-gutter: auto;
+  margin: 0;
 }
 
 /* Luôn hiển thị kênh cuộn dọc để tránh layout co giãn khi popup/dropdown mở */
 html, body {
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
 }
 
