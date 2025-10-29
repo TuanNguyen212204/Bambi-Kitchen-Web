@@ -4,6 +4,7 @@ import { useAuthStore } from "@/zustand/stores/auth";
 import { PATHS } from "@config/path";
 import { bambiApi } from "@utils/api-client";
 import { API_ENDPOINTS } from "@utils/endpoints";
+import { toast } from "sonner";
 
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
@@ -39,7 +40,7 @@ const OAuthCallback = () => {
 
         let finalUser = null;
         try {
-          const userResponse = await bambiApi.get<{ id: number; name?: string; mail?: string; role?: 'ADMIN'|'STAFF'|'USER' }>(API_ENDPOINTS.AUTH_ME);
+          const userResponse = await bambiApi.get<{ id: number; name?: string; mail?: string; phone?: string; role?: 'ADMIN'|'STAFF'|'USER' }>(API_ENDPOINTS.AUTH_ME);
           const userMe = userResponse.data;
           
           finalUser = {
@@ -51,6 +52,13 @@ const OAuthCallback = () => {
           };
           
           setUser(finalUser);
+
+          if (!userMe.phone || userMe.phone.trim() === "") {
+            toast.warning("Thiếu số điện thoại", {
+              description: "Đăng nhập lần đầu bằng Google - vui lòng cập nhật số điện thoại và đặt mật khẩu.",
+              action: { label: "Cập nhật ngay", onClick: () => navigate(PATHS.PROFILE) },
+            });
+          }
         } catch {
           if (userFromToken) {
             finalUser = userFromToken;
