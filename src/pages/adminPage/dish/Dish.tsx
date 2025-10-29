@@ -9,7 +9,7 @@ import { Grid3X3, List, Plus, Search, MoreVertical, Edit3, Trash2 as TrashIcon, 
 import { useDishStore } from "@zustand/stores/dish"
 import AddDishModal from "@components/admin/dish/AddDishModal"
 import EditDishModal from "@components/admin/dish/EditDishModal"
-import AddDishCategoryModal from "@components/admin/dish/AddDishCategoryModal"
+// removed AddDishCategoryModal per new design
 
 const AdminDishPage = () => {
   const currentDate = new Date().toLocaleString("vi-VN", { weekday: "long", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })
@@ -18,7 +18,7 @@ const AdminDishPage = () => {
   const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, statusFilter, setStatusFilter, viewMode, setViewMode, remove } = store
 
   const [openAdd, setOpenAdd] = useState(false)
-  const [openCategory, setOpenCategory] = useState(false)
+  // removed openCategory state per new design
   const [keyword, setKeyword] = useState("")
   const [editing, setEditing] = useState<null | { id: number; name: string }>(null)
   const [deleting, setDeleting] = useState<null | { id: number; name: string }>(null)
@@ -73,18 +73,14 @@ const AdminDishPage = () => {
         </div>
       </section>
 
-      <section className="w-full bg-white rounded-xl border border-solid border-gray-200 shadow-[0px_1px_3px_#0000001a] overflow-hidden">
+      <section className="w-full bg-white rounded-xl border border-solid border-gray-200 shadow-[0px_1px_3px_#0000001a] overflow-visible">
         <div className="bg-gradient-to-r from-orange-100 to-amber-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-lg leading-[27px]">Quản lý Món ăn</h2>
             <div className="flex gap-2">
-              <Button className="bg-orange-600 hover:bg-orange-700 text-white h-auto px-3 py-1 text-sm" onClick={()=> setOpenAdd(true)}>
+              <Button className="bg-orange-600 hover:bg-orange-700 text-white h-auto px-3 py-2 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.1)]" onClick={()=> setOpenAdd(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 <span className="[font-family:'Arial-Narrow',Helvetica] text-sm">Thêm món mới</span>
-              </Button>
-              <Button className="bg-gray-600 hover:bg-gray-700 text-white h-auto px-3 py-1 text-sm" onClick={()=> setOpenCategory(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                <span className="[font-family:'Arial-Narrow',Helvetica] text-sm">Thêm danh mục</span>
               </Button>
             </div>
           </div>
@@ -153,67 +149,94 @@ const AdminDishPage = () => {
             </div>
           </div>
 
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' : 'grid grid-cols-1 gap-3'}>
-            {filtered.map((dish) => (
-              <Card key={dish.id} className={`bg-white border-2 border-gray-200`}>
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="relative">
-                        {dish.imageUrl ? (
-                          <img 
-                            key={`${dish.id}-${dish.imageUrl}`}
-                            src={dish.imageUrl} 
-                            alt={dish.name}
-                            className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
-                            onError={(e)=>{
-                              const target = e.currentTarget as HTMLImageElement
-                              target.onerror = null
-                              target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='10'%3ENo Image%3C/text%3E%3C/svg%3E"
-                            }}
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
-                            <ImageIcon className="w-6 h-6 text-gray-400" />
+          {store.loading && items.length === 0 ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Đang tải món ăn...</p>
+              </div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {keyword.trim() ? "Không tìm thấy món ăn" : "Chưa có món ăn nào"}
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {keyword.trim()
+                  ? `Không có món ăn nào khớp với "${keyword.trim()}"`
+                  : "Bắt đầu bằng cách tạo món ăn đầu tiên"}
+              </p>
+              <Button className="bg-orange-600 hover:bg-orange-700" onClick={()=> setOpenAdd(true)}>
+                Tạo món đầu tiên
+              </Button>
+            </div>
+          ) : (
+            <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' : 'grid grid-cols-1 gap-3'}>
+              {filtered.map((dish) => (
+                <Card key={dish.id} className={`bg-white border-2 border-gray-200`}>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="relative">
+                          {dish.imageUrl ? (
+                            <img 
+                              key={`${dish.id}-${dish.imageUrl}`}
+                              src={dish.imageUrl} 
+                              alt={dish.name}
+                              className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                              onError={(e)=>{
+                                const target = e.currentTarget as HTMLImageElement
+                                target.onerror = null
+                                target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='10'%3ENo Image%3C/text%3E%3C/svg%3E"
+                              }}
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                              <ImageIcon className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                          <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${!dish.active ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                        </div>
+                        <div>
+                          <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px]">{dish.name}</h3>
+                          {dish.price && typeof dish.price === 'number' && (
+                            <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{dish.price.toLocaleString('vi-VN')} đ</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <button className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center" onClick={(e)=>{
+                            const menu = (e.currentTarget.nextSibling as HTMLElement)
+                            if (menu) menu.classList.toggle('hidden')
+                          }}>
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          <div className="absolute right-0 mt-1 bg-white border rounded shadow-lg hidden z-[2147483650]">
+                            <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setEditing({ id: dish.id, name: dish.name })}>
+                              <Edit3 className="w-4 h-4" /> Edit
+                            </button>
+                            <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setDeleting({ id: dish.id, name: dish.name })}>
+                              <TrashIcon className="w-4 h-4 text-red-600" /> Delete
+                            </button>
                           </div>
-                        )}
-                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${!dish.active ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                      </div>
-                      <div>
-                        <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px]">{dish.name}</h3>
-                        {dish.price && typeof dish.price === 'number' && (
-                          <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{dish.price.toLocaleString('vi-VN')} đ</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <button className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center" onClick={(e)=>{
-                          const menu = (e.currentTarget.nextSibling as HTMLElement)
-                          if (menu) menu.classList.toggle('hidden')
-                        }}>
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        <div className="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10">
-                          <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setEditing({ id: dish.id, name: dish.name })}>
-                            <Edit3 className="w-4 h-4" /> Edit
-                          </button>
-                          <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setDeleting({ id: dish.id, name: dish.name })}>
-                            <TrashIcon className="w-4 h-4 text-red-600" /> Delete
-                          </button>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
       <AddDishModal open={openAdd} onClose={()=> setOpenAdd(false)} />
-      <AddDishCategoryModal open={openCategory} onClose={()=> setOpenCategory(false)} />
       {editing && (
         <EditDishModal open={true} onClose={()=> setEditing(null)} dish={{ id: editing.id, name: editing.name }} />
       )}

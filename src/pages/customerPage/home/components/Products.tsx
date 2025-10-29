@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 // Import local images
 import TunaImg from "@assets/Menu/tuna.png";
@@ -6,68 +6,16 @@ import PorkImg from "@assets/Menu/pork.png";
 import BeefImg from "@assets/Menu/beef.png";
 import ShrimpsImg from "@assets/Menu/shrimps.png";
 import VibrantImg from "@assets/Menu/vibrant.png";
+import { useDishStore } from "@/zustand/stores/dish";
+import type { DishListSlice } from "@/zustand/slices/dish/list.slice";
 
-// Types
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  imageUrl: string;
-  category: string;
-  rating: number;
-  isAvailable: boolean;
-}
+type HomeDish = DishListSlice["items"][number]
 
-interface ProductProps {
-  products?: Product[];
-}
+const fallbackImages = [TunaImg, PorkImg, BeefImg, ShrimpsImg]
 
-// Mock data
-const mockProducts: Product[] = [
-  {
-    id: "1",
-    name: "Cá Ngừ Tươi",
-    description: "Cá ngừ tươi ngon với cơm sushi và wasabi đặc biệt",
-    price: 250000,
-    imageUrl: TunaImg,
-    category: "Sushi",
-    rating: 4.8,
-    isAvailable: true
-  },
-  {
-    id: "2",
-    name: "Thịt Heo Nướng",
-    description: "Thịt heo nướng thơm ngon với sốt đặc biệt và rau củ tươi",
-    price: 180000,
-    imageUrl: PorkImg,
-    category: "BBQ",
-    rating: 4.9,
-    isAvailable: true
-  },
-  {
-    id: "3",
-    name: "Bò Wagyu Premium",
-    description: "Thịt bò Wagyu cao cấp với sốt truffle và rau củ hữu cơ",
-    price: 320000,
-    imageUrl: BeefImg,
-    category: "Premium",
-    rating: 4.9,
-    isAvailable: true
-  },
-  {
-    id: "4",
-    name: "Tôm Hùm Tươi",
-    description: "Tôm hùm tươi sống với sốt bơ tỏi và rau củ tươi",
-    price: 280000,
-    imageUrl: ShrimpsImg,
-    category: "Seafood",
-    rating: 4.7,
-    isAvailable: true
-  }
-];
+const getFallbackImage = (idx: number) => fallbackImages[idx % fallbackImages.length]
 
-const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+const ProductCard: React.FC<{ product: HomeDish; idx: number }> = ({ product, idx }) => {
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -80,27 +28,35 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       <div className="relative mb-4">
         <div className="w-48 h-48 rounded-full overflow-hidden bg-gray-100">
           <img
-            src={product.imageUrl}
+            src={product.imageUrl || getFallbackImage(idx)}
             alt={product.name}
             className="w-full h-full object-cover"
           />
         </div>
         <div className="absolute top-2 right-2 bg-gray-800 text-white px-3 py-2 rounded-full text-sm font-bold shadow-lg">
-          {formatPrice(product.price)}
+          {formatPrice(product.price || 0)}
         </div>
       </div>
       
       <div className="px-4">
         <h3 className="text-xl font-bold text-gray-900 mb-3">{product.name}</h3>
-        <p className="text-gray-500 text-sm leading-relaxed">
-          {product.description}
-        </p>
+        {product.description ? (
+          <p className="text-gray-500 text-sm leading-relaxed">{product.description}</p>
+        ) : null}
       </div>
     </div>
   );
 };
 
-const Products: React.FC<ProductProps> = ({ products = mockProducts }) => {
+const Products: React.FC = () => {
+  const { fetchAll, items, loading } = useDishStore()
+
+  useEffect(() => {
+    fetchAll()
+  }, [fetchAll])
+
+  const visible = useMemo(() => items.filter((d) => (d.public === true) && (d.active ?? true)), [items])
+
   return (
     <section className="py-20 bg-gray-50 relative overflow-hidden">
       {/* Decorative background elements */}
@@ -149,9 +105,13 @@ const Products: React.FC<ProductProps> = ({ products = mockProducts }) => {
 
         {/* Product Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+          {loading ? (
+            <div className="col-span-4 text-center text-gray-500">Đang tải món ăn...</div>
+          ) : (
+            visible.map((product, idx) => (
+              <ProductCard key={product.id} product={product} idx={idx} />
+            ))
+          )}
         </div>
       </div>
     </section>
