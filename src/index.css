@@ -2,16 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ổn định chiều rộng khi hiện/ẩn thanh cuộn dọc để không làm layout giật khi mở dropdown */
 body {
   scrollbar-gutter: auto;
-  margin: 0;
+  margin: 0 !important;
+  padding-right: 0 !important;
 }
 
-/* Luôn hiển thị kênh cuộn dọc để tránh layout co giãn khi popup/dropdown mở */
 html, body {
-  overflow-y: auto;
+  overflow-y: scroll;
   overflow-x: hidden;
+}
+
+html {
+  scrollbar-gutter: stable;
+  margin: 0 !important;
+  padding-right: 0 !important;
 }
 
 @layer utilities {

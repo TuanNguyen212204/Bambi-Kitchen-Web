@@ -21,9 +21,9 @@ const Header = () => {
   };
   return (
     <header className="fixed top-0 left-0 w-full h-[82px] bg-white z-50 shadow-md px-0">
-      <div className="max-w-[1600px] mx-auto w-full h-full flex items-center pl-2">
+      <div className="max-w-[1600px] mx-auto w-full h-full flex items-center px-2">
         <div className="flex items-center space-x-3">
-          <Link to="/" aria-label="Trang chủ" className="-ml-2">
+          <Link to="/" aria-label="Trang chủ">
             <img
               src={logo}
               alt="Bambi's Kitchen Logo"

@@ -8,7 +8,7 @@ const AdminLayout = () => {
       <HeaderAdmin />
       <div className="flex gap-3">
         <SidebarAdmin />
-        <main className="flex-1 pl-3 pr-3">
+        <main id="admin-main" className="flex-1 pl-3 pr-3 h-[calc(100vh-82px)] overflow-y-auto">
           <Outlet />
         </main>
       </div>
