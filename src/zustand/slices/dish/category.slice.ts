@@ -28,8 +28,8 @@ export const createDishCategorySlice: StateCreator<
       const { data } = await bambiApi.get<DishCategory[]>(API_ENDPOINTS.API_DISH_CATEGORIES)
       set({ categories: data })
     } catch {
-      const { toast } = await import("sonner")
-      toast.error("Không thể tải danh mục")
+      // Im lặng khi lỗi để tránh spam toast khi phiên hết hạn hoặc backend tạm thời lỗi
+      set({ categories: [] })
     }
   },
   createCategory: async (payload) => {
