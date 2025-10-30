@@ -27,30 +27,29 @@ export const createDishFormSlice: StateCreator<
   DishFormSlice
 > = () => ({
   createOrUpdate: async (payload: DishFormPayload) => {
-    const form = new FormData()
-    if (payload.id != null) form.append("id", String(payload.id))
-    form.append("name", payload.name)
-    if (payload.description) form.append("description", payload.description)
-    if (payload.price != null) form.append("price", String(payload.price))
-    if (payload.account?.id != null) form.append("account.id", String(payload.account.id))
-    form.append("dishType", payload.dishType)
-    if (payload.public != null) form.append("public", String(payload.public))
-    if (payload.active != null) form.append("active", String(payload.active))
+    const form = new FormData();
+    if (payload.id != null) form.append("id", String(payload.id));
+    form.append("name", payload.name);
+    if (payload.description) form.append("description", payload.description);
+    if (payload.price != null) form.append("price", String(payload.price));
+    if (payload.account?.id != null) form.append("account.id", String(payload.account.id));
+    form.append("dishType", payload.dishType);
+    if (payload.public != null) form.append("public", String(payload.public));
+    if (payload.active != null) form.append("active", String(payload.active));
     Object.entries(payload.ingredients || {}).forEach(([ingId, qty]) => {
-      form.append(`ingredients[${ingId}]`, String(qty))
-    })
+      form.append(`ingredients[${ingId}]`, String(qty));
+    });
     if (payload.file instanceof File) {
-      form.append("file", payload.file)
+      form.append("file", payload.file);
     } else {
-      const emptyFile = new File([], "empty.txt", { type: "application/octet-stream" })
-      form.append("file", emptyFile)
+      const emptyFile = new File([], "empty.txt", { type: "application/octet-stream" });
+      form.append("file", emptyFile);
     }
-
-    await bambiApi.post(API_ENDPOINTS.API_DISHES, form, { headers: { "Content-Type": "multipart/form-data" } })
+    await bambiApi.post(API_ENDPOINTS.API_DISHES, form, { headers: { "Content-Type": "multipart/form-data" } });
   },
   saveCustomDish: async (id: number, isPublic: boolean) => {
-    await bambiApi.put(API_ENDPOINTS.API_DISH_SAVE_CUSTOM, undefined, { params: { id, isPublic } })
+    await bambiApi.put(API_ENDPOINTS.API_DISH_SAVE_CUSTOM, undefined, { params: { id, isPublic } });
   },
-})
+});
 
 

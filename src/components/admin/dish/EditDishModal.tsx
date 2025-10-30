@@ -46,12 +46,10 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
       setIngredients(dish?.ingredients ?? {})
       setFile(undefined)
       setExistingImageUrl(undefined)
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-      setPreviewUrl(undefined)
       setLoading(false)
       setError("")
     }
-  }, [open, dish, previewUrl])
+  }, [open, dish])
 
   useEffect(() => {
     const loadDetail = async () => {
@@ -71,6 +69,29 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
       } catch { return }
     }
     void loadDetail()
+  }, [open, dish?.id])
+
+  useEffect(() => {
+    const fetchRecipe = async () => {
+      if (open && dish?.id) {
+        try {
+          const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
+          const res = await bambiApi.get<any[]>(API_ENDPOINTS.API_RECIPE_BY_DISH(dish.id))
+          // res.data: array [{ id, ingredient: Ingredient, quantity, dish: Dish }]
+          const recipe: Record<number, number> = {}
+          if (Array.isArray(res.data)) {
+            res.data.forEach(r => {
+              if (r.ingredient?.id && typeof r.quantity === 'number') {
+                recipe[r.ingredient.id] = r.quantity
+              }
+            })
+            setIngredients(recipe)
+          }
+        } catch { /* ignore, giữ nguyên */ }
+      }
+    }
+    if (open && dish?.id) fetchRecipe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, dish?.id])
 
   const ingredientList = useMemo(() => ingStore.items, [ingStore.items])

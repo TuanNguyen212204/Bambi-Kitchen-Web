@@ -56,6 +56,7 @@ export const API_ENDPOINTS = {
   MENU: "/admin/menu",
   FEEDBACK: "/admin/feedback",
   INGREDIENT_STOCK: "/admin/ingredients/stock",
+  API_RECIPE_BY_DISH: (dishId: number) => `/api/recipe/by-dish/${dishId}`,
 } as const
 
 
