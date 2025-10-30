@@ -19,15 +19,21 @@ export const createNotificationListSlice: StateCreator<NotificationListSlice> = 
       }
 
       const raw = Array.isArray(response.data) ? response.data : []
-      const notifications: StoreNotification[] = raw.map((notification) => ({
-        id: notification.id,
-        title: notification.title || 'Không có tiêu đề',
-        message: notification.message || '',
-        createdAt: notification.createdAt || new Date().toISOString(),
-        account: notification.account,
-        read: notification.read ?? false,
-        accountId: notification.account?.id
-      }))
+      // normalize fields cho StoreNotification
+      const normalizeNotification = (n: any): StoreNotification => ({
+        id: n.id,
+        title: n.title,
+        message: n.message ?? n.content ?? '',
+        content: n.content ?? n.message ?? '',
+        createdAt: n.createdAt ?? n.created_at,
+        created_at: n.created_at ?? n.createdAt,
+        read: typeof n.read !== 'undefined' ? n.read : n.is_read,
+        is_read: typeof n.is_read !== 'undefined' ? n.is_read : n.read,
+        account: n.account,
+        account_id: n.account_id ?? n.account?.id,
+        ...n
+      })
+      const notifications: StoreNotification[] = raw.map(normalizeNotification)
       set({ items: notifications, loading: false })
     } catch (error: any) {
       console.error("Error fetching notifications:", error)
@@ -53,18 +59,25 @@ export const createNotificationListSlice: StateCreator<NotificationListSlice> = 
       }
 
       const raw = Array.isArray(response.data) ? response.data : []
+      // normalize fields cho StoreNotification
+      const normalizeNotification = (n: any): StoreNotification => ({
+        id: n.id,
+        title: n.title,
+        message: n.message ?? n.content ?? '',
+        content: n.content ?? n.message ?? '',
+        createdAt: n.createdAt ?? n.created_at,
+        created_at: n.created_at ?? n.createdAt,
+        read: typeof n.read !== 'undefined' ? n.read : n.is_read,
+        is_read: typeof n.is_read !== 'undefined' ? n.is_read : n.read,
+        account: n.account,
+        account_id: n.account_id ?? n.account?.id,
+        ...n
+      })
       const filtered = raw.filter((n) => 
-        n.title?.toLowerCase().includes(title.toLowerCase())
+        (n.title?.toLowerCase().includes(title.toLowerCase()) ||
+          (n.message || n.content || '').toLowerCase().includes(title.toLowerCase()))
       )
-      const notifications: StoreNotification[] = filtered.map((notification) => ({
-        id: notification.id,
-        title: notification.title || 'Không có tiêu đề',
-        message: notification.message || '',
-        createdAt: notification.createdAt || new Date().toISOString(),
-        account: notification.account,
-        read: notification.read ?? false,
-        accountId: notification.account?.id
-      }))
+      const notifications: StoreNotification[] = filtered.map(normalizeNotification)
       set({ items: notifications, loading: false })
     } catch (error: any) {
       console.error("Error searching notifications:", error)
