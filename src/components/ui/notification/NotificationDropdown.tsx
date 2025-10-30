@@ -31,7 +31,7 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   const { items: adminNotifications, markAsRead } = useNotificationStore()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  const normalizeField = (n) => ({
+  const normalizeField = (n: any) => ({
     ...n,
     read: typeof n.read !== "undefined" ? n.read : n.is_read,
     message: n.message ?? n.content ?? "",

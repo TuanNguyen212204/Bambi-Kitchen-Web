@@ -14,8 +14,8 @@ export const createNotificationFormSlice: StateCreator<
     try {
       await bambiApi.post(API_ENDPOINTS.API_NOTIFICATIONS, {
         title: data.title,
-        message: data.message ?? data.content,
-        content: data.message ?? data.content,
+        message: data.message,
+        content: data.message,
         account: data.account,
         is_read: false
       })
@@ -38,10 +38,10 @@ export const createNotificationFormSlice: StateCreator<
       await bambiApi.put(API_ENDPOINTS.API_NOTIFICATIONS, {
         id: data.id,
         title: data.title,
-        message: data.message ?? data.content,
-        content: data.message ?? data.content,
+        message: data.message,
+        content: data.message,
         account: data.account,
-        is_read: data.read ?? data.is_read,
+        is_read: data.read,
       })
       toast.success("Cập nhật thông báo thành công!")
       await get().fetchAll()
@@ -90,7 +90,7 @@ export const createNotificationFormSlice: StateCreator<
     }
   },
 
-  sendToAll: async (payload) => {
+  sendToAll: async (payload: { title: string; message: string; deviceToken?: string; userId?: number }) => {
     try {
       await bambiApi.post("/api/notification/send-to-all", payload)
       toast.success("Đã gửi thông báo đến tất cả user!")
@@ -100,7 +100,7 @@ export const createNotificationFormSlice: StateCreator<
       throw error
     }
   },
-  sendToExact: async (payload) => {
+  sendToExact: async (payload: { title: string; message: string; deviceToken?: string; userId?: number }) => {
     try {
       await bambiApi.post("/api/notification/send-to-exact", payload)
       toast.success("Đã gửi thông báo đến đúng thiết bị!")
@@ -110,7 +110,7 @@ export const createNotificationFormSlice: StateCreator<
       throw error
     }
   },
-  sendToDevice: async (payload) => {
+  sendToDevice: async (payload: { title: string; message: string; deviceToken?: string; userId?: number }) => {
     try {
       await bambiApi.post("/api/notification/send", payload)
       toast.success("Đã gửi thông báo đến user!")

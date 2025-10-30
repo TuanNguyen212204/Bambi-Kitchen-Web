@@ -37,11 +37,21 @@ export interface NotificationFilterSlice {
   getFilteredItems: () => StoreNotification[]
 }
 
+export interface NotificationSendingRequest {
+  title: string
+  message: string
+  deviceToken?: string
+  userId?: number
+}
+
 export interface NotificationFormSlice {
   create: (data: { title: string; message: string; account: Account | null }) => Promise<void>
   update: (data: { id: number; title: string; message: string; account: Account | null; read: boolean }) => Promise<void>
   remove: (id: number) => Promise<void>
   markAsRead: (id: number) => Promise<void>
+  sendToAll: (payload: NotificationSendingRequest) => Promise<void>
+  sendToExact: (payload: NotificationSendingRequest) => Promise<void>
+  sendToDevice: (payload: NotificationSendingRequest) => Promise<void>
 }
 
 export interface NotificationStore extends NotificationListSlice, NotificationFilterSlice, NotificationFormSlice {

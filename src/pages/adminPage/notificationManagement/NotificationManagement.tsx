@@ -380,7 +380,7 @@ export default function NotificationManagement() {
                       </div>
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm text-gray-700">Ngày tạo</span>
-                        <span className="text-sm text-gray-700">{formatDate(notification.createdAt || notification.created_at)}</span>
+                        <span className="text-sm text-gray-700">{formatDate(notification.createdAt || notification.created_at || "")}</span>
                       </div>
                       {notification.account && (
                         <div className="flex justify-between items-center mb-2">

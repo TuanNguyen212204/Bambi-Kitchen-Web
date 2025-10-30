@@ -21,27 +21,29 @@ export const createNotificationFilterSlice: StateCreator<
     
     if (state.query) {
       filtered = filtered.filter((item) =>
-        item.title.toLowerCase().includes(state.query.toLowerCase()) ||
-        item.message.toLowerCase().includes(state.query.toLowerCase())
+        (item.title?.toLowerCase() || "").includes(state.query.toLowerCase()) ||
+        ((item.message ?? item.content ?? "").toLowerCase().includes(state.query.toLowerCase()))
       )
     }
     
     if (state.selectedStatus === "read") {
-      filtered = filtered.filter((item) => item.read === true)
+      filtered = filtered.filter((item) => (item.read ?? item.is_read) === true)
     } else if (state.selectedStatus === "unread") {
-      filtered = filtered.filter((item) => item.read === false)
+      filtered = filtered.filter((item) => (item.read ?? item.is_read) === false)
     }
     
     if (state.selectedAccountId !== undefined) {
-      filtered = filtered.filter((item) => item.accountId === state.selectedAccountId)
+      filtered = filtered.filter((item) => item.account_id === state.selectedAccountId)
     }
     
     if (state.sortBy === "date") {
-      filtered.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
+      const time = (it: StoreNotification) => {
+        const v = it.createdAt ?? it.created_at
+        return v ? new Date(v).getTime() : 0
+      }
+      filtered.sort((a, b) => time(b) - time(a))
     } else if (state.sortBy === "title") {
-      filtered.sort((a, b) => a.title.localeCompare(b.title))
+      filtered.sort((a, b) => (a.title || "").localeCompare(b.title || ""))
     }
     
     return filtered
