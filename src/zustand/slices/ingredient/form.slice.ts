@@ -64,21 +64,8 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
       formData.append('name', payload.name)
       formData.append('categoryId', payload.categoryId.toString())
       formData.append('unit', payload.unit)
-      
       if (payload.file) {
-        if (!validateFileSize(payload.file)) {
-          const { toast } = await import("sonner")
-          toast.error("File quá lớn (tối đa 2MB)")
-          return
-        }
-        
-        if (!validateFileType(payload.file)) {
-          const { toast } = await import("sonner")
-          toast.error("Chỉ chấp nhận file JPG, JPEG, PNG")
-          return
-        }
-        const resizedFile = await resizeImage(payload.file)
-        formData.append('file', resizedFile)
+        formData.append('file', payload.file)
       }
 
       await bambiApi.post<Ingredient>(API_ENDPOINTS.API_INGREDIENTS, formData, {
@@ -86,10 +73,10 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
           'Content-Type': 'multipart/form-data'
         }
       })
-      
+
       const { useIngredientStore } = await import("@zustand/stores/ingredients")
       await useIngredientStore.getState().fetchAll()
-      
+
       const { toast } = await import("sonner")
       toast.success("Đã thêm nguyên liệu")
     } catch {
@@ -160,10 +147,16 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
   remove: async (id) => {
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
-      await bambiApi.delete(`${API_ENDPOINTS.API_INGREDIENTS}/${id}`)
+      const res = await bambiApi.delete(API_ENDPOINTS.API_INGREDIENT_BY_ID(id))
+      if (!(res.status >= 200 && res.status < 300)) {
+        throw new Error("Delete failed")
+      }
       
-      // Refresh the ingredient list after deleting
+      // Optimistic update: remove from current state immediately
       const { useIngredientStore } = await import("@zustand/stores/ingredients")
+      const current = useIngredientStore.getState().items
+      useIngredientStore.setState({ items: current.filter(i => i.id !== id) })
+      // Then refetch to be consistent with server
       useIngredientStore.getState().fetchAll()
       
       const { toast } = await import("sonner")
@@ -171,6 +164,20 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
     } catch {
       const { toast } = await import("sonner")
       toast.error("Xóa nguyên liệu thất bại")
+    }
+  },
+
+  toggleActive: async (id, active) => {
+    try {
+      const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
+      await bambiApi.get(API_ENDPOINTS.API_INGREDIENT_TOGGLE_ACTIVE(id))
+
+      const { useIngredientStore } = await import("@zustand/stores/ingredients")
+      const items = useIngredientStore.getState().items
+      useIngredientStore.setState({ items: items.map(i => i.id === id ? { ...i, active } : i) })
+    } catch {
+      const { toast } = await import("sonner")
+      toast.error("Cập nhật trạng thái nguyên liệu thất bại")
     }
   },
 })

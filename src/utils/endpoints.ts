@@ -24,6 +24,7 @@ export const API_ENDPOINTS = {
   API_INGREDIENTS: "/api/ingredient",
   API_INGREDIENT_BY_ID: (id: number) => `/api/ingredient/${id}`,
   API_INGREDIENT_SEARCH_BY_NAME: (name: string) => `/api/ingredient/search?name=${encodeURIComponent(name)}`,
+  API_INGREDIENT_TOGGLE_ACTIVE: (id: number) => `/api/ingredient/toggle-active/${id}`,
   API_INGREDIENT_CATEGORIES: "/api/ingredient-category",
   API_INGREDIENT_CATEGORY_BY_ID: (id: number) => `/api/ingredient-category/${id}`,
 

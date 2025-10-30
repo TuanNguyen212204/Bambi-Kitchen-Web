@@ -6,9 +6,11 @@ import { Label } from "@components/ui/label"
 import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/modal"
 import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal"
 import { useIngredientStore } from "@zustand/stores/ingredients"
+import { toast } from "sonner"
 
 export default function AdminIngredientCategoryPage() {
   const { categories, fetchCategories, createCategory, updateCategory, removeCategory } = useIngredientStore()
+  const ingredientStore = useIngredientStore()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -70,6 +72,23 @@ export default function AdminIngredientCategoryPage() {
   }
 
   const handleDelete = async (id: number) => {
+    try {
+      if (!ingredientStore.items || ingredientStore.items.length === 0) {
+        await ingredientStore.fetchAll?.()
+      }
+      const hasDependencies = (ingredientStore.items || []).some((ing) => {
+        const catId = (ing as unknown as { categoryId?: number; ingredient_category_id?: number; category?: { id?: number } }).categoryId
+          ?? (ing as unknown as { ingredient_category_id?: number }).ingredient_category_id
+          ?? (ing as unknown as { category?: { id?: number } }).category?.id
+        return catId === id
+      })
+      if (hasDependencies) {
+        toast.error("Không thể xóa danh mục vì đang có nguyên liệu sử dụng. Hãy chuyển danh mục cho các nguyên liệu trước.")
+        return
+      }
+    } catch {
+      /* no-op */
+    }
     setLoading(true)
     try {
       await removeCategory(id)
@@ -149,7 +168,15 @@ export default function AdminIngredientCategoryPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCategories.map((c) => (
+          {filteredCategories.map((c) => {
+            const numUsing = (ingredientStore.items || []).filter((ing) => {
+              const catId = (ing as unknown as { categoryId?: number; ingredient_category_id?: number; category?: { id?: number } }).categoryId
+                ?? (ing as unknown as { ingredient_category_id?: number }).ingredient_category_id
+                ?? (ing as unknown as { category?: { id?: number } }).category?.id
+              return catId === c.id
+            }).length
+            const canDelete = numUsing === 0
+            return (
             <Card key={c.id} className="border hover:shadow-md transition-shadow duration-200 flex flex-col">
               <CardContent className="p-6 flex flex-col flex-1">
                 <div className="flex items-center mb-3">
@@ -165,35 +192,38 @@ export default function AdminIngredientCategoryPage() {
                     <p className="text-sm text-gray-600 line-clamp-3">{c.description}</p>
                   )}
                 </div>
-                <div className="flex gap-2 mt-auto">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => handleEdit(c)}
-                    disabled={loading}
-                    className="flex-1"
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                    </svg>
-                    Sửa
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="destructive" 
-                    onClick={() => setConfirm({ id: c.id, name: c.name })}
-                    disabled={loading}
-                    className="flex-1"
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                    Xóa
-                  </Button>
+                <div className="mt-auto flex items-center justify-between gap-2">
+                  <span className="text-xs text-gray-500 shrink-0">{numUsing} nguyên liệu đang dùng</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleEdit(c)}
+                      disabled={loading}
+                      className="h-8 px-3 text-sm"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                      </svg>
+                      Sửa
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="destructive" 
+                      onClick={() => setConfirm({ id: c.id, name: c.name })}
+                      disabled={loading || !canDelete}
+                      className="h-8 px-3 text-sm"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                      </svg>
+                      {canDelete ? 'Xóa' : 'Không thể xóa'}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )})}
         </div>
       )}
 
