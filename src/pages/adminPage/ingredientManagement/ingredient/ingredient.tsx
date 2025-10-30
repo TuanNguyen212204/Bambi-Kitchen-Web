@@ -252,16 +252,8 @@ export const AdminIngredientsPage = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="bg-[#0000001a] hover:bg-[#0000001a] px-3 py-1">
-                        <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-gray-700 text-sm text-center">
-                          {(() => {
-                            const cat: unknown = (ingredient as unknown as { category?: unknown }).category
-                            if (cat && typeof cat === 'object' && 'name' in (cat as Record<string, unknown>)) {
-                              return String((cat as { name: unknown }).name ?? '')
-                            }
-                            return String(cat ?? '')
-                          })()}
-                        </span>
+                      <Badge className={ingredient.active === false ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}>
+                        {ingredient.active === false ? "Đang tắt" : "Đang bật"}
                       </Badge>
                       <div className="relative">
                         <button className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center" onClick={(e)=>{
@@ -273,9 +265,6 @@ export const AdminIngredientsPage = () => {
                         <div className="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10">
                           <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setEditing(ingredient)}>
                             <Edit3 className="w-4 h-4" /> Edit
-                          </button>
-                          <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setDeleting({ id: ingredient.id, name: ingredient.name })}>
-                            <TrashIcon className="w-4 h-4 text-red-600" /> Delete
                           </button>
                         </div>
                       </div>
@@ -350,23 +339,7 @@ export const AdminIngredientsPage = () => {
         <StockHistoryModal open={true} onClose={()=> setStockHistory(null)} ingredient={stockHistory} />
       )}
       <AddIngredientModal open={openAdd} onClose={()=> setOpenAdd(false)} />
-      <DeleteConfirmationModal
-        open={!!deleting}
-        onClose={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (deleting) {
-            try {
-              await remove(deleting.id);
-              setDeleting(null);
-            } catch (error) {
-              console.error("Error deleting ingredient:", error);
-            }
-          }
-        }}
-        title="Xác nhận xóa nguyên liệu"
-        itemName={deleting?.name || 'Không có tên'}
-        itemType="nguyên liệu"
-      />
+      {/* Xóa hộp thoại xác nhận toggle/xóa: BE không còn xoá, toggle nằm trong Edit */}
     </div>
   );
 };

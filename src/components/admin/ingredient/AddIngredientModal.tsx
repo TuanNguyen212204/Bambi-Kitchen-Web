@@ -144,11 +144,11 @@ export default function AddIngredientModal({ open, onClose }: Props) {
                 </label>
               </div>
             ) : (
-              <div className="relative">
-                <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
-                  <img src={previewUrl} alt="Preview" className="w-12 h-12 object-cover rounded" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{selectedFile?.name}</p>
+              <div className="relative w-full">
+                <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 overflow-hidden w-full">
+                  <img src={previewUrl} alt="Preview" className="w-12 h-12 object-cover rounded shrink-0" />
+                  <div className="flex-1 w-0 overflow-hidden">
+                    <p className="block text-sm font-medium text-gray-900 truncate whitespace-nowrap" title={selectedFile?.name || undefined}>{selectedFile?.name}</p>
                     <p className="text-xs text-gray-500">
                       {selectedFile && `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`}
                     </p>

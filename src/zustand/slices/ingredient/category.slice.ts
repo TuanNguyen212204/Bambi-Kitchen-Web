@@ -47,13 +47,20 @@ export const createIngredientCategorySlice: StateCreator<IngredientCategorySlice
   removeCategory: async (id: number) => {
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
-      await bambiApi.delete(API_ENDPOINTS.API_INGREDIENT_CATEGORY_BY_ID(id))
-      set((state) => ({ categories: state.categories.filter(c => c.id !== id) }))
+      const res = await bambiApi.delete(API_ENDPOINTS.API_INGREDIENT_CATEGORY_BY_ID(id), {
+        headers: { 'x-silent-error': '1' }
+      })
+      if (!(res.status >= 200 && res.status < 300)) throw new Error("Delete failed")
+      const list = await bambiApi.get<IngredientCategory[]>(API_ENDPOINTS.API_INGREDIENT_CATEGORIES, {
+        headers: { 'x-silent-error': '1' }
+      })
+      set({ categories: list.data ?? [] })
       const { toast } = await import("sonner")
       toast.success("Đã xóa danh mục")
-    } catch {
+    } catch (e: any) {
       const { toast } = await import("sonner")
-      toast.error("Xóa danh mục thất bại")
+      const msg = e?.response?.data?.message || "Xóa danh mục thất bại. Có thể danh mục đang được sử dụng."
+      toast.error(msg)
     }
   },
 })

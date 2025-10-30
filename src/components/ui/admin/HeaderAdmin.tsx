@@ -21,8 +21,8 @@ const HeaderAdmin = () => {
   };
 
   return (
-    <header className="w-full h-[82px] bg-white border-b border-orange-200 shadow-[0px_1px_3px_#0000001a] relative">
-      <div className="flex items-center justify-between h-full px-0">
+    <header className="fixed top-0 left-0 right-0 w-full h-[82px] bg-white border-b border-orange-200 shadow-[0px_1px_3px_#0000001a] z-50">
+      <div className="flex items-center justify-between h-full px-4 md:px-6">
         <div className="flex items-center gap-4">
           <img
             className="w-20 h-20 object-cover"
