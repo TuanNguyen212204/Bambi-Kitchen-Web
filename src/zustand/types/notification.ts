@@ -1,13 +1,16 @@
 import type { Account } from "@models/account/account"
 
 export interface StoreNotification {
-  id: number
-  title: string
-  message: string
-  createdAt: string
-  account?: Account
-  read: boolean
-  accountId?: number
+  id: number;
+  title: string;
+  message?: string;
+  content?: string; // alias field API mới
+  createdAt?: string; // alias cũ
+  created_at?: string; // mới
+  read?: boolean;
+  is_read?: boolean;
+  account?: import("@models/account/account").Account;
+  account_id?: number;
 }
 
 export interface NotificationListSlice {

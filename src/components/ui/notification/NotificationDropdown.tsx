@@ -31,36 +31,32 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   const { items: adminNotifications, markAsRead } = useNotificationStore()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  const normalizeField = (n) => ({
+    ...n,
+    read: typeof n.read !== "undefined" ? n.read : n.is_read,
+    message: n.message ?? n.content ?? "",
+    createdAt: n.createdAt ?? n.created_at,
+    account: n.account,
+  });
+
   const fetchNotifications = async () => {
-    if (!user?.id) return
-    
-    setIsLoading(true)
+    if (!user?.id) return;
+    setIsLoading(true);
     try {
       if (user.role_id === 1) {
-        setNotifications(adminNotifications.map(notif => ({
-          id: notif.id,
-          title: notif.title,
-          message: notif.message,
-          createdAt: notif.createdAt,
-          read: notif.read,
-          account: notif.account ? {
-            id: notif.account.id || 0,
-            name: notif.account.name || '',
-            mail: notif.account.mail || ''
-          } : undefined
-        })))
+        setNotifications(adminNotifications.map(normalizeField));
       } else {
-        const response = await bambiApi.get(API_ENDPOINTS.API_NOTIFICATION_BY_ACCOUNT(user.id))
+        const response = await bambiApi.get(API_ENDPOINTS.API_NOTIFICATION_BY_ACCOUNT(user.id));
         if (response.data && Array.isArray(response.data)) {
-          setNotifications(response.data)
+          setNotifications(response.data.map(normalizeField));
         }
       }
     } catch (error) {
-      console.error("Error fetching notifications:", error)
+      console.error("Error fetching notifications:", error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -87,20 +83,19 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   const handleMarkAsRead = async (notificationId: number) => {
     try {
       if (user?.role_id === 1) {
-        await markAsRead(notificationId)
+        await markAsRead(notificationId);
       } else {
-        await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(notificationId))
+        await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(notificationId));
       }
-      
-      setNotifications(prev => 
-        prev.map(notif => 
-          notif.id === notificationId ? { ...notif, read: true } : notif
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          notif.id === notificationId ? { ...notif, read: true, is_read: true } : notif
         )
-      )
+      );
     } catch (error) {
-      console.error("Error marking notification as read:", error)
+      console.error("Error marking notification as read:", error);
     }
-  }
+  };
 
   const unreadCount = notifications.filter(n => !n.read).length
   const recentNotifications = notifications.slice(0, 5)
