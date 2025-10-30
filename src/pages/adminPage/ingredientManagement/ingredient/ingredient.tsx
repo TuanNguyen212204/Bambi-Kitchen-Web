@@ -8,8 +8,7 @@ import { NotificationSection } from "@components/admin/ingredient/NotificationSe
 import AddIngredientModal from "@components/admin/ingredient/AddIngredientModal";
 import EditIngredientModal from "@components/admin/ingredient/EditIngredientModal";
 import StockHistoryModal from "@components/admin/ingredient/StockHistoryModal";
-import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal";
-import { Grid3X3, List, Plus, Search, MoreVertical, Edit3, Trash2 as TrashIcon, Image as ImageIcon } from "lucide-react";
+import { Grid3X3, List, Plus, Search, MoreVertical, Edit3, Image as ImageIcon } from "lucide-react";
 import { useIngredientStore } from "@zustand/stores/ingredients";
 import { useEffect, useState, useMemo } from "react";
 
@@ -21,12 +20,11 @@ export const AdminIngredientsPage = () => {
     timeZone: "Asia/Ho_Chi_Minh",
   });
   const store = useIngredientStore()
-  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, setStatusFilter, searchByName, selectedCategoryId, statusFilter, loading, filteredItems, viewMode, setViewMode, setSortBy, remove } = store
+  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, setStatusFilter, searchByName, selectedCategoryId, statusFilter, loading, filteredItems, viewMode, setViewMode, setSortBy } = store
   const [openAdd, setOpenAdd] = useState(false)
   const [keyword, setKeyword] = useState("")
   const [editing, setEditing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; category?: unknown }>(null)
   const [stockHistory, setStockHistory] = useState<null | { id: number; name: string; unit?: string }>(null)
-  const [deleting, setDeleting] = useState<null | { id: number; name: string }>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [imageRefreshKey, setImageRefreshKey] = useState(0)
 
@@ -220,7 +218,7 @@ export const AdminIngredientsPage = () => {
           </div>
 
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' : 'grid grid-cols-1 gap-3'}>
-            {filteredItems().map((ingredient: { id: number; name: string; unit?: string; category?: unknown; stock?: number; stockStatus?: 'out'|'low'|'normal'; imgUrl?: string; publicId?: string }) => (
+            {filteredItems().map((ingredient: { id: number; name: string; unit?: string; active?: boolean; category?: unknown; stock?: number; stockStatus?: 'out'|'low'|'normal'; imgUrl?: string; publicId?: string }) => (
               <Card key={getIngredientKey(ingredient)} className={`bg-white border-2 border-gray-200`}>
                 <CardContent className="p-6 space-y-4">
                   <div className="flex items-start justify-between">
