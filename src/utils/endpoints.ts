@@ -1,8 +1,8 @@
 export const API_ENDPOINTS = {
-  AUTH_LOGIN: "/login",
+  AUTH_LOGIN: "/api/user/login",
   AUTH_REGISTER: "/api/account/register",
   AUTH_ME: "/api/user/me",
-  AUTH_GOOGLE: "/api/user/google",
+  AUTH_GOOGLE: "/api/user/login-with-google",
   AUTH_CHECK_EMAIL: "/api/account", 
   API_ACCOUNTS: "/api/account",
   API_ACCOUNT_BY_ID: (id: number) => `/api/account/${id}`,
@@ -14,12 +14,12 @@ export const API_ENDPOINTS = {
   ORDER_CREATE: "/orders",
   ORDER_DETAIL: (id: string) => `/orders/${id}`,
   FAVORITES: "/favorites",
-  PROFILE: "/profile",
+  PROFILE: "/api/account",
   
-  API_NOTIFICATIONS: "/api/notifications",
-  API_NOTIFICATION_BY_ID: (id: number) => `/api/notifications/${id}`,
-  API_NOTIFICATION_BY_ACCOUNT: (id: number) => `/api/notifications/account/${id}`,
-  API_NOTIFICATION_MARK_READ: (id: number) => `/api/notifications/${id}/read`,
+  API_NOTIFICATIONS: "/api/notification",
+  API_NOTIFICATION_BY_ID: (id: number) => `/api/notification/${id}`,
+  API_NOTIFICATION_BY_ACCOUNT: (id: number) => `/api/notification/to-account/${id}`,
+  API_NOTIFICATION_MARK_READ: (id: number) => `/api/notification/${id}/check-read`,
 
   API_INGREDIENTS: "/api/ingredient",
   API_INGREDIENT_BY_ID: (id: number) => `/api/ingredient/${id}`,

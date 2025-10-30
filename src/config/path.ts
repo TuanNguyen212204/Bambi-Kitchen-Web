@@ -4,8 +4,10 @@ export const PATHS = {
   FORGOT_PASSWORD: "/forgot-password",
   CONFIRM_PASSWORD: "/confirm-password",
   RESET_PASSWORD: "/reset-password",
+  OAUTH_CALLBACK: "/oauth2/callback",
   
   HOME: "/",
+  MENU: "/menu",
   ABOUT: "/about",
   CONTACT: "/contact",
   ORDER: "/order",
@@ -29,6 +31,7 @@ export const PATHS = {
   ADMIN_INGREDIENTS: "/admin/ingredients", 
   ADMIN_SOLD_INGREDIENTS: "/admin/sold-ingredients",
   ADMIN_ACCOUNTS: "/admin/accounts",
+  ADMIN_NOTIFICATIONS: "/admin/notifications",
   ADMIN_ORDERS: "/admin/orders",
   ADMIN_FEEDBACK: "/admin/feedback",
   ADMIN_DISH_CATEGORIES: "/admin/dish-categories",

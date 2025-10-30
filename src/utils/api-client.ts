@@ -19,6 +19,8 @@ export interface RequestOptions extends Omit<AxiosRequestConfig, "baseURL" | "ur
   skipAuth?: boolean
 }
 
+let redirectingToLogin = false
+
 export class BambiApiClient {
   private client: AxiosInstance
 
@@ -38,7 +40,6 @@ export class BambiApiClient {
         }
 
         config.withCredentials = true
-        // config.withCredentials = !config.skipAuth
         if (import.meta.env.DEV) {
           console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`)
         }
@@ -64,15 +65,48 @@ export class BambiApiClient {
         const isMeRequest = url.includes("/api/user/me")
         if (status === 401 && !isLoginRequest && !isMeRequest) {
           this.logout()
+          redirectingToLogin = true
+          try {
+            const { toast } = await import("sonner")
+            if (shouldToast("session_expired")) {
+              toast.error("Phiên đăng nhập đã hết hạn", {
+                description: "Vui lòng đăng nhập lại để tiếp tục.",
+              })
+            }
+          } catch { void 0 }
+          setTimeout(() => {
+            if (typeof window !== "undefined") window.location.href = "/login"
+          }, 50)
+          return Promise.reject(new ApiError(error))
+        }
+
+        const hasToken = !!useAuthStore.getState().token
+        const looksLikeProtectedApi = url.startsWith("/api/")
+        if ((status === 403 && hasToken && looksLikeProtectedApi && !isLoginRequest) ||
+            (status === 500 && hasToken && /\/api\/notification\/to-account\//.test(url))) {
+          this.logout()
+          redirectingToLogin = true
+          try {
+            const { toast } = await import("sonner")
+            if (shouldToast("session_expired_fallback")) {
+              toast.error("Phiên làm việc không còn hiệu lực", {
+                description: "Vui lòng đăng nhập lại.",
+              })
+            }
+          } catch { void 0 }
+          setTimeout(() => {
+            if (typeof window !== "undefined") window.location.href = "/login"
+          }, 50)
+          return Promise.reject(new ApiError(error))
         }
 
         const silent = originalRequest?.headers && (originalRequest.headers as AxiosRequestHeaders)["x-silent-error"]
-        if (!silent) {
+        if (!silent && !redirectingToLogin) {
           if (url.includes("/api/ingredient/search")) {
             if (shouldToast("search_error")) {
               toast.error("Tìm kiếm thất bại")
             }
-          } else if (!(status === 401 && isLoginRequest)) {
+          } else if (!(status === 401 && !isMeRequest && !isLoginRequest)) {
             this.handleError(error)
           }
         }

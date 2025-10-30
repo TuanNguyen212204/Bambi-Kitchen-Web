@@ -6,9 +6,12 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import logo from "@assets/logo.png";
 import { PATHS } from "@config/path";
 import { ROLES } from "@config/routes";
+import NotificationIcon from "@/components/ui/notification/NotificationIcon";
+import NotificationDropdown from "@/components/ui/notification/NotificationDropdown";
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuthStore();
   const navigate = useNavigate();
   const toggleMenu = () => setMenuOpen((prev) => !prev);
@@ -17,14 +20,14 @@ const Header = () => {
     navigate(PATHS.LOGIN);
   };
   return (
-    <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-md py-3 px-0">
-      <div className="max-w-[1600px] mx-auto w-full flex items-center pl-2">
+    <header className="fixed top-0 left-0 w-full h-[82px] bg-white z-50 shadow-md px-0">
+      <div className="max-w-[1600px] mx-auto w-full h-full flex items-center px-2">
         <div className="flex items-center space-x-3">
-          <Link to="/" aria-label="Trang chủ" className="-ml-2">
+          <Link to="/" aria-label="Trang chủ">
             <img
               src={logo}
               alt="Bambi's Kitchen Logo"
-              className="w-44 h-20 object-contain"
+              className="w-44 h-16 object-contain"
             />
           </Link>
         </div>
@@ -47,6 +50,17 @@ const Header = () => {
             </button>
             <Badge className="absolute -top-1 -right-1 w-5 h-5 bg-[#ea6d27] text-white p-0 flex items-center justify-center">2</Badge>
           </div>
+          {isAuthenticated && (
+            <div className="relative">
+              <NotificationIcon 
+                onClick={() => setNotificationOpen(!notificationOpen)}
+              />
+              <NotificationDropdown 
+                isOpen={notificationOpen}
+                onClose={() => setNotificationOpen(false)}
+              />
+            </div>
+          )}
           <div className="relative">
             {isAuthenticated ? (
               <>

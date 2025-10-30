@@ -1,3 +1,4 @@
+import type { RegisterPayload } from "@models/account/user"
 export interface User {
   id: number
   name: string
@@ -7,12 +8,15 @@ export interface User {
   avatar?: string
   created_at?: string
   status?: "active" | "inactive"
+  phone?: string
 }
 
 export interface UserMeResponse {
-  userId: number
+  id: number
   name: string
-  role: Array<{ authority: string }>
+  mail?: string
+  phone?: string
+  role: "USER" | "STAFF" | "ADMIN"
 }
 
 export interface LoginRequest {
@@ -68,11 +72,12 @@ export interface SessionSlice {
   isAuthenticated: boolean
   loading: boolean
   error: string | null
+  user?: User | null
   
   setSession: (token: string | null, refreshToken?: string | null) => void
   clearSession: () => void
   login: (phone: string, password: string) => Promise<void>
-  register: (userData: any) => Promise<void>
+  register: (userData: RegisterRequest | RegisterPayload) => Promise<void>
   logout: () => void
   verifyAuth: () => Promise<void>
   forgotPassword: (email: string) => Promise<void>

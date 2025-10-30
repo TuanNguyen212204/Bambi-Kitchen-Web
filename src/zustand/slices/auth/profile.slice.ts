@@ -1,5 +1,5 @@
 import type { StateCreator } from "zustand"
-import type { ProfileSlice, User } from "@/zustand/types"
+import type { ProfileSlice } from "@/zustand/types"
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const createProfileSlice: StateCreator<ProfileSlice, [], [], ProfileSlice> = (set, _get, _store) => ({
@@ -20,7 +20,22 @@ export const createProfileSlice: StateCreator<ProfileSlice, [], [], ProfileSlice
       const response = await bambiApi.put(API_ENDPOINTS.PROFILE, profileData)
       
       set((state) => {
-        const updatedUser = state.user ? { ...state.user, ...(response.data as Partial<User>) } : null
+        const accountData = response.data as {
+          id: number;
+          name: string;
+          mail: string;
+          phone?: string;
+          role: "USER" | "STAFF" | "ADMIN";
+          active: boolean;
+        }
+        const updatedUser = state.user ? { 
+          ...state.user, 
+          email: accountData.mail || state.user.email,
+          phone: accountData.phone || state.user.phone,
+          name: accountData.name || state.user.name,
+          role: accountData.role || state.user.role,
+          status: accountData.active ? 'active' as const : 'inactive' as const
+        } : null
         return {
           user: updatedUser,
           loading: false,

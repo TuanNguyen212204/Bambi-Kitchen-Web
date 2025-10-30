@@ -5,12 +5,14 @@ const Register = lazy(() => import("@pages/Auth/RegisterPage/RegisterPage"))
 const ForgotPassword = lazy(() => import("@pages/Auth/ForgotPassword"))
 const ConfirmationPage = lazy(() => import("@pages/Auth/ConfirmationPage/ConfirmationPage"))
 const ResetPassword = lazy(() => import("@pages/Auth/ResetPassword"))
+const OAuthCallback = lazy(() => import("@pages/Auth/OAuthCallback"))
 const Success = lazy(() => import("@pages/success"))
 const ErrorPage = lazy(() => import("@pages/error/ErrorPage"))
 const OrdersPage = lazy(() => import("@pages/customerPage/orders/OrdersPage"))
 const ProfilePage = lazy(() => import("@pages/customerPage/profile/ProfilePage"))
 
 const Home = lazy(() => import("@pages/customerPage/home/HomePage"))
+const MenuPage = lazy(() => import("@pages/customerPage/menu/MenuPage"))
 const AboutPage = lazy(() => import("@pages/customerPage/about/AboutPage"))
 const ContactPage = lazy(() => import("@pages/customerPage/contact/ContactPage"))
 const AdminDashboard = lazy(() => import("@pages/adminPage/dashboard"))
@@ -24,6 +26,7 @@ const AdminIngredientsSold = lazy(() => import("@pages/adminPage/ingredientManag
 const AdminDishCategory = lazy(() => import("@pages/adminPage/dishCategory"))
 const AdminDishTemplate = lazy(() => import("@pages/adminPage/dishTemplate"))
 const AdminIngredientCategory = lazy(() => import("@pages/adminPage/ingredientCategory"))
+const AdminNotifications = lazy(() => import("@pages/adminPage/notificationManagement"))
 // const OrderBuilder = lazy(() => import("@/pages/customer/OrderBuilder"))
 // const OrderHistory = lazy(() => import("@/pages/customer/OrderHistory"))
 // const QuickOrder = lazy(() => import("@/pages/customer/QuickOrder"))
@@ -100,6 +103,13 @@ export const AUTH_PUBLIC_ROUTES: RouteConfig[] = [
     role: [],
   },
   {
+    path: PATHS.OAUTH_CALLBACK,
+    component: OAuthCallback,
+    label: "OAuth Callback",
+    protected: false,
+    role: [],
+  },
+  {
     path: PATHS.SUCCESS,
     component: Success,
     label: "Thành công",
@@ -120,6 +130,13 @@ export const CUSTOMER_PUBLIC_ROUTES: RouteConfig[] = [
     path: PATHS.HOME,
     component: Home,
     label: "Trang chủ",
+    protected: false,
+    role: [],
+  },
+  {
+    path: PATHS.MENU,
+    component: MenuPage,
+    label: "Menu",
     protected: false,
     role: [],
   },
@@ -246,6 +263,14 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     path: "accounts",
     component: AdminAccounts,
     label: "Quản lý Tài khoản",
+    protected: true,
+    role: [ROLES.ADMIN],
+    layout: "admin",
+  },
+  {
+    path: "notifications",
+    component: AdminNotifications,
+    label: "Quản lý Thông báo",
     protected: true,
     role: [ROLES.ADMIN],
     layout: "admin",

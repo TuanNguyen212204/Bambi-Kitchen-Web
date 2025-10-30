@@ -1,26 +1,10 @@
-# Bambi Kitchen Web – Ghi chú cấu hình Firebase
+## Bambi Kitchen Web – SWD Project Overview
 
-## Thiết lập biến môi trường (Vite)
+Bambi Kitchen là chuỗi bán đồ ăn healthy cho phép khách hàng tùy chỉnh món theo từng bước, tích hợp AI phân tích dinh dưỡng và gợi ý cho các lần đặt sau. Ứng dụng web phục vụ người dùng đặt món, nhân viên xử lý đơn và admin quản trị doanh thu, menu, nguyên liệu.
 
-Tạo file `.env` ở thư mục gốc với các biến sau (Vite chỉ đọc biến bắt đầu bằng `VITE_`):
-
-```
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...  # ví dụ: your-project-id.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
-VITE_FIREBASE_MEASUREMENT_ID=...
-```
-
-## Cấu trúc module Firebase
-
-- `src/config/firebase.ts`: khởi tạo `app` và export `storage` từ Firebase v9 modular.
-- Không commit khóa bí mật vào repo; luôn dùng biến môi trường.
-
-## Upload file từ FE
-
-- Sử dụng `src/utils/file.js` với hàm `uploadFile(file, { folder, metadata, fileName })`.
-- Mặc định lưu vào thư mục `uploads/` và sinh tên file unique theo timestamp + random.
+Phát triển
+- Cài đặt: `npm i`
+- Chạy dev: `npm run dev`
+- Build: `npm run build`
+- Preview: `npm run preview`
 
