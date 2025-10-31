@@ -63,40 +63,48 @@ export class BambiApiClient {
 
         const isLoginRequest = url.includes("/login") || originalRequest?.skipAuth
         const isMeRequest = url.includes("/api/user/me")
+        
+        const hasToken = !!useAuthStore.getState().token
+        const hadSession = hasToken || useAuthStore.getState().isAuthenticated
+        
         if (status === 401 && !isLoginRequest && !isMeRequest) {
           this.logout()
           redirectingToLogin = true
-          try {
-            const { toast } = await import("sonner")
-            if (shouldToast("session_expired")) {
-              toast.error("Phiên đăng nhập đã hết hạn", {
-                description: "Vui lòng đăng nhập lại để tiếp tục.",
-              })
-            }
-          } catch { void 0 }
-          setTimeout(() => {
-            if (typeof window !== "undefined") window.location.href = "/login"
-          }, 50)
+          
+          if (hadSession) {
+            try {
+              const { toast } = await import("sonner")
+              if (shouldToast("session_expired")) {
+                toast.error("Phiên đăng nhập đã hết hạn", {
+                  description: "Vui lòng đăng nhập lại để tiếp tục.",
+                })
+              }
+            } catch { void 0 }
+            setTimeout(() => {
+              if (typeof window !== "undefined") window.location.href = "/login"
+            }, 50)
+          }
           return Promise.reject(new ApiError(error))
         }
-
-        const hasToken = !!useAuthStore.getState().token
         const looksLikeProtectedApi = url.startsWith("/api/")
         if ((status === 403 && hasToken && looksLikeProtectedApi && !isLoginRequest) ||
             (status === 500 && hasToken && /\/api\/notification\/to-account\//.test(url))) {
           this.logout()
           redirectingToLogin = true
-          try {
-            const { toast } = await import("sonner")
-            if (shouldToast("session_expired_fallback")) {
-              toast.error("Phiên làm việc không còn hiệu lực", {
-                description: "Vui lòng đăng nhập lại.",
-              })
-            }
-          } catch { void 0 }
-          setTimeout(() => {
-            if (typeof window !== "undefined") window.location.href = "/login"
-          }, 50)
+          
+          if (hadSession) {
+            try {
+              const { toast } = await import("sonner")
+              if (shouldToast("session_expired_fallback")) {
+                toast.error("Phiên làm việc không còn hiệu lực", {
+                  description: "Vui lòng đăng nhập lại.",
+                })
+              }
+            } catch { void 0 }
+            setTimeout(() => {
+              if (typeof window !== "undefined") window.location.href = "/login"
+            }, 50)
+          }
           return Promise.reject(new ApiError(error))
         }
 
@@ -107,7 +115,7 @@ export class BambiApiClient {
               toast.error("Tìm kiếm thất bại")
             }
           } else if (!(status === 401 && !isMeRequest && !isLoginRequest)) {
-            this.handleError(error)
+            this.handleError(error, hadSession)
           }
         }
         return Promise.reject(new ApiError(error))
@@ -116,17 +124,19 @@ export class BambiApiClient {
   }
 
 
-  private handleError(error: unknown) {
+  private handleError(error: unknown, hadSession: boolean = false) {
     const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string }
     const status = err.response?.status
     const message = err.response?.data?.message || err.message || "Có lỗi xảy ra"
 
     switch (status) {
       case 401:
-        if (shouldToast("401")) toast.error("Phiên đăng nhập hết hạn", {
-          description: `[401] Vui lòng đăng nhập lại`,
-          action: { label: "Đăng nhập", onClick: () => window.location.href = "/login" },
-        })
+        if (shouldToast("401") && hadSession) {
+          toast.error("Phiên đăng nhập hết hạn", {
+            description: `[401] Vui lòng đăng nhập lại`,
+            action: { label: "Đăng nhập", onClick: () => window.location.href = "/login" },
+          })
+        }
         break
       case 403:
         if (shouldToast("403")) toast.error("Không có quyền truy cập", { description: `[403] ${message}` })

@@ -1,7 +1,7 @@
 import type { StateCreator } from "zustand"
 import type { SessionSlice, UserMeResponse } from "@/zustand/types"
 
-export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice> = (set) => ({
+export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice> = (set, get) => ({
   token: null,
   refreshToken: null,
   isAuthenticated: false,
@@ -107,6 +107,9 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
   },
 
   logout: async () => {
+    const currentState = get()
+    const hadSession = !!currentState.token || currentState.isAuthenticated
+    
     set({
       user: null,
       token: null,
@@ -119,13 +122,18 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
 
-    const toastModule = await import("sonner")
-    toastModule.toast.success("Đăng xuất thành công!", {
-      description: "Hẹn gặp lại!",
-    })
+    if (hadSession) {
+      const toastModule = await import("sonner")
+      toastModule.toast.success("Đăng xuất thành công!", {
+        description: "Hẹn gặp lại!",
+      })
+    }
   },
 
   verifyAuth: async () => {
+    const currentState = get()
+    const hadToken = !!currentState.token || currentState.isAuthenticated
+    
     set({ loading: true })
 
     try {
@@ -146,10 +154,12 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         loading: false,
       })
 
-      const { toast } = await import("sonner")
-      toast.warning("Phiên đăng nhập hết hạn", {
-        description: "Vui lòng đăng nhập lại",
-      })
+      if (hadToken) {
+        const { toast } = await import("sonner")
+        toast.warning("Phiên đăng nhập hết hạn", {
+          description: "Vui lòng đăng nhập lại",
+        })
+      }
     }
   },
 

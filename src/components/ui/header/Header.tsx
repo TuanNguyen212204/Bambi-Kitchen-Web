@@ -114,6 +114,10 @@ const Header = () => {
                       <LogIn size={16} />
                       Đăng nhập
                     </button>
+                    <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2" onClick={() => navigate(PATHS.REGISTER)}>
+                      <UserIcon size={16} />
+                      Đăng ký
+                    </button>
                   </div>
                 )}
               </>
