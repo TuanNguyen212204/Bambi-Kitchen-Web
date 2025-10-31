@@ -23,7 +23,7 @@ export const AdminIngredientsPage = () => {
   const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, setStatusFilter, searchByName, selectedCategoryId, statusFilter, loading, filteredItems, viewMode, setViewMode, setSortBy } = store
   const [openAdd, setOpenAdd] = useState(false)
   const [keyword, setKeyword] = useState("")
-  const [editing, setEditing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; category?: unknown }>(null)
+  const [editing, setEditing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; category?: unknown; pricePerUnit?: number }>(null)
   const [stockHistory, setStockHistory] = useState<null | { id: number; name: string; unit?: string }>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [imageRefreshKey, setImageRefreshKey] = useState(0)
@@ -218,7 +218,7 @@ export const AdminIngredientsPage = () => {
           </div>
 
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' : 'grid grid-cols-1 gap-3'}>
-            {filteredItems().map((ingredient: { id: number; name: string; unit?: string; active?: boolean; category?: unknown; stock?: number; stockStatus?: 'out'|'low'|'normal'; imgUrl?: string; publicId?: string }) => (
+            {filteredItems().map((ingredient: { id: number; name: string; unit?: string; active?: boolean; category?: unknown; stock?: number; stockStatus?: 'out'|'low'|'normal'; imgUrl?: string; publicId?: string; pricePerUnit?: number }) => (
               <Card key={getIngredientKey(ingredient)} className={`bg-white border-2 border-gray-200`}>
                 <CardContent className="p-6 space-y-4">
                   <div className="flex items-start justify-between">
@@ -261,7 +261,7 @@ export const AdminIngredientsPage = () => {
                           <MoreVertical className="w-4 h-4" />
                         </button>
                         <div className="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10">
-                          <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setEditing(ingredient)}>
+                          <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setEditing({ ...ingredient, pricePerUnit: (ingredient as { pricePerUnit?: number }).pricePerUnit })}>
                             <Edit3 className="w-4 h-4" /> Edit
                           </button>
                         </div>
@@ -307,8 +307,8 @@ export const AdminIngredientsPage = () => {
         <EditIngredientModal 
           open={true} 
           onClose={()=> setEditing(null)} 
-          ingredient={((): { id: number; name: string; unit?: string; active?: boolean; ingredient_category_id?: number; categoryId?: number; category?: { id: number } | null; imgUrl?: string } => {
-            const maybeAny = editing as unknown as { ingredient_category_id?: number; categoryId?: number; category?: { id?: number } | null; imgUrl?: string }
+          ingredient={((): { id: number; name: string; unit?: string; active?: boolean; ingredient_category_id?: number; categoryId?: number; category?: { id: number } | null; imgUrl?: string; pricePerUnit?: number } => {
+            const maybeAny = editing as unknown as { ingredient_category_id?: number; categoryId?: number; category?: { id?: number } | null; imgUrl?: string; pricePerUnit?: number }
             const mappedCategory = (maybeAny.category && typeof maybeAny.category === 'object' && typeof maybeAny.category.id === 'number')
               ? { id: maybeAny.category.id }
               : null
@@ -321,6 +321,7 @@ export const AdminIngredientsPage = () => {
               categoryId: typeof maybeAny.categoryId === 'number' ? maybeAny.categoryId : undefined,
               category: mappedCategory ?? null,
               imgUrl: typeof maybeAny.imgUrl === 'string' ? maybeAny.imgUrl : undefined,
+              pricePerUnit: typeof maybeAny.pricePerUnit === 'number' ? maybeAny.pricePerUnit : (editing.pricePerUnit ?? undefined),
             }
           })()}
         />

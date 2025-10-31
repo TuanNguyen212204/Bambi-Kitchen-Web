@@ -98,13 +98,18 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
 
   const submit = async () => {
     if (!ingredient?.id) return
+    const currentPricePerUnit = ingredient.pricePerUnit ?? undefined
+    const newPricePerUnit = pricePerUnit.trim() ? parseFloat(pricePerUnit.trim()) : undefined
+    const priceChanged = currentPricePerUnit !== newPricePerUnit
+    
     const changedInfo =
       name !== (ingredient.name ?? "") ||
       unit !== (ingredient.unit ?? "GRAM") ||
       active !== (ingredient.active ?? true) ||
       typeof categoryId === "number" ||
       selectedFile !== null ||
-      removeCurrentImage
+      removeCurrentImage ||
+      priceChanged
 
     try {
       setNameError("")
@@ -125,7 +130,8 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           active, 
           categoryId: typeof categoryId === 'number' ? categoryId : originalCategoryId, 
           file: selectedFile || undefined,
-          removeImage: removeCurrentImage
+          removeImage: removeCurrentImage,
+          pricePerUnit: newPricePerUnit
         })
       }
       if (deltaNum) {
