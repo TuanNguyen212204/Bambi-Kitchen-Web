@@ -86,6 +86,7 @@ export default function AddIngredientModal({ open, onClose }: Props) {
       onClose={onClose}
       title="Thêm nguyên liệu"
       size="md"
+      contentClassName="max-h-[80vh] overflow-y-auto"
     >
       <ModalForm onSubmit={(e) => { e.preventDefault(); submit() }}>
         <div>

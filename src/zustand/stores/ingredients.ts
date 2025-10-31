@@ -20,6 +20,7 @@ export const useIngredientStore = create<IngredientStore>()(
           ...createIngredientFormSlice(set, get, store),
           ...createIngredientStockSlice(set, get, store),
           ...createIngredientFilterSlice(set, get, store),
+          sessionCreatedIds: [],
           
           filteredItems: () => {
             const state = get()

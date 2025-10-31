@@ -150,6 +150,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       onClose={onClose}
       title="Chỉnh sửa nguyên liệu"
       size="lg"
+      contentClassName="max-h-[80vh] overflow-y-auto"
     >
       <ModalForm onSubmit={(e) => { e.preventDefault(); submit() }}>
         <div>
@@ -208,7 +209,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
               try { await toggleActive(ingredient.id, checked) } catch { /* handled by store */ }
             }
           }} />
-          <Label htmlFor="active">Đang hoạt động</Label>
+          <Label htmlFor="active">{active ? "Đang hoạt động" : "Không hoạt động"}</Label>
         </div>
 
         <div>

@@ -71,13 +71,20 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
         formData.append('file', payload.file)
       }
 
-      await bambiApi.post<Ingredient>(API_ENDPOINTS.API_INGREDIENTS, formData, {
+      const createdRes = await bambiApi.post<Ingredient>(API_ENDPOINTS.API_INGREDIENTS, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       })
 
       const { useIngredientStore } = await import("@zustand/stores/ingredients")
+      try {
+        const id = (createdRes.data as { id?: number })?.id
+        if (typeof id === 'number') {
+          const current = useIngredientStore.getState().sessionCreatedIds || []
+          useIngredientStore.setState({ sessionCreatedIds: Array.from(new Set([...current, id])) })
+        }
+      } catch { }
       await useIngredientStore.getState().fetchAll()
 
       const { toast } = await import("sonner")

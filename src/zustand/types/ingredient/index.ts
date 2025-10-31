@@ -8,6 +8,10 @@ export type StoreIngredient = Omit<Ingredient, "category"> & {
   stock?: number
   stockStatus?: StockStatus
   active?: boolean 
+  quantity?: number
+  available?: number
+  reserve?: number
+  pricePerUnit?: number
 }
 
 export interface InventoryTransaction {
@@ -73,6 +77,7 @@ export type IngredientStore =
   IngredientStockSlice & 
   IngredientFilterSlice & {
   filteredItems: () => StoreIngredient[]
+  sessionCreatedIds?: number[]
 }
 
 export type IngredientState = IngredientStore
