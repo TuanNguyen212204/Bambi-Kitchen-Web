@@ -28,7 +28,8 @@ export const createDishFormSlice: StateCreator<
 > = () => ({
   createOrUpdate: async (payload: DishFormPayload) => {
     const form = new FormData();
-    if (payload.id != null) form.append("id", String(payload.id));
+    const isUpdate = payload.id != null
+    if (isUpdate) form.append("id", String(payload.id));
     form.append("name", payload.name);
     if (payload.description) form.append("description", payload.description);
     if (payload.price != null) form.append("price", String(payload.price));
@@ -42,10 +43,14 @@ export const createDishFormSlice: StateCreator<
     if (payload.file instanceof File) {
       form.append("file", payload.file);
     } else {
-      const emptyFile = new File([], "empty.txt", { type: "application/octet-stream" });
+      const emptyFile = new File([], "empty", { type: "application/octet-stream" });
       form.append("file", emptyFile);
     }
-    await bambiApi.post(API_ENDPOINTS.API_DISHES, form, { headers: { "Content-Type": "multipart/form-data" } });
+    if (isUpdate) {
+      await bambiApi.put(API_ENDPOINTS.API_DISHES, form, { headers: { "Content-Type": "multipart/form-data" } });
+    } else {
+      await bambiApi.post(API_ENDPOINTS.API_DISHES, form, { headers: { "Content-Type": "multipart/form-data" } });
+    }
   },
   saveCustomDish: async (id: number, isPublic: boolean) => {
     await bambiApi.put(API_ENDPOINTS.API_DISH_SAVE_CUSTOM, undefined, { params: { id, isPublic } });
