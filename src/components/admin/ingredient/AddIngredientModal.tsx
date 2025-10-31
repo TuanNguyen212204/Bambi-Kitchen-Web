@@ -14,6 +14,7 @@ export default function AddIngredientModal({ open, onClose }: Props) {
   const [name, setName] = useState("")
   const [unit, setUnit] = useState("GRAM")
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined)
+  const [pricePerUnit, setPricePerUnit] = useState<string>("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [errors, setErrors] = useState<{ name?: string; category?: string }>({})
@@ -26,6 +27,7 @@ export default function AddIngredientModal({ open, onClose }: Props) {
       setName("")
       setUnit("GRAM")
       setCategoryId(undefined)
+      setPricePerUnit("")
       setSelectedFile(null)
       setPreviewUrl(null)
       setErrors({})
@@ -68,7 +70,8 @@ export default function AddIngredientModal({ open, onClose }: Props) {
     setLoading(true)
     try {
       const safeCategoryId = categoryId as number
-      await create({ name: name.trim(), categoryId: safeCategoryId, unit, file: selectedFile || undefined })
+      const priceValue = pricePerUnit.trim() ? parseFloat(pricePerUnit.trim()) : undefined
+      await create({ name: name.trim(), categoryId: safeCategoryId, unit, pricePerUnit: priceValue, file: selectedFile || undefined })
       onClose()
     } catch {
       // Error handling is done in store
@@ -123,6 +126,18 @@ export default function AddIngredientModal({ open, onClose }: Props) {
             <option value="LITER">LITER</option>
             <option value="PCS">PCS</option>
           </select>
+        </div>
+
+        <div>
+          <Label className="mb-1 block">Giá mỗi đơn vị (tùy chọn)</Label>
+          <Input 
+            type="number"
+            step="0.01"
+            min="0"
+            value={pricePerUnit} 
+            onChange={(e)=> setPricePerUnit(e.target.value)} 
+            placeholder="VD: 50000" 
+          />
         </div>
 
         <div>

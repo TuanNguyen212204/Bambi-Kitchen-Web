@@ -148,7 +148,7 @@ export const AdminIngredientsPage = () => {
             <div className="space-y-2">
               <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Tìm kiếm nguyên liệu</Label>
               <Input
-                placeholder="Tên nguyên liệu, nhà cung cấp..."
+                placeholder="Tên nguyên liệu..."
                 className="[font-family:'Arial-Narrow',Helvetica] font-normal text-sm h-auto py-2"
                 value={keyword}
                 onChange={(e)=> { setKeyword(e.target.value); setQuery(e.target.value) }}
@@ -291,14 +291,6 @@ export const AdminIngredientsPage = () => {
                     </Button>
                   </div>
 
-                  <div className="bg-[#0000001a] rounded-md p-3 space-y-2">
-                    <h4 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-sm">Nhà cung cấp</h4>
-                    <div className="space-y-1">
-                      <p className="[font-family:'Inter-Bold',Helvetica] font-normal text-gray-700 text-xs opacity-80"><span className="font-bold">Công ty:</span><span className="[font-family:'Inter-Regular',Helvetica]"> N/A</span></p>
-                      <p className="[font-family:'Inter-Bold',Helvetica] font-normal text-gray-700 text-xs opacity-80"><span className="font-bold">Liên hệ:</span><span className="[font-family:'Inter-Regular',Helvetica]"> N/A</span></p>
-                      <p className="[font-family:'Inter-Bold',Helvetica] font-normal text-gray-700 text-xs opacity-80"><span className="font-bold">Giá:</span><span className="[font-family:'Inter-Regular',Helvetica]"> N/A</span></p>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             ))}
