@@ -27,7 +27,8 @@ export const createIngredientListSlice: StateCreator<IngredientListSlice, [], []
           if (typeof c.id === 'number') categoryId = c.id as number
         }
         const { category: _omit1, ...rest } = i as Ingredient; void _omit1
-        return { ...(rest as Omit<Ingredient, "category">), category: String(category ?? ""), categoryId }
+        const ingredient = i as unknown as { pricePerUnit?: number }
+        return { ...(rest as Omit<Ingredient, "category">), category: String(category ?? ""), categoryId, pricePerUnit: ingredient.pricePerUnit }
       })
 
       const transactionsRes = await bambiApi.get<InventoryTransaction[]>(API_ENDPOINTS.API_INVENTORY_TRANSACTIONS)
