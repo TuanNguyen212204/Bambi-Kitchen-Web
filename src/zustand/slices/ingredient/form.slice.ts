@@ -98,9 +98,18 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
       if (typeof payload.categoryId === 'number') formData.append('categoryId', String(payload.categoryId))
       formData.append('unit', payload.unit ?? '')
       formData.append('active', payload.active !== undefined ? String(payload.active) : '')
-      formData.append('available', String(payload.available ?? 0))
-      formData.append('quantity', String(payload.quantity ?? 0))
-      formData.append('reserve', String(payload.reserve ?? 0))
+      if (typeof payload.available === 'number') {
+        formData.append('available', String(payload.available))
+      }
+      if (typeof payload.quantity === 'number') {
+        formData.append('quantity', String(payload.quantity))
+      }
+      if (typeof payload.reserve === 'number') {
+        formData.append('reserve', String(payload.reserve))
+      }
+      if (payload.pricePerUnit !== undefined && payload.pricePerUnit !== null) {
+        formData.append('pricePerUnit', payload.pricePerUnit.toString())
+      }
 
       if (payload.file) {
         if (!validateFileSize(payload.file)) {
@@ -129,6 +138,10 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
         ...(typeof payload.categoryId === 'number' ? { categoryId: payload.categoryId } : {}),
         ...(payload.unit ? { unit: payload.unit } : {}),
         ...(typeof payload.active === 'boolean' ? { active: payload.active } : {}),
+        ...(typeof payload.quantity === 'number' ? { quantity: payload.quantity } : {}),
+        ...(typeof payload.available === 'number' ? { available: payload.available } : {}),
+        ...(typeof payload.reserve === 'number' ? { reserve: payload.reserve } : {}),
+        ...(typeof payload.pricePerUnit === 'number' ? { pricePerUnit: payload.pricePerUnit } : {}),
       }
       await bambiApi.put(API_ENDPOINTS.API_INGREDIENTS, formData, {
         params: { ingredient: ingredientParams },
@@ -139,8 +152,10 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
       const { useIngredientStore } = await import("@zustand/stores/ingredients")
       useIngredientStore.getState().fetchAll()
       
-      const { toast } = await import("sonner")
-      toast.success("Đã cập nhật nguyên liệu")
+      if (!payload.silent) {
+        const { toast } = await import("sonner")
+        toast.success("Đã cập nhật nguyên liệu")
+      }
     } catch {
       const { toast } = await import("sonner")
       toast.error("Cập nhật nguyên liệu thất bại")
