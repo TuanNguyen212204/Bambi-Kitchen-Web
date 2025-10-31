@@ -70,6 +70,18 @@ const Header = () => {
                 {menuOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                     <div className="px-4 py-2 text-sm text-gray-600">{user?.name ?? "Đã đăng nhập"}</div>
+                    {user?.role_id === ROLES.ADMIN && (
+                      <button
+                        className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate(PATHS.ADMIN);
+                        }}
+                      >
+                        <UserIcon size={16} />
+                        Admin
+                      </button>
+                    )}
                     <button
                       className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
                       onClick={() => {
