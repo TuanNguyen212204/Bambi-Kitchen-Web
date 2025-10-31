@@ -64,6 +64,9 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
       formData.append('name', payload.name)
       formData.append('categoryId', payload.categoryId.toString())
       formData.append('unit', payload.unit)
+      if (payload.pricePerUnit !== undefined && payload.pricePerUnit !== null) {
+        formData.append('pricePerUnit', payload.pricePerUnit.toString())
+      }
       if (payload.file) {
         formData.append('file', payload.file)
       }

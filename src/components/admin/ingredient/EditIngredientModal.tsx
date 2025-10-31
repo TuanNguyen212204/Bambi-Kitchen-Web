@@ -18,7 +18,8 @@ interface Props {
     active?: boolean; 
     ingredient_category_id?: number; 
     category?: { id: number } | null; 
-    imgUrl?: string 
+    imgUrl?: string;
+    pricePerUnit?: number;
   } 
 }
 
@@ -28,6 +29,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
   const [name, setName] = useState(ingredient?.name ?? "")
   const [unit, setUnit] = useState(ingredient?.unit ?? "GRAM")
   const [active, setActive] = useState<boolean>(ingredient?.active ?? true)
+  const [pricePerUnit, setPricePerUnit] = useState<string>(ingredient?.pricePerUnit?.toString() ?? "")
   const originalCategoryId = (
     ingredient.ingredient_category_id ??
     (ingredient as unknown as { categoryId?: number }).categoryId ??
@@ -51,6 +53,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       setName(ingredient?.name ?? "")
       setUnit(ingredient?.unit ?? "GRAM")
       setActive(ingredient?.active ?? true)
+      setPricePerUnit(ingredient?.pricePerUnit?.toString() ?? "")
       const cid = (
         ingredient.ingredient_category_id ??
         (ingredient as unknown as { categoryId?: number }).categoryId ??
@@ -178,6 +181,18 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
             <option value="LITER">LITER</option>
             <option value="PCS">PCS</option>
           </select>
+        </div>
+
+        <div>
+          <Label className="mb-1 block">Giá mỗi đơn vị (tùy chọn)</Label>
+          <Input 
+            type="number"
+            step="0.01"
+            min="0"
+            value={pricePerUnit} 
+            onChange={(e)=> setPricePerUnit(e.target.value)} 
+            placeholder="VD: 50000" 
+          />
         </div>
         
         <div className="flex items-center gap-2">

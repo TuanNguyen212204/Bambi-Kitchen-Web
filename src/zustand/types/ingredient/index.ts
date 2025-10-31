@@ -40,7 +40,7 @@ export interface IngredientCategorySlice {
 }
 
 export interface IngredientFormSlice {
-  create: (payload: { name: string; categoryId: number; unit: string; file?: File }) => Promise<void>
+  create: (payload: { name: string; categoryId: number; unit: string; pricePerUnit?: number; file?: File }) => Promise<void>
   update: (payload: { id: number; name: string; categoryId?: number; unit?: string; active?: boolean; available?: number; quantity?: number; reserve?: number; file?: File; removeImage?: boolean }) => Promise<void>
   remove: (id: number) => Promise<void>
   toggleActive: (id: number, active: boolean) => Promise<void>
