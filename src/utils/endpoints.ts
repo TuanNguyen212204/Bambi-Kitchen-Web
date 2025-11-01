@@ -13,6 +13,8 @@ export const API_ENDPOINTS = {
   ORDERS: "/orders",
   ORDER_CREATE: "/orders",
   ORDER_DETAIL: (id: string) => `/orders/${id}`,
+  API_ORDERS: "/api/order",
+  API_ORDER_BY_ACCOUNT: (accountId: number) => `/api/order?userId=${accountId}`,
   FAVORITES: "/favorites",
   PROFILE: "/api/account",
   

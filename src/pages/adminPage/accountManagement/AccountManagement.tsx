@@ -10,12 +10,14 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal";
-import { Users, CheckCircle, Star, Calendar, Plus, Eye } from "lucide-react";
+import { Users, CheckCircle, Star, Calendar, Plus, Eye, Copy, Phone, Mail, Wallet, FileText } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useAccountStore } from "@zustand/stores/account";
 import { AddAccountModal } from "@components/admin/account/AddAccountModal";
 import { AccountDetailModal } from "@components/admin/account/AccountDetailModal";
-import { MoreVertical, Trash2 as TrashIcon, User as UserIcon } from "lucide-react";
+import { MoreVertical, Trash2 as TrashIcon } from "lucide-react";
+import { bambiApi, API_ENDPOINTS } from "@utils/api";
+import type { Order, OrderStatus } from "@models/order/order";
 
 export default function AccountManagement() {
   const currentDate = new Date().toLocaleString("vi-VN", {
@@ -33,50 +35,102 @@ export default function AccountManagement() {
     query,
     setQuery,
     searchByName,
-    selectedRole,
-    setSelectedRole,
     statusFilter,
     setStatusFilter,
-    viewMode,
-    setViewMode,
     remove,
     update
   } = useAccountStore();
 
   const store = useAccountStore();
   
-  const accounts = useMemo(() => store.getFilteredItems(), [store]);
-  const totalAccounts = useMemo(() => store.items.length, [store.items]);
-  const activeAccounts = useMemo(() => store.items.filter(acc => acc.active !== false).length, [store.items]);
+  const allAccounts = useMemo(() => store.items, [store.items]);
+  const userAccounts = useMemo(() => allAccounts.filter(acc => acc.role === "USER"), [allAccounts]);
+  
+  const filteredUserAccounts = useMemo(() => {
+    let filtered = userAccounts;
+    
+    if (query.trim()) {
+      const searchQuery = query.toLowerCase();
+      filtered = filtered.filter(acc => 
+        acc.name?.toLowerCase().includes(searchQuery) ||
+        acc.mail?.toLowerCase().includes(searchQuery) ||
+        acc.phone?.includes(searchQuery) ||
+        `C${acc.id?.toString().padStart(3, '0')}`.toLowerCase().includes(searchQuery)
+      );
+    }
+    
+    if (statusFilter === "active") {
+      filtered = filtered.filter(acc => acc.active !== false);
+    } else if (statusFilter === "inactive") {
+      filtered = filtered.filter(acc => acc.active === false);
+    }
+    
+    return filtered;
+  }, [userAccounts, query, statusFilter]);
+  
+  const totalUserAccounts = useMemo(() => userAccounts.length, [userAccounts]);
+  const activeUserAccounts = useMemo(() => userAccounts.filter(acc => acc.active !== false).length, [userAccounts]);
   const adminAccounts = useMemo(() => store.items.filter(acc => acc.role === "ADMIN").length, [store.items]);
   const staffAccounts = useMemo(() => store.items.filter(acc => acc.role === "STAFF").length, [store.items]);
-  const userAccounts = useMemo(() => store.items.filter(acc => acc.role === "USER").length, [store.items]);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
   const [accountToDelete, setAccountToDelete] = useState<any>(null);
+  
+  // Orders state
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [selectedOrderTab, setSelectedOrderTab] = useState<"unpaid" | "paid">("unpaid");
+  const [orderSearchQuery, setOrderSearchQuery] = useState("");
 
   useEffect(() => {
     fetchAll();
     fetchStats();
-  }, [fetchAll, fetchStats]); 
+  }, [fetchAll, fetchStats]);
+
+  // Fetch orders when account is selected
+  useEffect(() => {
+    if (selectedAccount?.id) {
+      fetchOrdersByAccountId(selectedAccount.id);
+    } else {
+      setOrders([]);
+    }
+  }, [selectedAccount]);
+
+  const fetchOrdersByAccountId = async (accountId: number) => {
+    setLoadingOrders(true);
+    try {
+      const response = await bambiApi.get<Order[]>(API_ENDPOINTS.API_ORDERS, {
+        headers: {
+          'x-silent-error': 'true'
+        }
+      } as any);
+      const filteredOrders = response.data.filter(order => order.user_id === accountId);
+      setOrders(filteredOrders);
+    } catch (error) {
+      console.log("API chưa có, chờ cập nhật:", error);
+      setOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  }; 
 
   const statsData = [
     {
-      title: "Tổng tài khoản",
-      value: totalAccounts.toString(),
-      subtitle: `+${Math.floor(totalAccounts * 0.1)} tài khoản mới tháng này`,
+      title: "Tổng khách hàng",
+      value: totalUserAccounts.toString(),
+      subtitle: `+${Math.floor(totalUserAccounts * 0.1)} khách hàng mới tháng này`,
       icon: Users,
       bgColor: "bg-blue-100",
       iconColor: "text-blue-600",
       subtitleColor: "text-green-600",
     },
     {
-      title: "Tài khoản hoạt động",
-      value: activeAccounts.toString(),
-      subtitle: `${totalAccounts > 0 ? Math.round((activeAccounts / totalAccounts) * 100) : 0}% tổng tài khoản`,
+      title: "Khách hàng hoạt động",
+      value: activeUserAccounts.toString(),
+      subtitle: `${totalUserAccounts > 0 ? Math.round((activeUserAccounts / totalUserAccounts) * 100) : 0}% tổng khách hàng`,
       icon: CheckCircle,
       bgColor: "bg-green-100",
       iconColor: "text-green-600",
@@ -85,7 +139,7 @@ export default function AccountManagement() {
     {
       title: "Quản trị viên",
       value: adminAccounts.toString(),
-      subtitle: `${staffAccounts} nhân viên, ${userAccounts} người dùng`,
+      subtitle: `${staffAccounts} nhân viên, ${userAccounts.length} người dùng`,
       icon: Star,
       bgColor: "bg-amber-100",
       iconColor: "text-amber-600",
@@ -93,7 +147,7 @@ export default function AccountManagement() {
     },
     {
       title: "Tỷ lệ hoạt động",
-      value: `${totalAccounts > 0 ? Math.round((activeAccounts / totalAccounts) * 100) : 0}%`,
+      value: `${totalUserAccounts > 0 ? Math.round((activeUserAccounts / totalUserAccounts) * 100) : 0}%`,
       subtitle: "Tăng 5% so với tháng trước",
       icon: Calendar,
       bgColor: "bg-pink-100",
@@ -101,19 +155,6 @@ export default function AccountManagement() {
       subtitleColor: "text-green-600",
     },
   ];
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case "ADMIN":
-        return "Quản trị viên";
-      case "STAFF":
-        return "Nhân viên";
-      case "USER":
-        return "Người dùng";
-      default:
-        return role;
-    }
-  };
 
   const handleViewDetail = (account: any) => {
     setSelectedAccount(account);
@@ -154,33 +195,105 @@ export default function AccountManagement() {
     setShowDeleteModal(true);
   };
 
-  const getStatusBadge = (account: any) => {
-    const isActive = account.active !== false;
-    return {
-      text: isActive ? "Hoạt động" : "Không hoạt động",
-      bgColor: isActive ? "bg-green-100" : "bg-red-100",
-      textColor: isActive ? "text-green-600" : "text-red-600",
-    };
+  const handleAccountSelect = (account: any) => {
+    setSelectedAccount(account);
   };
 
+  const getInitials = (name: string) => {
+    if (!name) return "U";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("vi-VN");
+    } catch {
+      return "N/A";
+    }
+  };
+
+  const getOrderStatusLabel = (status: string | OrderStatus) => {
+    const statusStr = status as string;
+    const statusMap: Record<string, string> = {
+      PENDING: "Chờ xử lý",
+      COMPLETED: "Hoàn thành",
+      PAID: "Đã thanh toán",
+      CANCELLED: "Đã hủy",
+      pending: "Chờ xử lý",
+      completed: "Hoàn thành",
+      paid: "Đã thanh toán",
+      cancelled: "Đã hủy",
+      confirmed: "Đã xác nhận",
+      preparing: "Đang chuẩn bị",
+      ready: "Sẵn sàng",
+      delivered: "Đã giao",
+      refunded: "Đã hoàn tiền",
+    };
+    return statusMap[statusStr] || statusStr;
+  };
+
+  const filteredOrders = useMemo(() => {
+    let filtered = orders;
+    const statusStr = (status: string | OrderStatus) => String(status).toLowerCase();
+    
+    if (selectedOrderTab === "unpaid") {
+      filtered = filtered.filter(order => {
+        const s = statusStr(order.status);
+        return s !== "completed" && s !== "paid";
+      });
+    } else {
+      filtered = filtered.filter(order => {
+        const s = statusStr(order.status);
+        return s === "completed" || s === "paid";
+      });
+    }
+    
+    // Filter by search query
+    if (orderSearchQuery.trim()) {
+      filtered = filtered.filter(order => 
+        order.id.toString().includes(orderSearchQuery) ||
+        order.name?.toLowerCase().includes(orderSearchQuery.toLowerCase())
+      );
+    }
+    
+    return filtered;
+  }, [orders, selectedOrderTab, orderSearchQuery]);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <p className="text-red-600 text-sm">{error}</p>
         </div>
       )}
 
+      {/* Header */}
       <section>
         <div className="flex justify-between items-start mb-6">
           <h1 className="[font-family:'Inter-Bold',Helvetica] font-bold text-gray-800 text-[28px] leading-[42px]">
-            Quản lý Tài khoản
+            Quản lý khách hàng
           </h1>
           <div className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-sm leading-[21px]">
             Hôm nay: {currentDate}
           </div>
         </div>
+      </section>
 
+      {/* Stats Cards */}
+      <section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statsData.map((stat, index) => (
             <Card key={index} className="border border-solid shadow-[0px_1px_3px_#0000001a]">
@@ -207,11 +320,12 @@ export default function AccountManagement() {
         </div>
       </section>
 
+      {/* Main Management Section with Two Columns */}
       <section className="w-full bg-white rounded-xl border border-solid border-gray-200 shadow-[0px_1px_3px_#0000001a] overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-100 to-amber-100 p-6">
+        <div className="bg-gradient-to-r from-orange-100 to-amber-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-lg leading-[27px]">
-              Quản lý Tài khoản
+              Quản lý khách hàng
             </h2>
             <Button 
               className="bg-orange-600 hover:bg-orange-700 h-auto px-3 py-2"
@@ -224,7 +338,7 @@ export default function AccountManagement() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm leading-[21px]">
                 Tìm kiếm tài khoản
@@ -234,23 +348,16 @@ export default function AccountManagement() {
                 className="[font-family:'Arial-Narrow',Helvetica] font-normal text-sm h-auto py-2"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (query.trim()) {
+                      searchByName(query.trim());
+                    } else {
+                      fetchAll();
+                    }
+                  }
+                }}
               />
-            </div>
-            <div className="space-y-2">
-              <label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm leading-[21px]">
-                Vai trò
-              </label>
-              <Select value={selectedRole || "all"} onValueChange={(value: string) => setSelectedRole(value === "all" ? undefined : value as "ADMIN" | "STAFF" | "USER")}>
-                <SelectTrigger className="bg-white h-auto py-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả vai trò</SelectItem>
-                  <SelectItem value="ADMIN">Quản trị viên</SelectItem>
-                  <SelectItem value="STAFF">Nhân viên</SelectItem>
-                  <SelectItem value="USER">Người dùng</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             <div className="space-y-2">
               <label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm leading-[21px]">
@@ -271,162 +378,245 @@ export default function AccountManagement() {
               <label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm leading-[21px]">
                 Tìm kiếm
               </label>
-                          <Button 
-                            className="w-full bg-orange-600 hover:bg-orange-700 h-auto py-2"
-                            onClick={() => {
-                              if (query.trim()) {
-                                searchByName(query.trim());
-                              } else {
-                                fetchAll();
-                              }
-                            }}
-                          >
-                            <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-white text-sm">
-                              Tìm kiếm
-                            </span>
-                          </Button>
+              <Button 
+                className="w-full bg-orange-600 hover:bg-orange-700 h-auto py-2"
+                onClick={() => {
+                  if (query.trim()) {
+                    searchByName(query.trim());
+                  } else {
+                    fetchAll();
+                  }
+                }}
+              >
+                <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-white text-sm">
+                  Tìm kiếm
+                </span>
+              </Button>
             </div>
           </div>
         </div>
 
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-lg leading-[27px]">
-              Danh sách Tài khoản ({totalAccounts} người)
-            </h3>
-            <div className="flex gap-2">
-              <Button
-                variant={viewMode === "grid" ? "default" : "outline"}
-                size="sm"
-                className={`h-auto ${viewMode === "grid" ? "bg-orange-600 text-white hover:bg-orange-700" : "bg-white text-black hover:bg-gray-50"} border border-solid px-3 py-2`}
-                onClick={() => setViewMode("grid")}
-              >
-                <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-[13.3px]">
-                  🔲 Grid
-                </span>
-              </Button>
-              <Button 
-                variant={viewMode === "list" ? "default" : "outline"} 
-                size="sm" 
-                className={`h-auto ${viewMode === "list" ? "bg-orange-600 text-white hover:bg-orange-700" : "bg-white text-black hover:bg-gray-50"} border-gray-300 px-3 py-2`}
-                onClick={() => setViewMode("list")}
-              >
-                <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-[13.3px]">
-                  📋 List
-                </span>
-              </Button>
+        {/* Two Column Layout: Sidebar (Left) + Content (Right) */}
+        <div className="flex">
+          {/* Left Sidebar: User Accounts List */}
+          <div className="w-1/3 border-r border-gray-200 bg-gray-50 flex flex-col" style={{ height: "600px", maxHeight: "calc(100vh - 300px)" }}>
+            <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-4 h-4 text-gray-700" />
+                <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm">
+                  Danh sách khách hàng ({filteredUserAccounts.length})
+                </h3>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: "calc(100vh - 300px)" }}>
+              {loading ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600"></div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredUserAccounts.map((account, index) => {
+                    const isSelected = selectedAccount?.id === account.id;
+                    const initials = getInitials(account.name || "");
+                    const avatarColor = isSelected ? "bg-green-500" : "bg-blue-500";
+                    
+                    return (
+                      <div
+                        key={index}
+                        onClick={() => handleAccountSelect(account)}
+                        className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                          isSelected 
+                            ? "border-green-400 bg-green-50" 
+                            : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-full ${avatarColor} flex items-center justify-center flex-shrink-0`}>
+                            <span className="text-white font-semibold text-xs">
+                              {initials}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-xs leading-[18px] mb-1">
+                              {account.name || 'Chưa có tên'}
+                            </h3>
+                            <div className="flex items-center gap-2 text-xs text-gray-600 mb-1">
+                              <span className="font-medium">C{account.id?.toString().padStart(3, '0')}</span>
+                              <Copy className="w-3 h-3 cursor-pointer hover:text-gray-800" onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(`C${account.id?.toString().padStart(3, '0')}`);
+                              }} />
+                            </div>
+                            {account.phone && (
+                              <div className="flex items-center gap-1 text-xs text-gray-600 mb-0.5">
+                                <Phone className="w-3 h-3" />
+                                <span className="truncate">{account.phone}</span>
+                              </div>
+                            )}
+                            {account.mail && (
+                              <div className="flex items-center gap-1 text-xs text-gray-600">
+                                <Mail className="w-3 h-3" />
+                                <span className="truncate">{account.mail}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <div className="relative">
+                              <button
+                                className="w-6 h-6 rounded hover:bg-black/10 flex items-center justify-center"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const menu = (e.currentTarget.nextSibling as HTMLElement);
+                                  if (menu) menu.classList.toggle('hidden');
+                                }}
+                              >
+                                <MoreVertical className="w-3 h-3" />
+                              </button>
+                              <div className="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10 min-w-[120px]">
+                                <button
+                                  className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100 text-sm whitespace-nowrap"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewDetail(account);
+                                  }}
+                                >
+                                  <Eye className="w-4 h-4" /> Xem chi tiết
+                                </button>
+                                <button 
+                                  className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100 text-sm whitespace-nowrap" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openDeleteModal(account);
+                                  }}
+                                >
+                                  <TrashIcon className="w-4 h-4 text-red-600" /> Xóa
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredUserAccounts.length === 0 && (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      {query.trim() ? "Không tìm thấy khách hàng" : "Không có khách hàng nào"}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+          {/* Right Content: Orders */}
+          <div className="flex-1 bg-white flex flex-col" style={{ height: "600px", maxHeight: "calc(100vh - 300px)" }}>
+            <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50 flex-shrink-0">
+              <div className="flex items-center gap-2 mb-3">
+                <Wallet className="w-4 h-4 text-gray-700" />
+                <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm">
+                  Lịch sử thanh toán
+                </h3>
+              </div>
+              {/* Switch Toggle for Payment Status */}
+              <div className="mb-3">
+                <div className="relative inline-flex rounded-lg bg-gray-100 p-1 border border-gray-200 shadow-sm">
+                  <button
+                    onClick={() => setSelectedOrderTab("unpaid")}
+                    className={`relative px-6 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                      selectedOrderTab === "unpaid"
+                        ? "bg-white text-blue-700 shadow-md"
+                        : "text-gray-600 hover:text-gray-800"
+                    }`}
+                  >
+                    Chưa thanh toán
+                  </button>
+                  <button
+                    onClick={() => setSelectedOrderTab("paid")}
+                    className={`relative px-6 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                      selectedOrderTab === "paid"
+                        ? "bg-white text-blue-700 shadow-md"
+                        : "text-gray-600 hover:text-gray-800"
+                    }`}
+                  >
+                    Đã thanh toán
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Tìm kiếm thanh toán..."
+                  className="flex-1 bg-white h-auto py-1.5 text-xs"
+                  value={orderSearchQuery}
+                  onChange={(e) => setOrderSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
-          ) : (
-            <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : "grid grid-cols-1 gap-3"}>
-              {accounts.map((account, index) => {
-                const statusBadge = getStatusBadge(account);
-                return (
-                  <Card key={index} className="bg-white border-2 border-gray-200">
-                    <CardContent className="p-6 space-y-4">
-                                  <div className="flex items-start justify-between gap-3 mb-3">
-                                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                                      <div className="relative flex-shrink-0">
-                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
-                                          <UserIcon className="w-6 h-6 text-white" />
-                                        </div>
-                                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                                          account.active !== false ? 'bg-green-500' : 'bg-red-500'
-                                        }`} />
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px] mb-1 line-clamp-2" title={account.name}>
-                                          {account.name || 'Chưa có tên'}
-                                        </h3>
-                                        <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75 line-clamp-2" title={account.mail}>
-                                          {account.mail || 'Chưa có email'}
-                                        </p>
-                                      </div>
-                                    </div>
 
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                      <div className="relative">
-                                        <button
-                                          className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center"
-                                          onClick={(e) => {
-                                            const menu = (e.currentTarget.nextSibling as HTMLElement);
-                                            if (menu) menu.classList.toggle('hidden');
-                                          }}
-                                        >
-                                          <MoreVertical className="w-4 h-4" />
-                                        </button>
-                                        <div className="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10 min-w-[120px]">
-                                          <button
-                                            className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100 text-sm whitespace-nowrap"
-                                            onClick={() => handleViewDetail(account)}
-                                          >
-                                            <Eye className="w-4 h-4" /> Xem chi tiết
-                                          </button>
-                                          <button 
-                                            className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100 text-sm whitespace-nowrap" 
-                                            onClick={() => openDeleteModal(account)}
-                                          >
-                                            <TrashIcon className="w-4 h-4 text-red-600" /> Xóa
-                                          </button>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-700">Trạng thái</span>
-                          <Badge className={`${statusBadge.bgColor} ${statusBadge.textColor} text-xs`}>
-                            {statusBadge.text}
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-700">ID tài khoản</span>
-                          <span className="text-sm text-gray-700">#{account.id}</span>
-                        </div>
-                        {account.phone && (
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-gray-700">Điện thoại</span>
-                            <span className="text-sm text-gray-700">{account.phone}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-700">Vai trò</span>
-                          <Badge variant="secondary" className="bg-[#0000001a] hover:bg-[#0000001a] px-3 py-1">
-                            <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-gray-700 text-sm text-center">
-                              {getRoleLabel(account.role)}
-                            </span>
-                          </Badge>
-                        </div>
+            <div className="flex-1 overflow-y-auto p-4" style={{ maxHeight: "calc(100vh - 300px)" }}>
+              {!selectedAccount ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Wallet className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-sm">Vui lòng chọn khách hàng để xem lịch sử thanh toán</p>
+                </div>
+              ) : loadingOrders ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                </div>
+              ) : filteredOrders.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-sm">Không có đơn hàng nào</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="p-3 rounded-lg border border-gray-200 bg-white hover:border-gray-300 transition-all"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm font-medium text-gray-700">
+                          Mã: P-{order.user_id}-B{order.id}
+                        </span>
                       </div>
-
-
-                                  <div className="bg-[#0000001a] rounded-md p-3 space-y-2">
-                                    <h4 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-sm">
-                                      Thông tin bổ sung
-                                    </h4>
-                                    <div className="space-y-1">
-                                      <div className="flex justify-between items-center">
-                                        <span className="[font-family:'Inter-Bold',Helvetica] font-bold text-gray-700 text-xs opacity-80">Ngày tạo:</span>
-                                        <span className="[font-family:'Inter-Regular',Helvetica] text-gray-700 text-xs opacity-80 truncate ml-2">N/A</span>
-                                      </div>
-                                      <div className="flex justify-between items-center">
-                                        <span className="[font-family:'Inter-Bold',Helvetica] font-bold text-gray-700 text-xs opacity-80">Lần đăng nhập cuối:</span>
-                                        <span className="[font-family:'Inter-Regular',Helvetica] text-gray-700 text-xs opacity-80 truncate ml-2">N/A</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                      <div className="flex items-center gap-2 mb-2 text-xs text-gray-600">
+                        <Calendar className="w-3 h-3" />
+                        <span>Ngày: {formatDate(order.create_at || order.created_at || "")}</span>
+                      </div>
+                      {order.total_price && (
+                        <div className="text-sm font-semibold text-gray-800 mb-2">
+                          Tổng tiền: {formatCurrency(order.total_price)}
+                        </div>
+                      )}
+                      <div className="flex gap-2 items-center">
+                        <Badge
+                          className={`text-xs px-2 py-1 ${
+                            (String(order.status).toLowerCase() === "completed" || String(order.status).toLowerCase() === "paid")
+                              ? "bg-green-100 text-green-700"
+                              : "bg-orange-100 text-orange-700"
+                          }`}
+                        >
+                          {getOrderStatusLabel(order.status)}
+                        </Badge>
+                        {String(order.status).toLowerCase() !== "completed" && String(order.status).toLowerCase() !== "paid" && (
+                          <Button
+                            size="sm"
+                            className="bg-teal-500 hover:bg-teal-600 text-white text-xs px-3 py-1 h-auto"
+                            onClick={() => {
+                              alert("Chức năng xác nhận thanh toán sẽ được cập nhật thêm");
+                            }}
+                          >
+                            Xác nhận thanh toán
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </section>
 

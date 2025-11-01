@@ -10,7 +10,7 @@ const AdminLayout = () => {
         {/* Sidebar fixed */}
         <SidebarAdmin />
         {/* Main content scrollable - margin-left sẽ được điều chỉnh bằng JS nếu sidebar collapsed */}
-        <main id="admin-main" className="transition-all pl-3 pr-3 pt-4 md:pt-6 min-h-[calc(100vh-82px)] overflow-y-auto" style={{ marginLeft: '256px' }}>
+        <main id="admin-main" className="transition-all pl-3 pr-3 pt-4 md:pt-6 pb-6 min-h-[calc(100vh-82px)] overflow-y-auto" style={{ marginLeft: '256px' }}>
           <Outlet />
         </main>
       </div>
