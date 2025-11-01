@@ -2,11 +2,9 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
-import { Image as ImageIcon, Edit3, Trash2, Utensils, DollarSign, Globe, Eye, EyeOff } from "lucide-react";
+import { Image as ImageIcon, Edit3, Trash2, Utensils, DollarSign } from "lucide-react";
 import { useDishStore } from "@zustand/stores/dish";
-import { useIngredientStore } from "@zustand/stores/ingredients";
 import EditDishModal from "./EditDishModal";
-import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal";
 
 interface DishDetailModalProps {
   open: boolean;
@@ -24,8 +22,7 @@ export function DishDetailModal({
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { fetchAll, remove } = useDishStore();
-  const ingStore = useIngredientStore();
+  const { remove } = useDishStore();
 
   useEffect(() => {
     if (open && dish?.id) {
