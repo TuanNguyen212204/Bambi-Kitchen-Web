@@ -31,6 +31,8 @@ export const PATHS = {
   ADMIN_INGREDIENTS: "/admin/ingredients", 
   ADMIN_SOLD_INGREDIENTS: "/admin/sold-ingredients",
   ADMIN_ACCOUNTS: "/admin/accounts",
+  ADMIN_CUSTOMERS: "/admin/customers",
+  ADMIN_STAFF: "/admin/staff",
   ADMIN_NOTIFICATIONS: "/admin/notifications",
   ADMIN_ORDERS: "/admin/orders",
   ADMIN_FEEDBACK: "/admin/feedback",

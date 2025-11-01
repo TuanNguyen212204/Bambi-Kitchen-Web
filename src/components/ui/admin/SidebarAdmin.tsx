@@ -67,7 +67,8 @@ const groups: Group[] = [
     label: "Người dùng",
     icon: Users,
     items: [
-      { to: PATHS.ADMIN_ACCOUNTS, label: "Quản lý Tài khoản", icon: Users },
+      { to: PATHS.ADMIN_CUSTOMERS, label: "Quản lý khách hàng", icon: Users },
+      { to: PATHS.ADMIN_STAFF, label: "Quản lý Staff", icon: Users },
     ],
   },
   {
