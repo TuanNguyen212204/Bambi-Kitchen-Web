@@ -20,6 +20,10 @@ interface Props {
     category?: { id: number } | null; 
     imgUrl?: string;
     pricePerUnit?: number;
+    quantity?: number;
+    available?: number;
+    reserve?: number;
+    stock?: number;
   } 
 }
 

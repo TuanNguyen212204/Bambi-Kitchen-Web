@@ -9,7 +9,7 @@ import EditIngredientModal from "./EditIngredientModal";
 interface IngredientDetailModalProps {
   open: boolean;
   onClose: () => void;
-  ingredient: { id: number; name: string; unit?: string; imgUrl?: string; active?: boolean; stock?: number; stockStatus?: 'out'|'low'|'normal'; category?: unknown; pricePerUnit?: number } | null;
+  ingredient: { id: number; name: string; unit?: string; imgUrl?: string; active?: boolean; stock?: number; quantity?: number; available?: number; reserve?: number; stockStatus?: 'out'|'low'|'normal'; category?: unknown; pricePerUnit?: number } | null;
 }
 
 export function IngredientDetailModal({ 
@@ -288,14 +288,15 @@ export function IngredientDetailModal({
             ingredient_category_id: typeof displayDetails.category === 'object' && displayDetails.category !== null && 'id' in displayDetails.category
               ? (displayDetails.category as { id?: number }).id
               : undefined,
-            categoryId: typeof displayDetails.category === 'object' && displayDetails.category !== null && 'id' in displayDetails.category
-              ? (displayDetails.category as { id?: number }).id
-              : undefined,
             category: typeof displayDetails.category === 'object' && displayDetails.category !== null && 'id' in displayDetails.category
               ? { id: (displayDetails.category as { id?: number }).id! }
               : null,
             imgUrl: displayDetails.imgUrl,
             pricePerUnit: displayDetails.pricePerUnit,
+            quantity: displayDetails.quantity,
+            available: displayDetails.available,
+            reserve: displayDetails.reserve,
+            stock: displayDetails.stock,
           }}
         />
       )}

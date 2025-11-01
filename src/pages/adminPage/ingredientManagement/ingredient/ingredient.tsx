@@ -1,5 +1,4 @@
 import { Card, CardContent } from "@components/ui/card/card";
-import { Badge } from "@components/ui/badge/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
@@ -25,7 +24,7 @@ export const AdminIngredientsPage = () => {
   const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, setStatusFilter, searchByName, selectedCategoryId, statusFilter, loading, filteredItems, viewMode, setViewMode, setSortBy, toggleActive } = store
   const [openAdd, setOpenAdd] = useState(false)
   const [keyword, setKeyword] = useState("")
-  const [viewing, setViewing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; imgUrl?: string; stock?: number; stockStatus?: 'out'|'low'|'normal'; category?: unknown; pricePerUnit?: number }>(null)
+  const [viewing, setViewing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; imgUrl?: string; stock?: number; quantity?: number; available?: number; reserve?: number; stockStatus?: 'out'|'low'|'normal'; category?: unknown; pricePerUnit?: number }>(null)
   const [editing, setEditing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; category?: unknown; pricePerUnit?: number }>(null)
   const [stockHistory, setStockHistory] = useState<null | { id: number; name: string; unit?: string }>(null)
   const [refreshKey, setRefreshKey] = useState(0)
