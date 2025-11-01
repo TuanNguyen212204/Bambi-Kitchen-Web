@@ -66,7 +66,12 @@ export const AppRoute = memo(() => {
       ),
       errorElement: ErrorFallback,
       children: PRIVATE_ROUTES
-        .filter((r) => r.protected && r.role?.includes(ROLES.ADMIN) && r.layout === "admin")
+        .filter((r) => {
+          // Ẩn các routes bị disable (giữ code để sử dụng trong tương lai)
+          const HIDDEN_ROUTES = ["dish-categories", "sold-ingredients"];
+          const isHidden = HIDDEN_ROUTES.includes(r.path);
+          return r.protected && r.role?.includes(ROLES.ADMIN) && r.layout === "admin" && !isHidden;
+        })
         .map((route) => ({
           index: route.path === "dashboard",
           path: route.path === "dashboard" ? undefined : route.path,

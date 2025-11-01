@@ -6,9 +6,11 @@ const AdminLayout = () => {
   return (
     <div className="min-h-screen w-full bg-background overflow-x-hidden">
       <HeaderAdmin />
-      <div className="flex gap-3 pt-[82px]">
+      <div className="pt-[82px] relative">
+        {/* Sidebar fixed */}
         <SidebarAdmin />
-        <main id="admin-main" className="flex-1 pl-3 pr-3 pt-4 md:pt-6 min-h-screen overflow-y-auto">
+        {/* Main content scrollable - margin-left sẽ được điều chỉnh bằng JS nếu sidebar collapsed */}
+        <main id="admin-main" className="transition-all pl-3 pr-3 pt-4 md:pt-6 min-h-[calc(100vh-82px)] overflow-y-auto" style={{ marginLeft: '256px' }}>
           <Outlet />
         </main>
       </div>
