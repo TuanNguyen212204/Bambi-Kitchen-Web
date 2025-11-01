@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal";
-import { Users, Plus, Copy, Phone, Mail, UserCheck } from "lucide-react";
+import { Plus, Copy, Phone, Mail, UserCheck } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useAccountStore } from "@zustand/stores/account";
 import { AddAccountModal } from "@components/admin/account/AddAccountModal";
@@ -96,11 +96,6 @@ export default function StaffManagement() {
       console.error("Error deleting account:", error);
       throw error;
     }
-  };
-
-  const openDeleteModal = (account: any) => {
-    setAccountToDelete(account);
-    setShowDeleteModal(true);
   };
 
   const getStatusBadge = (account: any) => {

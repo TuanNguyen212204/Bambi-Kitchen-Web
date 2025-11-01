@@ -15,9 +15,9 @@ import { useEffect, useState, useMemo } from "react";
 import { useAccountStore } from "@zustand/stores/account";
 import { AddAccountModal } from "@components/admin/account/AddAccountModal";
 import { AccountDetailModal } from "@components/admin/account/AccountDetailModal";
-import { MoreVertical, Trash2 as TrashIcon, User as UserIcon } from "lucide-react";
+import { MoreVertical, Trash2 as TrashIcon } from "lucide-react";
 import { bambiApi, API_ENDPOINTS } from "@utils/api";
-import type { Order } from "@models/order/order";
+import type { Order, OrderStatus } from "@models/order/order";
 
 export default function AccountManagement() {
   const currentDate = new Date().toLocaleString("vi-VN", {
@@ -35,12 +35,8 @@ export default function AccountManagement() {
     query,
     setQuery,
     searchByName,
-    selectedRole,
-    setSelectedRole,
     statusFilter,
     setStatusFilter,
-    viewMode,
-    setViewMode,
     remove,
     update
   } = useAccountStore();
@@ -72,7 +68,6 @@ export default function AccountManagement() {
     return filtered;
   }, [userAccounts, query, statusFilter]);
   
-  const accounts = useMemo(() => store.getFilteredItems(), [store]);
   const totalUserAccounts = useMemo(() => userAccounts.length, [userAccounts]);
   const activeUserAccounts = useMemo(() => userAccounts.filter(acc => acc.active !== false).length, [userAccounts]);
   const adminAccounts = useMemo(() => store.items.filter(acc => acc.role === "ADMIN").length, [store.items]);
@@ -161,19 +156,6 @@ export default function AccountManagement() {
     },
   ];
 
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case "ADMIN":
-        return "Quản trị viên";
-      case "STAFF":
-        return "Nhân viên";
-      case "USER":
-        return "Người dùng";
-      default:
-        return role;
-    }
-  };
-
   const handleViewDetail = (account: any) => {
     setSelectedAccount(account);
     setShowDetailModal(true);
@@ -213,15 +195,6 @@ export default function AccountManagement() {
     setShowDeleteModal(true);
   };
 
-  const getStatusBadge = (account: any) => {
-    const isActive = account.active !== false;
-    return {
-      text: isActive ? "Hoạt động" : "Không hoạt động",
-      bgColor: isActive ? "bg-green-100" : "bg-red-100",
-      textColor: isActive ? "text-green-600" : "text-red-600",
-    };
-  };
-
   const handleAccountSelect = (account: any) => {
     setSelectedAccount(account);
   };
@@ -252,7 +225,8 @@ export default function AccountManagement() {
     }
   };
 
-  const getOrderStatusLabel = (status: string) => {
+  const getOrderStatusLabel = (status: string | OrderStatus) => {
+    const statusStr = status as string;
     const statusMap: Record<string, string> = {
       PENDING: "Chờ xử lý",
       COMPLETED: "Hoàn thành",
@@ -262,18 +236,29 @@ export default function AccountManagement() {
       completed: "Hoàn thành",
       paid: "Đã thanh toán",
       cancelled: "Đã hủy",
+      confirmed: "Đã xác nhận",
+      preparing: "Đang chuẩn bị",
+      ready: "Sẵn sàng",
+      delivered: "Đã giao",
+      refunded: "Đã hoàn tiền",
     };
-    return statusMap[status] || status;
+    return statusMap[statusStr] || statusStr;
   };
 
   const filteredOrders = useMemo(() => {
     let filtered = orders;
+    const statusStr = (status: string | OrderStatus) => String(status).toLowerCase();
     
-    // Filter by tab
     if (selectedOrderTab === "unpaid") {
-      filtered = filtered.filter(order => order.status !== "PAID" && order.status !== "paid" && order.status !== "COMPLETED" && order.status !== "completed");
+      filtered = filtered.filter(order => {
+        const s = statusStr(order.status);
+        return s !== "completed" && s !== "paid";
+      });
     } else {
-      filtered = filtered.filter(order => order.status === "PAID" || order.status === "paid" || order.status === "COMPLETED" || order.status === "completed");
+      filtered = filtered.filter(order => {
+        const s = statusStr(order.status);
+        return s === "completed" || s === "paid";
+      });
     }
     
     // Filter by search query
@@ -607,14 +592,14 @@ export default function AccountManagement() {
                       <div className="flex gap-2 items-center">
                         <Badge
                           className={`text-xs px-2 py-1 ${
-                            order.status === "PAID" || order.status === "paid" || order.status === "COMPLETED" || order.status === "completed"
+                            (String(order.status).toLowerCase() === "completed" || String(order.status).toLowerCase() === "paid")
                               ? "bg-green-100 text-green-700"
                               : "bg-orange-100 text-orange-700"
                           }`}
                         >
                           {getOrderStatusLabel(order.status)}
                         </Badge>
-                        {(order.status !== "PAID" && order.status !== "paid" && order.status !== "COMPLETED" && order.status !== "completed") && (
+                        {String(order.status).toLowerCase() !== "completed" && String(order.status).toLowerCase() !== "paid" && (
                           <Button
                             size="sm"
                             className="bg-teal-500 hover:bg-teal-600 text-white text-xs px-3 py-1 h-auto"
