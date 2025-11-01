@@ -4,27 +4,53 @@ import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
+import { Switch } from "@components/ui/switch"
 import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal"
-import { Grid3X3, List, Plus, Search, MoreVertical, Edit3, Trash2 as TrashIcon, Image as ImageIcon } from "lucide-react"
+import { Grid3X3, List, Plus, Search, MoreVertical, Image as ImageIcon, Globe, EyeOff } from "lucide-react"
 import { useDishStore } from "@zustand/stores/dish"
 import AddDishModal from "@components/admin/dish/AddDishModal"
 import EditDishModal from "@components/admin/dish/EditDishModal"
+import DishDetailModal from "@components/admin/dish/DishDetailModal"
 // removed AddDishCategoryModal per new design
 
 const AdminDishPage = () => {
   const currentDate = new Date().toLocaleString("vi-VN", { weekday: "long", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })
 
   const store = useDishStore()
-  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, statusFilter, setStatusFilter, viewMode, setViewMode, remove } = store
+  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, statusFilter, setStatusFilter, viewMode, setViewMode, remove, togglePublic } = store
 
   const [openAdd, setOpenAdd] = useState(false)
   // removed openCategory state per new design
   const [keyword, setKeyword] = useState("")
+  const [viewing, setViewing] = useState<null | { id: number; name: string; price?: number; imageUrl?: string; description?: string; public?: boolean; active?: boolean }>(null)
   const [editing, setEditing] = useState<null | { id: number; name: string }>(null)
   const [deleting, setDeleting] = useState<null | { id: number; name: string }>(null)
+  const [optimisticPublic, setOptimisticPublic] = useState<Record<number, { value: boolean; originalValue: boolean }>>({})
 
   useEffect(() => { fetchAll() }, [fetchAll])
   useEffect(() => { fetchCategories() }, [fetchCategories])
+
+  // Đồng bộ optimistic state với store - xóa optimistic state khi store đã update đúng giá trị
+  useEffect(() => {
+    setOptimisticPublic(prev => {
+      const newState = { ...prev }
+      let hasChanges = false
+      
+      Object.keys(newState).forEach(idStr => {
+        const id = Number(idStr)
+        const dish = items.find(d => d.id === id)
+        const optimistic = newState[id]
+        
+        // Xóa optimistic state khi store đã update với giá trị mới (khác với giá trị ban đầu)
+        if (dish && optimistic && dish.public !== optimistic.originalValue) {
+          delete newState[id]
+          hasChanges = true
+        }
+      })
+      
+      return hasChanges ? newState : prev
+    })
+  }, [items])
 
   const filtered = useMemo(() => store.getFilteredItems(), [store])
 
@@ -111,7 +137,11 @@ const AdminDishPage = () => {
             </div>
             <div className="space-y-2">
               <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Trạng thái</Label>
-              <Select value={statusFilter || 'all'} onValueChange={(val)=> setStatusFilter((val as "all" | "active" | "inactive" | "public" | "private") || 'all')}>
+              <Select value={statusFilter || 'all'} onValueChange={(val)=> {
+                const newFilter = (val as "all" | "active" | "inactive" | "public" | "private") || 'all'
+                setStatusFilter(newFilter)
+                // Khi chuyển filter, reset về "all" nếu đang filter public/private và món bị ẩn
+              }}>
                 <SelectTrigger className="bg-white h-auto py-2 text-sm">
                   <SelectValue placeholder="Tất cả" />
                 </SelectTrigger>
@@ -180,8 +210,8 @@ const AdminDishPage = () => {
               {filtered.map((dish) => (
                 <Card key={dish.id} className={`bg-white border-2 border-gray-200`}>
                   <CardContent className="p-6 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="relative">
                           {dish.imageUrl ? (
                             <img 
@@ -202,30 +232,69 @@ const AdminDishPage = () => {
                           )}
                           <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${!dish.active ? 'bg-red-500' : 'bg-emerald-500'}`} />
                         </div>
-                        <div>
-                          <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px]">{dish.name}</h3>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px] truncate">{dish.name}</h3>
                           {dish.price && typeof dish.price === 'number' && (
                             <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{dish.price.toLocaleString('vi-VN')} đ</p>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <button className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center" onClick={(e)=>{
-                            const menu = (e.currentTarget.nextSibling as HTMLElement)
-                            if (menu) menu.classList.toggle('hidden')
-                          }}>
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                          <div className="absolute right-0 mt-1 bg-white border rounded shadow-lg hidden z-[2147483650]">
-                            <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setEditing({ id: dish.id, name: dish.name })}>
-                              <Edit3 className="w-4 h-4" /> Edit
-                            </button>
-                            <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setDeleting({ id: dish.id, name: dish.name })}>
-                              <TrashIcon className="w-4 h-4 text-red-600" /> Delete
-                            </button>
-                          </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 self-center">
+                        <div className="flex items-center gap-1.5 flex-shrink-0" title={(optimisticPublic[dish.id] !== undefined ? optimisticPublic[dish.id].value : (dish.public ?? true)) ? "Công khai - Hiển thị cho khách hàng" : "Riêng tư - Chỉ hiển thị nội bộ"}>
+                          {(optimisticPublic[dish.id] !== undefined ? optimisticPublic[dish.id].value : (dish.public ?? true)) ? (
+                            <Globe className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                          ) : (
+                            <EyeOff className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          )}
+                          <Switch
+                            checked={optimisticPublic[dish.id] !== undefined ? optimisticPublic[dish.id].value : (dish.public ?? true)}
+                            onCheckedChange={async (checked) => {
+                              const originalValue = dish.public ?? true
+                              
+                              // Nếu đang filter theo public/private và toggle sẽ làm món biến mất, reset filter về "all"
+                              if (statusFilter === "public" && !checked) {
+                                setStatusFilter("all")
+                              } else if (statusFilter === "private" && checked) {
+                                setStatusFilter("all")
+                              }
+                              
+                              // Optimistic update - cập nhật ngay để animation hoạt động
+                              setOptimisticPublic(prev => ({ 
+                                ...prev, 
+                                [dish.id]: { value: checked, originalValue }
+                              }))
+                              
+                              try {
+                                await togglePublic(dish.id)
+                                // Optimistic state sẽ tự động được xóa bởi useEffect khi store update
+                              } catch (error) {
+                                // Revert nếu API thất bại
+                                setOptimisticPublic(prev => {
+                                  const newState = { ...prev }
+                                  delete newState[dish.id]
+                                  return newState
+                                })
+                                console.error("Error toggling public:", error)
+                              }
+                            }}
+                            className="flex-shrink-0"
+                          />
                         </div>
+                        <button 
+                          className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center flex-shrink-0 transition-colors self-center" 
+                          onClick={() => setViewing({ 
+                            id: dish.id, 
+                            name: dish.name,
+                            price: dish.price,
+                            imageUrl: dish.imageUrl,
+                            description: dish.description,
+                            public: dish.public,
+                            active: dish.active
+                          })}
+                          title="Xem chi tiết"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   </CardContent>
@@ -237,6 +306,13 @@ const AdminDishPage = () => {
       </section>
 
       <AddDishModal open={openAdd} onClose={()=> setOpenAdd(false)} />
+      {viewing && (
+        <DishDetailModal 
+          open={true} 
+          onClose={()=> setViewing(null)} 
+          dish={viewing}
+        />
+      )}
       {editing && (
         <EditDishModal open={true} onClose={()=> setEditing(null)} dish={{ id: editing.id, name: editing.name }} />
       )}

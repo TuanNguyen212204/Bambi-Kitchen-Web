@@ -17,8 +17,6 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
   const [description, setDescription] = useState(dish?.description ?? "")
   const [price, setPrice] = useState<string>(dish?.price != null ? String(dish.price) : "")
   const [dishType, setDishType] = useState<"PRESET" | "CUSTOM">("PRESET")
-  const [isPublic, setIsPublic] = useState(dish?.public ?? true)
-  const [isActive, setIsActive] = useState(dish?.active ?? true)
   const [ingredients, setIngredients] = useState<Record<number, number>>(dish?.ingredients ?? {})
   const [file, setFile] = useState<File | undefined>(undefined)
   const [existingImageUrl, setExistingImageUrl] = useState<string | undefined>(undefined)
@@ -41,8 +39,6 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
       setDescription(dish?.description ?? "")
       setPrice(dish?.price != null ? String(dish.price) : "")
       setDishType("PRESET")
-      setIsPublic(dish?.public ?? true)
-      setIsActive(dish?.active ?? true)
       setIngredients(dish?.ingredients ?? {})
       setFile(undefined)
       setExistingImageUrl(undefined)
@@ -62,8 +58,6 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
           setName(d.name || "")
           setDescription(d.description || "")
           setPrice(d.price != null ? String(d.price) : "")
-          setIsPublic(d.public ?? true)
-          setIsActive(d.active ?? true)
           setExistingImageUrl(d.imageUrl)
         }
       } catch { return }
@@ -140,8 +134,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
         price: p,
         dishType,
         ingredients,
-        public: isPublic,
-        active: isActive,
+        public: dish?.public ?? true,
+        active: dish?.active ?? true,
         file,
       })
       const { toast } = await import("sonner")
@@ -181,16 +175,6 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
             <Button type="button" onClick={()=> setDishType('CUSTOM')} className={`rounded-none px-4 py-2 text-sm border-l ${dishType==='CUSTOM' ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>CUSTOM</Button>
           </div>
           <p className="mt-2 text-xs text-gray-500"><span className="font-medium">PRESET</span>: Món có công thức sẵn. <span className="font-medium">CUSTOM</span>: Tùy chỉnh nguyên liệu.</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 bg-white shadow-sm cursor-pointer select-none">
-            <input className="accent-orange-600 w-4 h-4" type="checkbox" checked={isPublic} onChange={(e)=> setIsPublic(e.target.checked)} />
-            <span className="text-sm text-gray-700">Công khai</span>
-          </label>
-          <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 bg-white shadow-sm cursor-pointer select-none">
-            <input className="accent-orange-600 w-4 h-4" type="checkbox" checked={isActive} onChange={(e)=> setIsActive(e.target.checked)} />
-            <span className="text-sm text-gray-700">Hoạt động</span>
-          </label>
         </div>
         <div>
           <Label className="mb-1 block">Nguyên liệu & định lượng</Label>
