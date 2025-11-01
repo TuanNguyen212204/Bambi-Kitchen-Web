@@ -352,20 +352,23 @@ export const AdminIngredientsPage = () => {
                       </div>
                       <button 
                         className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center flex-shrink-0 transition-colors self-center" 
-                        onClick={() => setViewing({
-                          id: ingredient.id, 
-                          name: ingredient.name,
-                          unit: ingredient.unit,
-                          imgUrl: ingredient.imgUrl,
-                          active: ingredient.active,
-                          stock: ingredient.stock,
-                          quantity: ingredient.quantity,
-                          available: ingredient.available,
-                          reserve: ingredient.reserve,
-                          stockStatus: ingredient.stockStatus,
-                          category: ingredient.category,
-                          pricePerUnit: ingredient.pricePerUnit
-                        })}
+                        onClick={() => {
+                          const ing = ingredient as typeof ingredient & { quantity?: number; available?: number; reserve?: number }
+                          setViewing({
+                            id: ing.id, 
+                            name: ing.name,
+                            unit: ing.unit,
+                            imgUrl: ing.imgUrl,
+                            active: ing.active,
+                            stock: ing.stock,
+                            quantity: ing.quantity,
+                            available: ing.available,
+                            reserve: ing.reserve,
+                            stockStatus: ing.stockStatus,
+                            category: ing.category,
+                            pricePerUnit: ing.pricePerUnit
+                          })
+                        }}
                         title="Xem chi tiết"
                       >
                         <MoreVertical className="w-4 h-4" />
