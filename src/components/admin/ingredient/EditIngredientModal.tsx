@@ -123,6 +123,34 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       
       setLoading(true)
       if (changedInfo) {
+        // Fetch giá trị hiện tại từ API để đảm bảo có quantity, available, reserve chính xác
+        // Tránh trường hợp prop ingredient không có đầy đủ dữ liệu tồn kho
+        const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
+        let currentQuantity: number | undefined = undefined
+        let currentAvailable: number | undefined = undefined
+        let currentReserve: number | undefined = undefined
+        
+        try {
+          const currentRes = await bambiApi.get(API_ENDPOINTS.API_INGREDIENT_BY_ID(ingredient.id))
+          const currentData = currentRes.data || {}
+          currentQuantity = typeof (currentData as { quantity?: number }).quantity === 'number' 
+            ? (currentData as { quantity?: number }).quantity!
+            : undefined
+          currentAvailable = typeof (currentData as { available?: number }).available === 'number'
+            ? (currentData as { available?: number }).available!
+            : undefined
+          currentReserve = typeof (currentData as { reserve?: number }).reserve === 'number'
+            ? (currentData as { reserve?: number }).reserve!
+            : undefined
+        } catch (error) {
+          console.error("Error fetching current ingredient:", error)
+          // Fallback về prop nếu API fail
+          currentQuantity = typeof ingredient.quantity === 'number' ? ingredient.quantity : (typeof ingredient.stock === 'number' ? ingredient.stock : undefined)
+          currentAvailable = typeof ingredient.available === 'number' ? ingredient.available : undefined
+          currentReserve = typeof ingredient.reserve === 'number' ? ingredient.reserve : undefined
+        }
+        
+        // Đảm bảo giữ nguyên quantity, available, reserve khi chỉ update ảnh hoặc thông tin khác
         await update({ 
           id: ingredient.id, 
           name, 
@@ -131,7 +159,11 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           categoryId: typeof categoryId === 'number' ? categoryId : originalCategoryId, 
           file: selectedFile || undefined,
           removeImage: removeCurrentImage,
-          pricePerUnit: newPricePerUnit
+          pricePerUnit: newPricePerUnit,
+          // Sử dụng giá trị từ API (hoặc fallback về prop)
+          quantity: currentQuantity,
+          available: currentAvailable,
+          reserve: currentReserve
         })
       }
       if (deltaNum) {
