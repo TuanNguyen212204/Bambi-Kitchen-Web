@@ -37,9 +37,11 @@ export const createDishFormSlice: StateCreator<
     form.append("dishType", payload.dishType);
     if (payload.public != null) form.append("public", String(payload.public));
     if (payload.active != null) form.append("active", String(payload.active));
-    Object.entries(payload.ingredients || {}).forEach(([ingId, qty]) => {
-      form.append(`ingredients[${ingId}]`, String(qty));
-    });
+    Object.entries(payload.ingredients || {})
+      .filter(([_, qty]) => qty > 0)
+      .forEach(([ingId, qty]) => {
+        form.append(`ingredients[${ingId}]`, String(qty));
+      });
     if (payload.file instanceof File) {
       form.append("file", payload.file);
     } else {
