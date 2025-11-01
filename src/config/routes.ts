@@ -22,8 +22,9 @@ const AdminIngredients = lazy(() => import("@pages/adminPage/ingredientManagemen
 const AdminFeedback = lazy(() => import("@pages/adminPage/feedback"))
 const AdminSettings = lazy(() => import("@pages/adminPage/settings"))
 const AdminAccounts = lazy(() => import("@pages/adminPage/accountManagement"))
-const AdminIngredientsSold = lazy(() => import("@pages/adminPage/ingredientManagement/ingredientsSold/IngredientSold"))
-const AdminDishCategory = lazy(() => import("@pages/adminPage/dishCategory"))
+// Ẩn tạm thời - giữ code để sử dụng trong tương lai
+// const AdminIngredientsSold = lazy(() => import("@pages/adminPage/ingredientManagement/ingredientsSold/IngredientSold"))
+// const AdminDishCategory = lazy(() => import("@pages/adminPage/dishCategory"))
 const AdminDishTemplate = lazy(() => import("@pages/adminPage/dishTemplate"))
 const AdminIngredientCategory = lazy(() => import("@pages/adminPage/ingredientCategory"))
 const AdminNotifications = lazy(() => import("@pages/adminPage/notificationManagement"))

@@ -4,7 +4,6 @@ import { User } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useAuthStore } from "@/zustand/stores/auth";
 import { useNavigate } from "react-router-dom";
-import { PATHS } from "@config/path";
 import NotificationIcon from "@/components/ui/notification/NotificationIcon";
 import NotificationDropdown from "@/components/ui/notification/NotificationDropdown";
 
