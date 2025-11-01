@@ -194,6 +194,10 @@ export const CUSTOMER_PRIVATE_ROUTES: RouteConfig[] = [
   // },
 ]
 
+// Routes bị ẩn tạm thời (giữ lại code để sử dụng trong tương lai):
+// - "dish-categories": Danh mục món ăn
+// - "sold-ingredients": Nguyên liệu đã bán
+
 export const PRIVATE_ROUTES: RouteConfig[] = [
   {
     path: "dashboard",
@@ -219,14 +223,15 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     role: [ROLES.ADMIN],
     layout: "admin",
   },
-  {
-    path: "dish-categories",
-    component: AdminDishCategory,
-    label: "Dish Categories",
-    protected: true,
-    role: [ROLES.ADMIN],
-    layout: "admin",
-  },
+  // Ẩn tạm thời - giữ code để sử dụng trong tương lai
+  // {
+  //   path: "dish-categories",
+  //   component: AdminDishCategory,
+  //   label: "Dish Categories",
+  //   protected: true,
+  //   role: [ROLES.ADMIN],
+  //   layout: "admin",
+  // },
   {
     path: "ingredient-categories",
     component: AdminIngredientCategory,
@@ -291,14 +296,15 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     role: [ROLES.ADMIN],
     layout: "admin",
   },
-  {
-    path: "sold-ingredients",
-    component: AdminIngredientsSold,
-    label: "sold-ingredients",
-    protected: true,
-    role: [ROLES.ADMIN],
-    layout: "admin",
-  },
+  // Ẩn tạm thời - giữ code để sử dụng trong tương lai
+  // {
+  //   path: "sold-ingredients",
+  //   component: AdminIngredientsSold,
+  //   label: "sold-ingredients",
+  //   protected: true,
+  //   role: [ROLES.ADMIN],
+  //   layout: "admin",
+  // },
 ]
 // export const PRIVATE_ROUTES: RouteConfig[] = [
 //   {

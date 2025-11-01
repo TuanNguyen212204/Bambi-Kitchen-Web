@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar/avatar";
-import { User, LogOut } from "lucide-react";
+import { User } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useAuthStore } from "@/zustand/stores/auth";
 import { useNavigate } from "react-router-dom";
@@ -11,14 +11,10 @@ import NotificationDropdown from "@/components/ui/notification/NotificationDropd
 const HeaderAdmin = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
 
   const toggleMenu = () => setMenuOpen((prev) => !prev);
-  const handleLogout = () => {
-    logout();
-    navigate(PATHS.LOGIN);
-  };
 
   return (
     <header className="fixed top-0 left-0 right-0 w-full h-[82px] bg-white border-b border-orange-200 shadow-[0px_1px_3px_#0000001a] z-50">
@@ -82,13 +78,6 @@ const HeaderAdmin = () => {
               >
                 <User className="w-4 h-4" />
                 Thông tin cá nhân
-              </button>
-              <button
-                className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-4 h-4" />
-                Đăng xuất
               </button>
             </div>
           )}
