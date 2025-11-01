@@ -1,5 +1,4 @@
 import { Card, CardContent } from "@components/ui/card/card";
-import { Badge } from "@components/ui/badge/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
@@ -8,9 +7,11 @@ import { NotificationSection } from "@components/admin/ingredient/NotificationSe
 import AddIngredientModal from "@components/admin/ingredient/AddIngredientModal";
 import EditIngredientModal from "@components/admin/ingredient/EditIngredientModal";
 import StockHistoryModal from "@components/admin/ingredient/StockHistoryModal";
-import { Grid3X3, List, Plus, Search, MoreVertical, Edit3, Image as ImageIcon } from "lucide-react";
+import { Grid3X3, List, Plus, Search, MoreVertical, Image as ImageIcon, CheckCircle, XCircle } from "lucide-react";
 import { useIngredientStore } from "@zustand/stores/ingredients";
 import { useEffect, useState, useMemo } from "react";
+import { Switch } from "@components/ui/switch";
+import IngredientDetailModal from "@components/admin/ingredient/IngredientDetailModal";
 
 export const AdminIngredientsPage = () => {
   const currentDate = new Date().toLocaleString("vi-VN", {
@@ -20,13 +21,15 @@ export const AdminIngredientsPage = () => {
     timeZone: "Asia/Ho_Chi_Minh",
   });
   const store = useIngredientStore()
-  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, setStatusFilter, searchByName, selectedCategoryId, statusFilter, loading, filteredItems, viewMode, setViewMode, setSortBy } = store
+  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, setStatusFilter, searchByName, selectedCategoryId, statusFilter, loading, filteredItems, viewMode, setViewMode, setSortBy, toggleActive } = store
   const [openAdd, setOpenAdd] = useState(false)
   const [keyword, setKeyword] = useState("")
+  const [viewing, setViewing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; imgUrl?: string; stock?: number; quantity?: number; available?: number; reserve?: number; stockStatus?: 'out'|'low'|'normal'; category?: unknown; pricePerUnit?: number }>(null)
   const [editing, setEditing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; category?: unknown; pricePerUnit?: number }>(null)
   const [stockHistory, setStockHistory] = useState<null | { id: number; name: string; unit?: string }>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [imageRefreshKey, setImageRefreshKey] = useState(0)
+  const [optimisticActive, setOptimisticActive] = useState<Record<number, { value: boolean; originalValue: boolean }>>({})
 
   useEffect(() => { fetchAll() }, [fetchAll])
   useEffect(() => { fetchCategories() }, [fetchCategories])
@@ -35,6 +38,51 @@ export const AdminIngredientsPage = () => {
     setRefreshKey(prev => prev + 1)
     setImageRefreshKey(prev => prev + 1)
   }, [items])
+
+  // Đồng bộ optimistic state với store - xóa optimistic state khi store đã update đúng giá trị
+  useEffect(() => {
+    setOptimisticActive(prev => {
+      const newState = { ...prev }
+      let hasChanges = false
+      
+      Object.keys(newState).forEach(idStr => {
+        const id = Number(idStr)
+        const ingredient = items.find(i => i.id === id)
+        const optimistic = newState[id]
+        
+        // Xóa optimistic state khi store đã update với giá trị mới (khác với giá trị ban đầu)
+        if (ingredient && optimistic && ingredient.active !== optimistic.originalValue) {
+          delete newState[id]
+          hasChanges = true
+        }
+      })
+      
+      return hasChanges ? newState : prev
+    })
+  }, [items])
+
+  // Đồng bộ viewing state với items để modal detail hiển thị dữ liệu mới nhất
+  useEffect(() => {
+    if (viewing?.id) {
+      const updatedIngredient = items.find(i => i.id === viewing.id)
+      if (updatedIngredient) {
+        setViewing({
+          id: updatedIngredient.id,
+          name: updatedIngredient.name,
+          unit: updatedIngredient.unit,
+          active: updatedIngredient.active,
+          imgUrl: updatedIngredient.imgUrl,
+          stock: updatedIngredient.stock,
+          quantity: updatedIngredient.quantity,
+          available: updatedIngredient.available,
+          reserve: updatedIngredient.reserve,
+          stockStatus: updatedIngredient.stockStatus,
+          category: updatedIngredient.category,
+          pricePerUnit: updatedIngredient.pricePerUnit,
+        })
+      }
+    }
+  }, [items, viewing?.id])
   
   const getIngredientKey = useMemo(() => {
     return (ingredient: { id: number; imgUrl?: string }) => `${ingredient.id}-${ingredient.imgUrl}-${refreshKey}`
@@ -231,8 +279,8 @@ export const AdminIngredientsPage = () => {
             {filteredItems().map((ingredient: { id: number; name: string; unit?: string; active?: boolean; category?: unknown; stock?: number; stockStatus?: 'out'|'low'|'normal'; imgUrl?: string; publicId?: string; pricePerUnit?: number }) => (
               <Card key={getIngredientKey(ingredient)} className={`bg-white border-2 border-gray-200`}>
                 <CardContent className="p-6 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="relative">
                         {ingredient.imgUrl ? (
                           <img 
@@ -254,28 +302,77 @@ export const AdminIngredientsPage = () => {
                         )}
                         <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${ingredient.stockStatus === 'out' ? 'bg-red-500' : ingredient.stockStatus === 'low' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                       </div>
-                      <div>
-                        <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px]">{ingredient.name}</h3>
-                        <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{ingredient.unit}</p>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px] truncate">{ingredient.name}</h3>
+                        {ingredient.unit && (
+                          <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{ingredient.unit}</p>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={ingredient.active === false ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}>
-                        {ingredient.active === false ? "Đang tắt" : "Đang bật"}
-                      </Badge>
-                      <div className="relative">
-                        <button className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center" onClick={(e)=>{
-                          const menu = (e.currentTarget.nextSibling as HTMLElement)
-                          if (menu) menu.classList.toggle('hidden')
-                        }}>
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        <div className="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10">
-                          <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setEditing({ ...ingredient, pricePerUnit: (ingredient as { pricePerUnit?: number }).pricePerUnit })}>
-                            <Edit3 className="w-4 h-4" /> Edit
-                          </button>
-                        </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 self-center">
+                      <div className="flex items-center gap-1.5 flex-shrink-0" title={(optimisticActive[ingredient.id] !== undefined ? optimisticActive[ingredient.id].value : (ingredient.active ?? true)) ? "Đang hoạt động - Có thể sử dụng" : "Đang tắt - Không thể sử dụng"}>
+                        {(optimisticActive[ingredient.id] !== undefined ? optimisticActive[ingredient.id].value : (ingredient.active ?? true)) ? (
+                          <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        )}
+                        <Switch
+                          checked={optimisticActive[ingredient.id] !== undefined ? optimisticActive[ingredient.id].value : (ingredient.active ?? true)}
+                          onCheckedChange={async (checked) => {
+                            const originalValue = ingredient.active ?? true
+                            
+                            // Nếu đang filter theo active/inactive và toggle sẽ làm nguyên liệu biến mất, reset filter về "all"
+                            if (statusFilter === "active" && !checked) {
+                              setStatusFilter("all")
+                            } else if (statusFilter === "inactive" && checked) {
+                              setStatusFilter("all")
+                            }
+                            
+                            // Optimistic update - cập nhật ngay để animation hoạt động
+                            setOptimisticActive(prev => ({ 
+                              ...prev, 
+                              [ingredient.id]: { value: checked, originalValue }
+                            }))
+                            
+                            try {
+                              await toggleActive(ingredient.id, checked)
+                              // Optimistic state sẽ tự động được xóa bởi useEffect khi store update
+                            } catch (error) {
+                              // Revert nếu API thất bại
+                              setOptimisticActive(prev => {
+                                const newState = { ...prev }
+                                delete newState[ingredient.id]
+                                return newState
+                              })
+                              console.error("Error toggling active:", error)
+                            }
+                          }}
+                          className="flex-shrink-0"
+                        />
                       </div>
+                      <button 
+                        className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center flex-shrink-0 transition-colors self-center" 
+                        onClick={() => {
+                          const ing = ingredient as typeof ingredient & { quantity?: number; available?: number; reserve?: number }
+                          setViewing({
+                            id: ing.id, 
+                            name: ing.name,
+                            unit: ing.unit,
+                            imgUrl: ing.imgUrl,
+                            active: ing.active,
+                            stock: ing.stock,
+                            quantity: ing.quantity,
+                            available: ing.available,
+                            reserve: ing.reserve,
+                            stockStatus: ing.stockStatus,
+                            category: ing.category,
+                            pricePerUnit: ing.pricePerUnit
+                          })
+                        }}
+                        title="Xem chi tiết"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 
@@ -313,6 +410,13 @@ export const AdminIngredientsPage = () => {
         </div>
       </section>
 
+      {viewing && (
+        <IngredientDetailModal 
+          open={true} 
+          onClose={()=> setViewing(null)} 
+          ingredient={viewing}
+        />
+      )}
       {editing && (
         <EditIngredientModal 
           open={true} 

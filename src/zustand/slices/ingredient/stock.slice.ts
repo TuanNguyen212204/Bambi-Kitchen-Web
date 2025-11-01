@@ -25,15 +25,29 @@ export const createIngredientStockSlice: StateCreator<IngredientStockSlice, [], 
       const newQuantity = Math.max(0, recalculatedStock)
       
       // Cập nhật quantity của ingredient bằng cách gọi update function
-      const currentState = get() as unknown as { update?: (payload: { id: number; name: string; quantity?: number; unit?: string; active?: boolean; categoryId?: number; silent?: boolean }) => Promise<void> }
+      const currentState = get() as unknown as { update?: (payload: { id: number; name: string; quantity?: number; available?: number; reserve?: number; unit?: string; active?: boolean; categoryId?: number; silent?: boolean }) => Promise<void> }
       // Lấy lại metadata của ingredient để điền đủ params cho update
       const ingredientRes = await bambiApi.get(API_ENDPOINTS.API_INGREDIENT_BY_ID(ingredientId))
       const currentIngredient = ingredientRes.data || {}
+      
+      // Tính toán available = quantity - reserve
+      // reserve có thể từ API response hoặc từ store hiện tại
+      const currentReserve = typeof (currentIngredient as { reserve?: number }).reserve === 'number' 
+        ? (currentIngredient as { reserve?: number }).reserve!
+        : (typeof (currentIngredient as unknown as { reserve?: number }).reserve === 'number'
+          ? (currentIngredient as unknown as { reserve?: number }).reserve!
+          : 0)
+      
+      // available = quantity - reserve (số lượng có sẵn = tổng số lượng - số đã reserve)
+      const newAvailable = Math.max(0, newQuantity - currentReserve)
+      
       if (currentState.update) {
         await currentState.update({
           id: ingredientId,
           name: (currentIngredient as { name?: string }).name || '',
           quantity: newQuantity,
+          available: newAvailable, // Tự động tính toán available khi cập nhật quantity
+          reserve: currentReserve, // Giữ nguyên reserve
           unit: (currentIngredient as { unit?: string }).unit || 'GRAM',
           active: (currentIngredient as { active?: boolean }).active !== undefined ? (currentIngredient as { active?: boolean }).active! : true,
           categoryId: (currentIngredient as { category?: { id?: number } }).category?.id || (currentIngredient as unknown as { categoryId?: number }).categoryId,
