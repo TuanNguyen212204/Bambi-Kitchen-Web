@@ -188,27 +188,14 @@ const Testimonials: React.FC<TestimonialsProps> = ({ testimonials: propTestimoni
     const averageRatingDisplay = averageRating > 0 ? averageRating.toFixed(1) : "0.0";
 
     // 3. Thời gian giao hàng trung bình: Tính từ orders đã hoàn thành
+    // Lưu ý: Vì API không có thời gian hoàn thành chính xác, 
+    // chúng ta sử dụng giá trị ước tính mặc định
     let avgDeliveryTime = 25; // Default 25 phút nếu không có dữ liệu
     if (orders.length > 0) {
-      const deliveryTimes: number[] = [];
-      orders.forEach((order) => {
-        try {
-          const createTime = new Date(order.createAt).getTime();
-          const now = Date.now();
-          // Tính thời gian từ khi tạo đến bây giờ (đơn giản hóa, vì không có thời gian hoàn thành chính xác)
-          // Giả sử đơn hàng hoàn thành trong vòng 30 phút (ước tính)
-          const estimatedDeliveryTime = 30;
-          deliveryTimes.push(estimatedDeliveryTime);
-        } catch (e) {
-          // Ignore invalid dates
-        }
-      });
-      
-      if (deliveryTimes.length > 0) {
-        avgDeliveryTime = Math.round(
-          deliveryTimes.reduce((sum, time) => sum + time, 0) / deliveryTimes.length
-        );
-      }
+      // Với mỗi đơn hàng đã hoàn thành, ước tính thời gian giao hàng là 30 phút
+      // (có thể cải thiện logic này khi backend cung cấp thời gian hoàn thành chính xác)
+      const estimatedDeliveryTime = 30;
+      avgDeliveryTime = estimatedDeliveryTime;
     }
     const deliveryTimeDisplay = `${avgDeliveryTime} phút`;
 
