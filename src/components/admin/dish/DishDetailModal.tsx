@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
 import { Image as ImageIcon, Edit3, Utensils, DollarSign } from "lucide-react";
-import { useDishStore } from "@zustand/stores/dish";
 import EditDishModal from "./EditDishModal";
 
 interface DishDetailModalProps {
@@ -49,7 +48,7 @@ export function DishDetailModal({
         
         // Trường hợp 1: Response là array trực tiếp (array of Recipe với ingredient và quantity)
         if (Array.isArray(recipeRes.data)) {
-          recipeData = recipeRes.data.map((r: any) => {
+          const mapped = recipeRes.data.map((r: any) => {
             if (r.ingredient && typeof r.quantity === 'number') {
               return {
                 ingredient: {
@@ -61,13 +60,14 @@ export function DishDetailModal({
               };
             }
             return null;
-          }).filter((r: any) => r !== null);
+          });
+          recipeData = mapped.filter((r): r is { ingredient: { id: number; name: string; unit?: string }; quantity: number } => r !== null);
         }
         // Trường hợp 2: Response là object có ingredients array
-        else if (recipeRes.data && Array.isArray(recipeRes.data.ingredients)) {
+        else if (recipeRes.data && typeof recipeRes.data === 'object' && 'ingredients' in recipeRes.data && Array.isArray((recipeRes.data as any).ingredients)) {
           // Nếu ingredients là array của Ingredient (không có quantity), cần lấy từ Recipe riêng
           // Hoặc có thể structure khác, tạm thời giữ nguyên
-          recipeData = recipeRes.data.ingredients.map((ing: any) => ({
+          recipeData = (recipeRes.data as any).ingredients.map((ing: any) => ({
             ingredient: {
               id: ing.id,
               name: ing.name || '',

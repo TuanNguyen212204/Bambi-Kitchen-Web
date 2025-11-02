@@ -90,8 +90,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
             setIngredients(recipe)
           }
           // Trường hợp 2: Response là object có ingredients array (IngredientsGetByDishResponse)
-          else if (res.data && Array.isArray(res.data.ingredients)) {
-            res.data.ingredients.forEach((ing: any) => {
+          else if (res.data && typeof res.data === 'object' && 'ingredients' in res.data && Array.isArray((res.data as any).ingredients)) {
+            (res.data as any).ingredients.forEach((ing: any) => {
               if (ing.id && typeof ing.quantity === 'number') {
                 recipe[ing.id] = ing.quantity
               }
