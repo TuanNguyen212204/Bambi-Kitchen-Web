@@ -1,7 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Quote, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { bambiApi } from "@utils/api";
+import { API_ENDPOINTS } from "@utils/endpoints";
 
 // Types
+interface FeedbackDto {
+  orderId: number;
+  ranking: number;
+  comment: string;
+  accountName: string;
+  accountId: number;
+}
+
 interface Testimonial {
   id: string;
   name: string;
@@ -16,7 +26,7 @@ interface TestimonialsProps {
   testimonials?: Testimonial[];
 }
 
-// Mock data
+// Mock data fallback
 const mockTestimonials: Testimonial[] = [
   {
     id: "1",
@@ -117,9 +127,49 @@ const TestimonialCard: React.FC<{ testimonial: Testimonial }> = ({ testimonial }
   );
 };
 
-const Testimonials: React.FC<TestimonialsProps> = ({ testimonials = mockTestimonials }) => {
+const Testimonials: React.FC<TestimonialsProps> = ({ testimonials: propTestimonials }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [feedbacks, setFeedbacks] = useState<FeedbackDto[]>([]);
+  const [loading, setLoading] = useState(true);
   const itemsPerPage = 3;
+
+  // Fetch feedbacks from API
+  useEffect(() => {
+    const fetchFeedbacks = async () => {
+      try {
+        setLoading(true);
+        const response = await bambiApi.get<FeedbackDto[]>(API_ENDPOINTS.API_ORDER_FEEDBACKS);
+        const data = response.data || [];
+        // Filter feedbacks with ranking > 3
+        const filteredFeedbacks = data.filter((fb) => fb.ranking > 3);
+        setFeedbacks(filteredFeedbacks);
+      } catch (error) {
+        console.error("Error fetching feedbacks:", error);
+        setFeedbacks([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeedbacks();
+  }, []);
+
+  // Convert FeedbackDto to Testimonial format
+  const testimonials = useMemo(() => {
+    if (propTestimonials) return propTestimonials;
+    
+    if (feedbacks.length === 0) return mockTestimonials;
+
+    return feedbacks.map((fb, index) => ({
+      id: `feedback-${fb.orderId}`,
+      name: fb.accountName || "Khách hàng",
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(fb.accountName || "Khách hàng")}&background=random`,
+      rating: fb.ranking,
+      comment: fb.comment || "Không có nhận xét",
+      location: "",
+      orderDate: "Gần đây"
+    }));
+  }, [feedbacks, propTestimonials]);
 
   const nextTestimonials = () => {
     setCurrentIndex((prev) => 
@@ -147,44 +197,60 @@ const Testimonials: React.FC<TestimonialsProps> = ({ testimonials = mockTestimon
           </p>
         </div>
 
-        <div className="relative">
-          {/* Navigation Buttons */}
-          <button
-            onClick={prevTestimonials}
-            className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-shadow"
-          >
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          
-          <button
-            onClick={nextTestimonials}
-            className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-shadow"
-          >
-            <ChevronRight className="w-5 h-5 text-gray-600" />
-          </button>
-
-          {/* Testimonials Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentTestimonials.map((testimonial) => (
-              <TestimonialCard key={testimonial.id} testimonial={testimonial} />
-            ))}
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">Đang tải đánh giá...</p>
           </div>
-        </div>
+        ) : testimonials.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">Chưa có đánh giá nào</p>
+          </div>
+        ) : (
+          <div className="relative">
+            {/* Navigation Buttons */}
+            {testimonials.length > itemsPerPage && (
+              <>
+                <button
+                  onClick={prevTestimonials}
+                  className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-shadow"
+                >
+                  <ChevronLeft className="w-5 h-5 text-gray-600" />
+                </button>
+                
+                <button
+                  onClick={nextTestimonials}
+                  className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-shadow"
+                >
+                  <ChevronRight className="w-5 h-5 text-gray-600" />
+                </button>
+              </>
+            )}
+
+            {/* Testimonials Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {currentTestimonials.map((testimonial) => (
+                <TestimonialCard key={testimonial.id} testimonial={testimonial} />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Dots Indicator */}
-        <div className="flex justify-center mt-8 space-x-2">
-          {Array.from({ length: Math.ceil(testimonials.length / itemsPerPage) }).map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentIndex(index * itemsPerPage)}
-              className={`w-3 h-3 rounded-full transition-colors ${
-                index === Math.floor(currentIndex / itemsPerPage)
-                  ? 'bg-orange-500'
-                  : 'bg-gray-300'
-              }`}
-            />
-          ))}
-        </div>
+        {testimonials.length > itemsPerPage && (
+          <div className="flex justify-center mt-8 space-x-2">
+            {Array.from({ length: Math.ceil(testimonials.length / itemsPerPage) }).map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentIndex(index * itemsPerPage)}
+                className={`w-3 h-3 rounded-full transition-colors ${
+                  index === Math.floor(currentIndex / itemsPerPage)
+                    ? 'bg-orange-500'
+                    : 'bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">

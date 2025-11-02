@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate, useLocation } from "react-router-dom"
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom"
 import { PATHS } from "@config/path"
 import { API_BASE_URL } from "@utils/http"
 import { API_ENDPOINTS } from "@utils/endpoints"
@@ -18,6 +18,7 @@ import { validateLoginPayload, createLoginPayload } from "@utils/auth-validation
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { login, loading, user } = useAuthStore()
 
   const [phone, setPhone] = useState("")
@@ -26,6 +27,17 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ phone?: string; password?: string }>({})
   const [successMessage, setSuccessMessage] = useState("")
+
+  // Xử lý error từ query param (khi Google login bị hủy)
+  useEffect(() => {
+    const errorParam = searchParams.get("error")
+    if (errorParam) {
+      // Xóa error param khỏi URL
+      setSearchParams({}, { replace: true })
+      // Hiển thị thông báo lỗi thân thiện
+      setError("Đăng nhập bằng Google đã bị hủy. Vui lòng thử lại hoặc đăng nhập bằng số điện thoại.")
+    }
+  }, [searchParams, setSearchParams])
 
   const handleSubmit = async (e?: React.FormEvent<HTMLButtonElement | HTMLFormElement>) => {
     if (e) e.preventDefault()
