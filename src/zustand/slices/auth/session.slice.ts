@@ -48,10 +48,10 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         name: userMe.name,
         role: normalizedRole,
         email: userMe.mail,
-        role_id: normalizedRole === "ADMIN" ? 1 : normalizedRole === "STAFF" ? 3 : 4,
+        role_id: (normalizedRole === "ADMIN" ? 1 : normalizedRole === "STAFF" ? 3 : 4) as 1 | 3 | 4,
       }
 
-      set({ user } as any)
+      set({ user })
 
       const { toast } = await import("sonner")
       toast.success("Đăng nhập thành công!")
@@ -130,7 +130,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       isAuthenticated: false,
       loading: false,
       error: null,
-    } as any)
+    })
 
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
