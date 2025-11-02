@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
-import { Image as ImageIcon, Edit3, Trash2, Utensils, DollarSign } from "lucide-react";
-import { useDishStore } from "@zustand/stores/dish";
+import { Image as ImageIcon, Edit3, Utensils, DollarSign } from "lucide-react";
 import EditDishModal from "./EditDishModal";
 
 interface DishDetailModalProps {
@@ -21,8 +20,6 @@ export function DishDetailModal({
   const [recipe, setRecipe] = useState<Array<{ ingredient: { id: number; name: string; unit?: string }; quantity: number }>>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const { remove } = useDishStore();
 
   useEffect(() => {
     if (open && dish?.id) {
@@ -44,13 +41,45 @@ export function DishDetailModal({
       const dishRes = await bambiApi.get(API_ENDPOINTS.API_DISH_BY_ID(dish.id));
       setDishDetails(dishRes.data);
       
-      // Load recipe
+      // Load recipe - API trả về IngredientsGetByDishResponse hoặc array of Recipe
       try {
         const recipeRes = await bambiApi.get(API_ENDPOINTS.API_RECIPE_BY_DISH(dish.id));
+        let recipeData: Array<{ ingredient: { id: number; name: string; unit?: string }; quantity: number }> = [];
+        
+        // Trường hợp 1: Response là array trực tiếp (array of Recipe với ingredient và quantity)
         if (Array.isArray(recipeRes.data)) {
-          setRecipe(recipeRes.data);
+          const validRecipes: Array<{ ingredient: { id: number; name: string; unit?: string }; quantity: number }> = [];
+          recipeRes.data.forEach((r: any) => {
+            if (r.ingredient && typeof r.quantity === 'number') {
+              validRecipes.push({
+                ingredient: {
+                  id: r.ingredient.id,
+                  name: r.ingredient.name || '',
+                  unit: r.ingredient.unit
+                },
+                quantity: r.quantity
+              });
+            }
+          });
+          recipeData = validRecipes;
         }
-      } catch {
+        // Trường hợp 2: Response là object có ingredients array
+        else if (recipeRes.data && typeof recipeRes.data === 'object' && 'ingredients' in recipeRes.data && Array.isArray((recipeRes.data as any).ingredients)) {
+          // Nếu ingredients là array của Ingredient (không có quantity), cần lấy từ Recipe riêng
+          // Hoặc có thể structure khác, tạm thời giữ nguyên
+          recipeData = (recipeRes.data as any).ingredients.map((ing: any) => ({
+            ingredient: {
+              id: ing.id,
+              name: ing.name || '',
+              unit: ing.unit
+            },
+            quantity: ing.quantity || 0
+          }));
+        }
+        
+        setRecipe(recipeData);
+      } catch (error) {
+        console.error("Error loading recipe:", error);
         setRecipe([]);
       }
     } catch (error) {
@@ -60,19 +89,6 @@ export function DishDetailModal({
     }
   };
 
-  const handleDelete = async () => {
-    if (!dish || !dish.id) return;
-    
-    setIsDeleting(true);
-    try {
-      await remove(dish.id);
-      onClose();
-    } catch (error) {
-      console.error("Error deleting dish:", error);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
   const getPublicBadge = (isPublic: boolean) => {
     return {
@@ -206,23 +222,11 @@ export function DishDetailModal({
           )}
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-6 border-t">
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="flex items-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              {isDeleting ? "Đang xóa..." : "Xóa món"}
+          <div className="flex items-center justify-end pt-6 border-t">
+            <Button onClick={() => setIsEditing(true)}>
+              <Edit3 className="w-4 h-4 mr-2" />
+              Chỉnh sửa thông tin
             </Button>
-
-            <div className="flex items-center gap-3">
-              <Button onClick={() => setIsEditing(true)}>
-                <Edit3 className="w-4 h-4 mr-2" />
-                Chỉnh sửa thông tin
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
