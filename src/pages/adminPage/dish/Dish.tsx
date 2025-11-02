@@ -17,18 +17,19 @@ const AdminDishPage = () => {
   const currentDate = new Date().toLocaleString("vi-VN", { weekday: "long", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })
 
   const store = useDishStore()
-  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, statusFilter, setStatusFilter, viewMode, setViewMode, remove, togglePublic } = store
+  const { fetchAll, items, setQuery, statusFilter, setStatusFilter, viewMode, setViewMode, togglePublic } = store
 
   const [openAdd, setOpenAdd] = useState(false)
   // removed openCategory state per new design
   const [keyword, setKeyword] = useState("")
   const [viewing, setViewing] = useState<null | { id: number; name: string; price?: number; imageUrl?: string; description?: string; public?: boolean; active?: boolean }>(null)
   const [editing, setEditing] = useState<null | { id: number; name: string }>(null)
-  const [deleting, setDeleting] = useState<null | { id: number; name: string }>(null)
   const [optimisticPublic, setOptimisticPublic] = useState<Record<number, { value: boolean; originalValue: boolean }>>({})
 
-  useEffect(() => { fetchAll() }, [fetchAll])
-  useEffect(() => { fetchCategories() }, [fetchCategories])
+  // Fetch dữ liệu dựa trên statusFilter
+  useEffect(() => { 
+    fetchAll(statusFilter || "all")
+  }, [fetchAll, statusFilter])
 
   // Đồng bộ optimistic state với store - xóa optimistic state khi store đã update đúng giá trị
   useEffect(() => {
@@ -111,7 +112,7 @@ const AdminDishPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Tìm kiếm món</Label>
               <Input
@@ -122,35 +123,18 @@ const AdminDishPage = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Danh mục</Label>
-              <Select value={store.selectedCategoryId ? String(store.selectedCategoryId) : 'all'} onValueChange={(val)=> setSelectedCategoryId(val === 'all' ? undefined : Number(val))}>
-                <SelectTrigger className="bg-white h-auto py-2 text-sm">
-                  <SelectValue placeholder="Tất cả danh mục" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả danh mục</SelectItem>
-                  {categories.map((c: { id: number; name: string }) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Trạng thái</Label>
+              <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Hiển thị</Label>
               <Select value={statusFilter || 'all'} onValueChange={(val)=> {
-                const newFilter = (val as "all" | "active" | "inactive" | "public" | "private") || 'all'
+                const newFilter = (val as "all" | "menu" | "inactive") || 'all'
                 setStatusFilter(newFilter)
-                // Khi chuyển filter, reset về "all" nếu đang filter public/private và món bị ẩn
               }}>
                 <SelectTrigger className="bg-white h-auto py-2 text-sm">
                   <SelectValue placeholder="Tất cả" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="active">Hoạt động</SelectItem>
-                  <SelectItem value="inactive">Không hoạt động</SelectItem>
-                  <SelectItem value="public">Công khai</SelectItem>
-                  <SelectItem value="private">Riêng tư</SelectItem>
+                  <SelectItem value="all">Tất cả sản phẩm</SelectItem>
+                  <SelectItem value="menu">Hiển thị trên menu</SelectItem>
+                  <SelectItem value="inactive">Sản phẩm không hoạt động</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -251,12 +235,8 @@ const AdminDishPage = () => {
                             onCheckedChange={async (checked) => {
                               const originalValue = dish.public ?? true
                               
-                              // Nếu đang filter theo public/private và toggle sẽ làm món biến mất, reset filter về "all"
-                              if (statusFilter === "public" && !checked) {
-                                setStatusFilter("all")
-                              } else if (statusFilter === "private" && checked) {
-                                setStatusFilter("all")
-                              }
+                              // Nếu đang filter "menu" và toggle sẽ làm món không còn public hoặc active, không cần reset filter
+                              // Vì khi fetch lại, món sẽ tự động biến mất khỏi danh sách
                               
                               // Optimistic update - cập nhật ngay để animation hoạt động
                               setOptimisticPublic(prev => ({ 
@@ -266,6 +246,8 @@ const AdminDishPage = () => {
                               
                               try {
                                 await togglePublic(dish.id)
+                                // Refresh danh sách sau khi toggle
+                                await fetchAll(statusFilter === "menu" ? "menu" : "all")
                                 // Optimistic state sẽ tự động được xóa bởi useEffect khi store update
                               } catch (error) {
                                 // Revert nếu API thất bại
@@ -316,23 +298,6 @@ const AdminDishPage = () => {
       {editing && (
         <EditDishModal open={true} onClose={()=> setEditing(null)} dish={{ id: editing.id, name: editing.name }} />
       )}
-      <DeleteConfirmationModal
-        open={!!deleting}
-        onClose={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (deleting) {
-            try {
-              await remove(deleting.id);
-              setDeleting(null);
-            } catch (error) {
-              console.error("Error deleting dish:", error);
-            }
-          }
-        }}
-        title="Xác nhận xóa món ăn"
-        itemName={deleting?.name || 'Không có tên'}
-        itemType="món ăn"
-      />
     </div>
   )
 }

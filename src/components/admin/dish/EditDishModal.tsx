@@ -3,6 +3,7 @@ import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import { Button } from "@components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
+import { Switch } from "@components/ui/switch"
 import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/modal"
 import { useDishStore } from "@zustand/stores/dish"
 import { useIngredientStore } from "@zustand/stores/ingredients"
@@ -10,7 +11,7 @@ import { useIngredientStore } from "@zustand/stores/ingredients"
 interface Props { open: boolean; onClose: () => void; dish: { id: number; name: string; description?: string; price?: number; public?: boolean; active?: boolean; ingredients?: Record<number, number> } }
 
 export default function EditDishModal({ open, onClose, dish }: Props) {
-  const { createOrUpdate } = useDishStore()
+  const { createOrUpdate, toggleActive, togglePublic } = useDishStore()
   const ingStore = useIngredientStore()
 
   const [name, setName] = useState(dish?.name ?? "")
@@ -18,6 +19,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
   const [price, setPrice] = useState<string>(dish?.price != null ? String(dish.price) : "")
   const [dishType, setDishType] = useState<"PRESET" | "CUSTOM">("PRESET")
   const [ingredients, setIngredients] = useState<Record<number, number>>(dish?.ingredients ?? {})
+  const [isActive, setIsActive] = useState<boolean>(dish?.active ?? true)
+  const [isPublic, setIsPublic] = useState<boolean>(dish?.public ?? true)
   const [file, setFile] = useState<File | undefined>(undefined)
   const [existingImageUrl, setExistingImageUrl] = useState<string | undefined>(undefined)
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined)
@@ -40,6 +43,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
       setPrice(dish?.price != null ? String(dish.price) : "")
       setDishType("PRESET")
       setIngredients(dish?.ingredients ?? {})
+      setIsActive(dish?.active ?? true)
+      setIsPublic(dish?.public ?? true)
       setFile(undefined)
       setExistingImageUrl(undefined)
       setLoading(false)
@@ -58,6 +63,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
           setName(d.name || "")
           setDescription(d.description || "")
           setPrice(d.price != null ? String(d.price) : "")
+          setIsActive(d.active ?? true)
+          setIsPublic(d.public ?? true)
           setExistingImageUrl(d.imageUrl)
         }
       } catch { return }
@@ -70,18 +77,31 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
       if (open && dish?.id) {
         try {
           const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
-          const res = await bambiApi.get<any[]>(API_ENDPOINTS.API_RECIPE_BY_DISH(dish.id))
-          // res.data: array [{ id, ingredient: Ingredient, quantity, dish: Dish }]
+          const res = await bambiApi.get(API_ENDPOINTS.API_RECIPE_BY_DISH(dish.id))
           const recipe: Record<number, number> = {}
+          
+          // Trường hợp 1: Response là array trực tiếp (array of Recipe với ingredient và quantity)
           if (Array.isArray(res.data)) {
-            res.data.forEach(r => {
+            res.data.forEach((r: any) => {
               if (r.ingredient?.id && typeof r.quantity === 'number') {
                 recipe[r.ingredient.id] = r.quantity
               }
             })
             setIngredients(recipe)
           }
-        } catch { /* ignore, giữ nguyên */ }
+          // Trường hợp 2: Response là object có ingredients array (IngredientsGetByDishResponse)
+          else if (res.data && Array.isArray(res.data.ingredients)) {
+            res.data.ingredients.forEach((ing: any) => {
+              if (ing.id && typeof ing.quantity === 'number') {
+                recipe[ing.id] = ing.quantity
+              }
+            })
+            setIngredients(recipe)
+          }
+        } catch (error) {
+          console.error("Error fetching recipe:", error)
+          // Giữ nguyên ingredients từ props nếu có
+        }
       }
     }
     if (open && dish?.id) fetchRecipe()
@@ -134,13 +154,15 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
         price: p,
         dishType,
         ingredients,
-        public: dish?.public ?? true,
-        active: dish?.active ?? true,
+        public: isPublic,
+        active: isActive,
         file,
       })
       const { toast } = await import("sonner")
       toast.success("Cập nhật món thành công")
-      await useDishStore.getState().fetchAll().catch(() => undefined)
+      // Refresh với statusFilter hiện tại
+      const currentFilter = useDishStore.getState().statusFilter || "all"
+      await useDishStore.getState().fetchAll(currentFilter).catch(() => undefined)
       onClose()
     } finally {
       setLoading(false)
@@ -244,6 +266,75 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
             ) : (
               <div className="mt-2 text-xs text-gray-500">Chưa chọn nguyên liệu nào.</div>
             )}
+          </div>
+        </div>
+        <div>
+          <Label className="mb-1 block">Trạng thái</Label>
+          <div className="space-y-3 p-4 border rounded-lg bg-gray-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Hoạt động</Label>
+                <p className="text-xs text-gray-500">Món sẽ hiển thị trên menu nếu cả Hoạt động và Công khai đều bật</p>
+              </div>
+              <Switch 
+                checked={isActive} 
+                onCheckedChange={async (checked) => {
+                  if (!dish?.id) return
+                  const originalValue = isActive
+                  setIsActive(checked) // Optimistic update
+                  try {
+                    await toggleActive(dish.id)
+                    // Load lại dish details để sync state từ API
+                    const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
+                    const res = await bambiApi.get<{ id: number; name: string; description?: string; price?: number; imageUrl?: string; public?: boolean; active?: boolean }>(API_ENDPOINTS.API_DISH_BY_ID(dish.id))
+                    if (res.data) {
+                      setIsActive(res.data.active ?? true)
+                      setIsPublic(res.data.public ?? true)
+                    }
+                    // Refresh để đồng bộ với store
+                    const currentFilter = useDishStore.getState().statusFilter || "all"
+                    await useDishStore.getState().fetchAll(currentFilter).catch(() => undefined)
+                  } catch (error) {
+                    setIsActive(originalValue) // Revert on error
+                    const { toast } = await import("sonner")
+                    toast.error("Đổi trạng thái hoạt động thất bại")
+                    console.error("Error toggling active:", error)
+                  }
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Công khai</Label>
+                <p className="text-xs text-gray-500">Món sẽ hiển thị cho khách hàng nếu cả Hoạt động và Công khai đều bật</p>
+              </div>
+              <Switch 
+                checked={isPublic} 
+                onCheckedChange={async (checked) => {
+                  if (!dish?.id) return
+                  const originalValue = isPublic
+                  setIsPublic(checked) // Optimistic update
+                  try {
+                    await togglePublic(dish.id)
+                    // Load lại dish details để sync state từ API
+                    const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
+                    const res = await bambiApi.get<{ id: number; name: string; description?: string; price?: number; imageUrl?: string; public?: boolean; active?: boolean }>(API_ENDPOINTS.API_DISH_BY_ID(dish.id))
+                    if (res.data) {
+                      setIsActive(res.data.active ?? true)
+                      setIsPublic(res.data.public ?? true)
+                    }
+                    // Refresh để đồng bộ với store
+                    const currentFilter = useDishStore.getState().statusFilter || "all"
+                    await useDishStore.getState().fetchAll(currentFilter).catch(() => undefined)
+                  } catch (error) {
+                    setIsPublic(originalValue) // Revert on error
+                    const { toast } = await import("sonner")
+                    toast.error("Đổi trạng thái công khai thất bại")
+                    console.error("Error toggling public:", error)
+                  }
+                }}
+              />
+            </div>
           </div>
         </div>
         <div>
