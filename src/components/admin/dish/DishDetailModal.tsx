@@ -48,20 +48,20 @@ export function DishDetailModal({
         
         // Trường hợp 1: Response là array trực tiếp (array of Recipe với ingredient và quantity)
         if (Array.isArray(recipeRes.data)) {
-          const mapped = recipeRes.data.map((r: any) => {
+          const validRecipes: Array<{ ingredient: { id: number; name: string; unit?: string }; quantity: number }> = [];
+          recipeRes.data.forEach((r: any) => {
             if (r.ingredient && typeof r.quantity === 'number') {
-              return {
+              validRecipes.push({
                 ingredient: {
                   id: r.ingredient.id,
                   name: r.ingredient.name || '',
                   unit: r.ingredient.unit
                 },
                 quantity: r.quantity
-              };
+              });
             }
-            return null;
           });
-          recipeData = mapped.filter((r): r is { ingredient: { id: number; name: string; unit?: string }; quantity: number } => r !== null);
+          recipeData = validRecipes;
         }
         // Trường hợp 2: Response là object có ingredients array
         else if (recipeRes.data && typeof recipeRes.data === 'object' && 'ingredients' in recipeRes.data && Array.isArray((recipeRes.data as any).ingredients)) {

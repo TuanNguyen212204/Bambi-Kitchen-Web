@@ -28,6 +28,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
   const [error, setError] = useState<string>("")
 
   const fetchedOnceRef = useRef(false)
+  const justSubmittedRef = useRef(false)
   const fetchIngredientsOnce = useCallback(() => {
     if (!fetchedOnceRef.current) {
       fetchedOnceRef.current = true
@@ -38,11 +39,15 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
   useEffect(() => { if (open) fetchIngredientsOnce() }, [open, fetchIngredientsOnce])
   useEffect(() => {
     if (open) {
+      // Reset flag khi mở modal
+      justSubmittedRef.current = false
+      fetchedOnceRef.current = false
       setName(dish?.name ?? "")
       setDescription(dish?.description ?? "")
       setPrice(dish?.price != null ? String(dish.price) : "")
       setDishType("PRESET")
-      setIngredients(dish?.ingredients ?? {})
+      // Không set ingredients từ dish prop vì sẽ được load từ API trong fetchRecipe
+      // setIngredients(dish?.ingredients ?? {})
       setIsActive(dish?.active ?? true)
       setIsPublic(dish?.public ?? true)
       setFile(undefined)
@@ -74,6 +79,11 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
 
   useEffect(() => {
     const fetchRecipe = async () => {
+      // Nếu vừa submit xong, không fetch lại recipe (giữ nguyên state hiện tại)
+      if (justSubmittedRef.current) {
+        justSubmittedRef.current = false
+        return
+      }
       if (open && dish?.id) {
         try {
           const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
@@ -81,6 +91,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
           const recipe: Record<number, number> = {}
           
           // Trường hợp 1: Response là array trực tiếp (array of Recipe với ingredient và quantity)
+          // Đây là format đúng: mỗi item có ingredient object và quantity trong recipe
           if (Array.isArray(res.data)) {
             res.data.forEach((r: any) => {
               if (r.ingredient?.id && typeof r.quantity === 'number') {
@@ -90,13 +101,17 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
             setIngredients(recipe)
           }
           // Trường hợp 2: Response là object có ingredients array (IngredientsGetByDishResponse)
+          // LƯU Ý: IngredientsGetByDishResponse.ingredients là array of Ingredient
+          // Ingredient.quantity là tổng số lượng trong kho, KHÔNG phải quantity trong recipe
+          // Cần lấy từ Recipe entity riêng, không parse từ đây
+          // Nếu API chỉ trả về IngredientsGetByDishResponse (không có quantity trong recipe),
+          // thì không set ingredients từ đây (giữ nguyên state hiện tại hoặc dùng props)
           else if (res.data && typeof res.data === 'object' && 'ingredients' in res.data && Array.isArray((res.data as any).ingredients)) {
-            (res.data as any).ingredients.forEach((ing: any) => {
-              if (ing.id && typeof ing.quantity === 'number') {
-                recipe[ing.id] = ing.quantity
-              }
-            })
-            setIngredients(recipe)
+            // KHÔNG lấy quantity từ Ingredient vì đó là quantity trong kho, không phải trong recipe
+            // Chỉ set ingredients nếu có quantity từ recipe (nhưng IngredientsGetByDishResponse không có)
+            // Giữ nguyên state hiện tại hoặc dùng từ dish?.ingredients prop
+            console.warn("API returned IngredientsGetByDishResponse but it doesn't contain recipe quantities. Keeping current ingredients state.")
+            // Không set ingredients từ đây vì không có quantity trong recipe
           }
         } catch (error) {
           console.error("Error fetching recipe:", error)
@@ -158,6 +173,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
         active: isActive,
         file,
       })
+      // Đánh dấu vừa submit để không fetch recipe lại (tránh ghi đè giá trị mới)
+      justSubmittedRef.current = true
       const { toast } = await import("sonner")
       toast.success("Cập nhật món thành công")
       // Refresh với statusFilter hiện tại
