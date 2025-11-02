@@ -160,7 +160,7 @@ const Testimonials: React.FC<TestimonialsProps> = ({ testimonials: propTestimoni
     
     if (feedbacks.length === 0) return mockTestimonials;
 
-    return feedbacks.map((fb, index) => ({
+    return feedbacks.map((fb) => ({
       id: `feedback-${fb.orderId}`,
       name: fb.accountName || "Khách hàng",
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(fb.accountName || "Khách hàng")}&background=random`,
