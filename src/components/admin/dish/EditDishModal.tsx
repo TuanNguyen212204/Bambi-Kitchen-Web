@@ -314,7 +314,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
                   } catch (error) {
                     setIsActive(originalValue) // Revert on error
                     const { toast } = await import("sonner")
-                    toast.error("Đổi trạng thái hoạt động thất bại")
+                    const { extractErrorMessage } = await import("@utils/errors")
+                    toast.error(extractErrorMessage(error) || "Đổi trạng thái hoạt động thất bại")
                     console.error("Error toggling active:", error)
                   }
                 }}
@@ -346,7 +347,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
                   } catch (error) {
                     setIsPublic(originalValue) // Revert on error
                     const { toast } = await import("sonner")
-                    toast.error("Đổi trạng thái công khai thất bại")
+                    const { extractErrorMessage } = await import("@utils/errors")
+                    toast.error(extractErrorMessage(error) || "Đổi trạng thái công khai thất bại")
                     console.error("Error toggling public:", error)
                   }
                 }}

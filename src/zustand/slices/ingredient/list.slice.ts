@@ -82,10 +82,11 @@ export const createIngredientListSlice: StateCreator<IngredientListSlice, [], []
       })
 
       set({ items: withStock, loading: false })
-    } catch {
+    } catch (error) {
       set({ loading: false })
       const { toast } = await import("sonner")
-      toast.error("Không thể tải nguyên liệu")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Không thể tải nguyên liệu")
     }
   },
 
@@ -126,10 +127,11 @@ export const createIngredientListSlice: StateCreator<IngredientListSlice, [], []
       } else {
         set({ items: [], loading: false })
       }
-    } catch {
+    } catch (error) {
       set({ loading: false, items: [] })
       const { toast } = await import("sonner")
-      toast.error("Tìm kiếm thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Tìm kiếm thất bại")
     }
   },
 

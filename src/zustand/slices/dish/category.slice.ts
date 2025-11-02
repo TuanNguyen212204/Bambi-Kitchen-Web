@@ -42,9 +42,10 @@ export const createDishCategorySlice: StateCreator<
       set((s) => ({ categories: [data, ...s.categories] }))
       const { toast } = await import("sonner")
       toast.success("Đã tạo danh mục")
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Tạo danh mục thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Tạo danh mục thất bại")
     }
   },
   updateCategory: async (payload) => {
@@ -58,9 +59,10 @@ export const createDishCategorySlice: StateCreator<
       set((s) => ({ categories: s.categories.map((c) => (c.id === data.id ? data : c)) }))
       const { toast } = await import("sonner")
       toast.success("Đã cập nhật danh mục")
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Cập nhật danh mục thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Cập nhật danh mục thất bại")
     }
   },
   removeCategory: async (id: number) => {
@@ -69,9 +71,10 @@ export const createDishCategorySlice: StateCreator<
       set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }))
       const { toast } = await import("sonner")
       toast.success("Đã xóa danh mục")
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Xóa danh mục thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Xóa danh mục thất bại")
     }
   },
 })

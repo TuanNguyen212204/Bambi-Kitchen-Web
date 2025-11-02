@@ -256,6 +256,9 @@ const AdminDishPage = () => {
                                   return newState
                                 })
                                 console.error("Error toggling public:", error)
+                                const { toast } = await import("sonner")
+                                const { extractErrorMessage } = await import("@utils/errors")
+                                toast.error(extractErrorMessage(error) || "Đổi trạng thái công khai thất bại")
                               }
                             }}
                             className="flex-shrink-0"
