@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal";
-import { Users, CheckCircle, Star, Calendar, Plus, Eye, Copy, Phone, Mail, Wallet, FileText } from "lucide-react";
+import { Users, CheckCircle, Star, Calendar, Plus, Eye, Phone, Mail, Wallet, FileText } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useAccountStore } from "@zustand/stores/account";
 import { AddAccountModal } from "@components/admin/account/AddAccountModal";
@@ -54,8 +54,7 @@ export default function AccountManagement() {
       filtered = filtered.filter(acc => 
         acc.name?.toLowerCase().includes(searchQuery) ||
         acc.mail?.toLowerCase().includes(searchQuery) ||
-        acc.phone?.includes(searchQuery) ||
-        `C${acc.id?.toString().padStart(3, '0')}`.toLowerCase().includes(searchQuery)
+        acc.phone?.includes(searchQuery)
       );
     }
     
@@ -440,13 +439,6 @@ export default function AccountManagement() {
                             <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-xs leading-[18px] mb-1">
                               {account.name || 'Chưa có tên'}
                             </h3>
-                            <div className="flex items-center gap-2 text-xs text-gray-600 mb-1">
-                              <span className="font-medium">C{account.id?.toString().padStart(3, '0')}</span>
-                              <Copy className="w-3 h-3 cursor-pointer hover:text-gray-800" onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(`C${account.id?.toString().padStart(3, '0')}`);
-                              }} />
-                            </div>
                             {account.phone && (
                               <div className="flex items-center gap-1 text-xs text-gray-600 mb-0.5">
                                 <Phone className="w-3 h-3" />

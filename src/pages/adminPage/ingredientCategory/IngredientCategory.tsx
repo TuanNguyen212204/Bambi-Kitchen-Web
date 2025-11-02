@@ -8,7 +8,7 @@ import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/mod
 import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal"
 import { useIngredientStore } from "@zustand/stores/ingredients"
 import { toast } from "sonner"
-import { Box, Package, Plus, MoreVertical, Eye, Trash2, Copy, Search, TrendingUp, CheckCircle } from "lucide-react"
+import { Box, Package, Plus, MoreVertical, Eye, Trash2, Search, TrendingUp, CheckCircle } from "lucide-react"
 import type { IngredientCategory } from "@models/category/category"
 import type { StoreIngredient } from "@/zustand/types"
 
@@ -379,13 +379,6 @@ export default function AdminIngredientCategoryPage() {
                             <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-xs leading-[18px] mb-1">
                               {category.name}
                             </h3>
-                            <div className="flex items-center gap-2 text-xs text-gray-600 mb-1">
-                              <span className="font-medium">DM{category.id?.toString().padStart(3, '0')}</span>
-                              <Copy className="w-3 h-3 cursor-pointer hover:text-gray-800" onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(`DM${category.id?.toString().padStart(3, '0')}`);
-                              }} />
-                            </div>
                             {category.description && (
                               <p className="text-xs text-gray-600 line-clamp-2 mb-1">
                                 {category.description}
