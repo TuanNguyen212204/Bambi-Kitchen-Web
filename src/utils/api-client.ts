@@ -1,6 +1,6 @@
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosRequestHeaders, AxiosRequestConfig } from "axios"
 import { http } from "@utils/http"
-import { ApiError, shouldToast, extractErrorMessage } from "@utils/errors"
+import { ApiError, shouldToast } from "@utils/errors"
 import { toast } from "sonner"
 import { useAuthStore } from "@zustand/stores/auth"
 
