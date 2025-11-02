@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Badge } from "@components/ui/badge/badge";
-import { LogOut, User as UserIcon, LogIn, Search, ShoppingCart } from "lucide-react";
+import { LogOut, User as UserIcon, Search } from "lucide-react";
 import { useAuthStore } from "@/zustand/stores/auth";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import logo from "@assets/logo.png";
@@ -44,12 +43,6 @@ const Header = () => {
           <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" aria-label="Tìm kiếm">
             <Search size={18} />
           </button>
-          <div className="relative">
-            <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" aria-label="Giỏ hàng">
-              <ShoppingCart size={18} />
-            </button>
-            <Badge className="absolute -top-1 -right-1 w-5 h-5 bg-[#ea6d27] text-white p-0 flex items-center justify-center">2</Badge>
-          </div>
           {isAuthenticated && (
             <div className="relative">
               <NotificationIcon 
@@ -61,68 +54,63 @@ const Header = () => {
               />
             </div>
           )}
-          <div className="relative">
-            {isAuthenticated ? (
-              <>
-                <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" onClick={toggleMenu} aria-label="Tài khoản">
-                  <UserIcon size={18} />
-                </button>
-                {menuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                    <div className="px-4 py-2 text-sm text-gray-600">{user?.name ?? "Đã đăng nhập"}</div>
-                    {user?.role_id === ROLES.ADMIN && (
-                      <button
-                        className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          navigate(PATHS.ADMIN);
-                        }}
-                      >
-                        <UserIcon size={16} />
-                        Admin
-                      </button>
-                    )}
+          {isAuthenticated ? (
+            <div className="relative">
+              <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" onClick={toggleMenu} aria-label="Tài khoản">
+                <UserIcon size={18} />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                  <div className="px-4 py-2 text-sm text-gray-600">{user?.name ?? "Đã đăng nhập"}</div>
+                  {user?.role_id === ROLES.ADMIN && (
                     <button
                       className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
                       onClick={() => {
                         setMenuOpen(false);
-                        if (user?.role_id === ROLES.ADMIN) {
-                          navigate(`${PATHS.ADMIN}/profile`);
-                        } else {
-                          navigate(PATHS.PROFILE);
-                        }
+                        navigate(PATHS.ADMIN);
                       }}
                     >
                       <UserIcon size={16} />
-                      Thông tin người dùng
+                      Admin
                     </button>
-                    <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2" onClick={handleLogout}>
-                      <LogOut size={16} />
-                      Đăng xuất
-                    </button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" onClick={toggleMenu} aria-label="Đăng nhập">
-                  <UserIcon size={18} />
-                </button>
-                {menuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                    <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2" onClick={() => navigate(PATHS.LOGIN)}>
-                      <LogIn size={16} />
-                      Đăng nhập
-                    </button>
-                    <button className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2" onClick={() => navigate(PATHS.REGISTER)}>
-                      <UserIcon size={16} />
-                      Đăng ký
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+                  )}
+                  <button
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      if (user?.role_id === ROLES.ADMIN) {
+                        navigate(`${PATHS.ADMIN}/profile`);
+                      } else {
+                        navigate(PATHS.PROFILE);
+                      }
+                    }}
+                  >
+                    <UserIcon size={16} />
+                    Thông tin người dùng
+                  </button>
+                  <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2" onClick={handleLogout}>
+                    <LogOut size={16} />
+                    Đăng xuất
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button 
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-[#ea6d27] rounded hover:bg-gray-50 transition-colors"
+                onClick={() => navigate(PATHS.LOGIN)}
+              >
+                Login
+              </button>
+              <button 
+                className="px-4 py-2 text-sm font-medium bg-[#ea6d27] text-white rounded hover:bg-[#d85f1f] transition-colors"
+                onClick={() => navigate(PATHS.REGISTER)}
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>
