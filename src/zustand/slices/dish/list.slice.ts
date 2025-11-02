@@ -17,7 +17,7 @@ export interface DishListSlice {
   items: DishItem[]
   loading: boolean
   error?: string
-  fetchAll: () => Promise<void>
+  fetchAll: (filterType?: "all" | "menu" | "inactive") => Promise<void>
   remove: (id: number) => Promise<void>
   togglePublic: (id: number) => Promise<void>
   toggleActive: (id: number) => Promise<void>
@@ -33,11 +33,24 @@ export const createDishListSlice: StateCreator<
   loading: false,
   error: undefined,
 
-  fetchAll: async () => {
+  fetchAll: async (filterType: "all" | "menu" | "inactive" = "all") => {
     set({ loading: true, error: undefined })
     try {
-      const { data } = await bambiApi.get<DishItem[]>(API_ENDPOINTS.API_DISHES as string)
-      set({ items: Array.isArray(data) ? data : [], loading: false })
+      // filterType "menu" -> dùng /api/dish (chỉ lấy public=true & active=true)
+      // filterType "all" hoặc "inactive" -> dùng /api/dish/get-all (tất cả dishes cho admin)
+      // Sau đó filter theo active=false nếu là "inactive"
+      const endpoint = filterType === "menu" 
+        ? API_ENDPOINTS.API_DISHES 
+        : API_ENDPOINTS.API_DISHES_ALL
+      const { data } = await bambiApi.get<DishItem[]>(endpoint as string)
+      let items = Array.isArray(data) ? data : []
+      
+      // Filter theo active=false nếu là "inactive"
+      if (filterType === "inactive") {
+        items = items.filter(d => d.active === false)
+      }
+      
+      set({ items, loading: false })
     } catch (e) {
       set({ loading: false, error: "Không tải được danh sách món ăn" })
     }

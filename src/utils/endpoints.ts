@@ -31,6 +31,7 @@ export const API_ENDPOINTS = {
   API_INGREDIENT_CATEGORY_BY_ID: (id: number) => `/api/ingredient-category/${id}`,
 
   API_DISHES: "/api/dish",
+  API_DISHES_ALL: "/api/dish/get-all", // Admin: tất cả dishes (không filter)
   API_DISH_BY_ID: (id: number) => `/api/dish/${id}`,
   API_DISH_TOGGLE_PUBLIC: (id: number) => `/api/dish/toggle-public/${id}`,
   API_DISH_TOGGLE_ACTIVE: (id: number) => `/api/dish/toggle-active/${id}`,

@@ -123,8 +123,9 @@ export default function AddDishModal({ open, onClose }: Props) {
       })
       const { toast } = await import("sonner")
       toast.success("Tạo món thành công")
-      // refresh danh sách để không cần F5
-      await useDishStore.getState().fetchAll().catch(() => undefined)
+      // refresh danh sách với filter hiện tại để giữ nguyên view
+      const currentFilter = useDishStore.getState().statusFilter || "all"
+      await useDishStore.getState().fetchAll(currentFilter).catch(() => undefined)
       onClose()
     } finally {
       setLoading(false)
