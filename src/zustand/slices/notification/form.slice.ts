@@ -23,11 +23,12 @@ export const createNotificationFormSlice: StateCreator<
       await get().fetchAll()
     } catch (error: any) {
       console.error("Error creating notification:", error)
-      const message = error?.response?.status === 500
-        ? "Lỗi server. Không thể tạo thông báo. Vui lòng liên hệ admin."
-        : error?.response?.data?.message || "Không thể tạo thông báo"
+      const { extractErrorMessage, shouldToast } = await import("@utils/errors")
+      const message = extractErrorMessage(error) || "Không thể tạo thông báo"
       set({ error: message, loading: false })
-      toast.error(message)
+      if (shouldToast(`notification_create_${message}`)) {
+        toast.error(message)
+      }
       throw error
     }
   },
@@ -47,11 +48,12 @@ export const createNotificationFormSlice: StateCreator<
       await get().fetchAll()
     } catch (error: any) {
       console.error("Error updating notification:", error)
-      const message = error?.response?.status === 500
-        ? "Lỗi server. Không thể cập nhật thông báo."
-        : error?.response?.data?.message || "Không thể cập nhật thông báo"
+      const { extractErrorMessage, shouldToast } = await import("@utils/errors")
+      const message = extractErrorMessage(error) || "Không thể cập nhật thông báo"
       set({ error: message, loading: false })
-      toast.error(message)
+      if (shouldToast(`notification_update_${message}`)) {
+        toast.error(message)
+      }
       throw error
     }
   },
@@ -64,11 +66,12 @@ export const createNotificationFormSlice: StateCreator<
       await get().fetchAll()
     } catch (error: any) {
       console.error("Error deleting notification:", error)
-      const message = error?.response?.status === 500
-        ? "Lỗi server. Không thể xóa thông báo."
-        : error?.response?.data?.message || "Không thể xóa thông báo"
+      const { extractErrorMessage, shouldToast } = await import("@utils/errors")
+      const message = extractErrorMessage(error) || "Không thể xóa thông báo"
       set({ error: message, loading: false })
-      toast.error(message)
+      if (shouldToast(`notification_delete_${message}`)) {
+        toast.error(message)
+      }
       throw error
     }
   },
@@ -82,10 +85,11 @@ export const createNotificationFormSlice: StateCreator<
       await get().fetchAll()
     } catch (error: any) {
       console.error("Error marking as read:", error)
-      const message = error?.response?.status === 500
-        ? "Lỗi server. Không thể đánh dấu đã đọc."
-        : error?.response?.data?.message || "Không thể đánh dấu đã đọc"
-      toast.error(message)
+      const { extractErrorMessage, shouldToast } = await import("@utils/errors")
+      const message = extractErrorMessage(error) || "Không thể đánh dấu đã đọc"
+      if (shouldToast(`notification_mark_read_${message}`)) {
+        toast.error(message)
+      }
       throw error
     }
   },
@@ -96,7 +100,11 @@ export const createNotificationFormSlice: StateCreator<
       toast.success("Đã gửi thông báo đến tất cả user!")
     } catch (error: any) {
       console.error("Error sending notification to all:", error)
-      toast.error("Gửi thông báo thất bại!")
+      const { extractErrorMessage, shouldToast } = await import("@utils/errors")
+      const message = extractErrorMessage(error) || "Gửi thông báo thất bại!"
+      if (shouldToast(`notification_send_all_${message}`)) {
+        toast.error(message)
+      }
       throw error
     }
   },
@@ -106,7 +114,11 @@ export const createNotificationFormSlice: StateCreator<
       toast.success("Đã gửi thông báo đến đúng thiết bị!")
     } catch (error: any) {
       console.error("Error sending notification to exact device:", error)
-      toast.error("Gửi thông báo thất bại!")
+      const { extractErrorMessage, shouldToast } = await import("@utils/errors")
+      const message = extractErrorMessage(error) || "Gửi thông báo thất bại!"
+      if (shouldToast(`notification_send_exact_${message}`)) {
+        toast.error(message)
+      }
       throw error
     }
   },
@@ -116,7 +128,11 @@ export const createNotificationFormSlice: StateCreator<
       toast.success("Đã gửi thông báo đến user!")
     } catch (error: any) {
       console.error("Error sending notification to device:", error)
-      toast.error("Gửi thông báo thất bại!")
+      const { extractErrorMessage, shouldToast } = await import("@utils/errors")
+      const message = extractErrorMessage(error) || "Gửi thông báo thất bại!"
+      if (shouldToast(`notification_send_device_${message}`)) {
+        toast.error(message)
+      }
       throw error
     }
   }

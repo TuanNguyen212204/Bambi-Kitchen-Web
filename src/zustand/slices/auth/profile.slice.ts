@@ -46,15 +46,14 @@ export const createProfileSlice: StateCreator<ProfileSlice, [], [], ProfileSlice
       toast.success("Cập nhật hồ sơ thành công!")
 
     } catch (e) {
-      const { ApiError } = await import("@utils/errors")
-      const apiError = e as InstanceType<typeof ApiError>
-      console.log(ApiError.name)
-      const message = apiError.userFriendlyMessage || "Cập nhật thất bại"
+      const { extractErrorMessage } = await import("@utils/errors")
+      const message = extractErrorMessage(e)
       
       set({ loading: false, error: message })
       
+      // Chỉ hiển thị message từ backend, không có title hardcode
       const { toast } = await import("sonner")
-      toast.error("Cập nhật thất bại", { description: message })
+      toast.error(message)
       
       throw e
     }

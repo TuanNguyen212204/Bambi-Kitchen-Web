@@ -66,7 +66,8 @@ export const createIngredientStockSlice: StateCreator<IngredientStockSlice, [], 
     } catch (error) {
       console.error("Adjust stock error:", error)
       const { toast } = await import("sonner")
-      toast.error("Cập nhật tồn kho thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Cập nhật tồn kho thất bại")
     }
   },
 

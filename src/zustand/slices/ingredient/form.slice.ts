@@ -89,9 +89,10 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
 
       const { toast } = await import("sonner")
       toast.success("Đã thêm nguyên liệu")
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Thêm nguyên liệu thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Thêm nguyên liệu thất bại")
     }
   },
 
@@ -163,9 +164,10 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
         const { toast } = await import("sonner")
         toast.success("Đã cập nhật nguyên liệu")
       }
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Cập nhật nguyên liệu thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Cập nhật nguyên liệu thất bại")
     }
   },
 
@@ -186,9 +188,10 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
       
       const { toast } = await import("sonner")
       toast.success("Đã xóa nguyên liệu")
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Xóa nguyên liệu thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Xóa nguyên liệu thất bại")
     }
   },
 

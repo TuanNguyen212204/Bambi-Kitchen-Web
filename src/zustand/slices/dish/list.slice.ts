@@ -52,7 +52,8 @@ export const createDishListSlice: StateCreator<
       
       set({ items, loading: false })
     } catch (e) {
-      set({ loading: false, error: "Không tải được danh sách món ăn" })
+      const { extractErrorMessage } = await import("@utils/errors")
+      set({ loading: false, error: extractErrorMessage(e) || "Không tải được danh sách món ăn" })
     }
   },
 
@@ -62,9 +63,10 @@ export const createDishListSlice: StateCreator<
       set((s) => ({ items: s.items.filter((x) => x.id !== id) }))
       const { toast } = await import("sonner")
       toast.success("Đã xóa món ăn")
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Xóa món ăn thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Xóa món ăn thất bại")
     }
   },
 
@@ -72,9 +74,10 @@ export const createDishListSlice: StateCreator<
     try {
       const { data } = await bambiApi.get<boolean>(API_ENDPOINTS.API_DISH_TOGGLE_PUBLIC(id))
       set((s) => ({ items: s.items.map((d) => (d.id === id ? { ...d, public: data } : d)) }))
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Đổi trạng thái công khai thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Đổi trạng thái công khai thất bại")
     }
   },
 
@@ -82,9 +85,10 @@ export const createDishListSlice: StateCreator<
     try {
       const { data } = await bambiApi.get<boolean>(API_ENDPOINTS.API_DISH_TOGGLE_ACTIVE(id))
       set((s) => ({ items: s.items.map((d) => (d.id === id ? { ...d, active: data } : d)) }))
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Đổi trạng thái hoạt động thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Đổi trạng thái hoạt động thất bại")
     }
   },
 })

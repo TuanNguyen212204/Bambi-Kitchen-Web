@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PATHS } from "@config/path";
+import { API_BASE_URL } from "@utils/http";
+import { API_ENDPOINTS } from "@utils/endpoints";
  
 import { useAuthStore } from "@zustand/stores/auth";
 import { Card, CardContent, CardHeader } from "@components/ui/card/card";
@@ -222,6 +224,10 @@ export function RegisterForm() {
                   <Button
                     variant="outline"
                     className="w-full max-w-xs h-10 bg-white border-[#5b86e5] hover:bg-gray-50 justify-center"
+                    onClick={() => {
+                      localStorage.setItem('redirectAfterLogin', window.location.pathname);
+                      window.location.assign(`${API_BASE_URL}${API_ENDPOINTS.AUTH_GOOGLE}`)
+                    }}
                   >
                     <svg className="w-5 h-5 mr-2 flex-shrink-0" viewBox="0 0 24 24">
                       <path 
