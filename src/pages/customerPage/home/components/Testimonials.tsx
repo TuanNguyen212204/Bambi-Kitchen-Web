@@ -95,19 +95,19 @@ const Testimonials: React.FC<TestimonialsProps> = ({ testimonials: propTestimoni
         setLoading(true);
         
         // Fetch feedbacks
-        const feedbackResponse = await bambiApi.get<FeedbackDto[]>(API_ENDPOINTS.API_ORDER_FEEDBACKS);
+        const feedbackResponse = await bambiPublicApi.get<FeedbackDto[]>(API_ENDPOINTS.API_ORDER_FEEDBACKS);
         const feedbackData = feedbackResponse.data || [];
         
         // Lưu tất cả feedback để tính stats
         setAllFeedbacks(feedbackData);
         
         // Filter feedbacks with ranking > 3 để hiển thị
-        const filteredFeedbacks = feedbackData.filter((fb) => fb.ranking > 3);
+        const filteredFeedbacks = feedbackData.filter((fb) => (fb.ranking ?? 0) >= 3);
         setFeedbacks(filteredFeedbacks);
 
         // Fetch orders để tính thời gian giao hàng
         try {
-          const ordersResponse = await bambiApi.get<OrdersResponse[]>(API_ENDPOINTS.API_ORDERS);
+          const ordersResponse = await bambiPublicApi.get<OrdersResponse[]>(API_ENDPOINTS.API_ORDERS);
           const ordersData = ordersResponse.data || [];
           // Chỉ lấy orders đã hoàn thành (COMPLETED hoặc PAID)
           const completedOrders = ordersData.filter(

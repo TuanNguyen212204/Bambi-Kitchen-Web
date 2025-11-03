@@ -17,7 +17,18 @@ import { AddAccountModal } from "@components/admin/account/AddAccountModal";
 import { AccountDetailModal } from "@components/admin/account/AccountDetailModal";
 import { MoreVertical, Trash2 as TrashIcon } from "lucide-react";
 import { bambiApi, API_ENDPOINTS } from "@utils/api";
-import type { Order, OrderStatus } from "@models/order/order";
+// Dùng kiểu dữ liệu theo API v3 cho Orders
+type OrderV3 = {
+  id: number
+  createAt?: string
+  totalPrice?: number
+  status: string
+  userId: number
+  staffId?: number
+  note?: string
+  ranking?: number
+  comment?: string
+}
 
 export default function AccountManagement() {
   const currentDate = new Date().toLocaleString("vi-VN", {
@@ -79,10 +90,16 @@ export default function AccountManagement() {
   const [accountToDelete, setAccountToDelete] = useState<any>(null);
   
   // Orders state
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderV3[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [selectedOrderTab, setSelectedOrderTab] = useState<"unpaid" | "paid">("unpaid");
   const [orderSearchQuery, setOrderSearchQuery] = useState("");
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  type OrderDetailV3 = { id: number; dish?: { id: number; name?: string }; totalCalories?: number; notes?: string; size?: string }
+  const [orderDetails, setOrderDetails] = useState<OrderDetailV3[]>([]);
+  const [loadingOrderDetails, setLoadingOrderDetails] = useState(false);
+  const [payments, setPayments] = useState<Array<{ orderId: number; amount?: number; paymentMethod?: string; status?: string; createdAt?: string; transactionId?: string }>>([])
+  const [loadingPayments, setLoadingPayments] = useState(false)
 
   useEffect(() => {
     fetchAll();
@@ -93,28 +110,54 @@ export default function AccountManagement() {
   useEffect(() => {
     if (selectedAccount?.id) {
       fetchOrdersByAccountId(selectedAccount.id);
+      fetchPaymentsByAccountId(selectedAccount.id);
     } else {
       setOrders([]);
+      setPayments([]);
     }
   }, [selectedAccount]);
 
   const fetchOrdersByAccountId = async (accountId: number) => {
     setLoadingOrders(true);
     try {
-      const response = await bambiApi.get<Order[]>(API_ENDPOINTS.API_ORDERS, {
-        headers: {
-          'x-silent-error': 'true'
-        }
-      } as any);
-      const filteredOrders = response.data.filter(order => order.user_id === accountId);
-      setOrders(filteredOrders);
+      const response = await bambiApi.get<OrderV3[]>(API_ENDPOINTS.API_ORDERS_BY_USER(accountId));
+      setOrders(response.data || []);
+      setSelectedOrderId(null);
+      setOrderDetails([]);
     } catch (error) {
-      console.log("API chưa có, chờ cập nhật:", error);
       setOrders([]);
     } finally {
       setLoadingOrders(false);
     }
   }; 
+
+  const fetchOrderDetails = async (orderId: number) => {
+    setLoadingOrderDetails(true);
+    try {
+      const response = await bambiApi.get<OrderDetailV3[]>(
+        API_ENDPOINTS.API_ORDER_DETAILS_BY_ORDER(orderId)
+      );
+      setOrderDetails(response.data || []);
+    } catch (error) {
+      setOrderDetails([]);
+    } finally {
+      setLoadingOrderDetails(false);
+    }
+  };
+
+  const fetchPaymentsByAccountId = async (accountId: number) => {
+    setLoadingPayments(true)
+    try {
+      const res = await bambiApi.get<Array<{ orderId: number; amount: number; paymentMethod: string; status: string; createdAt: string; transactionId?: string }>>(
+        API_ENDPOINTS.API_PAYMENTS_BY_ACCOUNT(accountId)
+      )
+      setPayments(res.data || [])
+    } catch {
+      setPayments([])
+    } finally {
+      setLoadingPayments(false)
+    }
+  }
 
   const statsData = [
     {
@@ -224,7 +267,7 @@ export default function AccountManagement() {
     }
   };
 
-  const getOrderStatusLabel = (status: string | OrderStatus) => {
+  const getOrderStatusLabel = (status: string) => {
     const statusStr = status as string;
     const statusMap: Record<string, string> = {
       PENDING: "Chờ xử lý",
@@ -246,7 +289,7 @@ export default function AccountManagement() {
 
   const filteredOrders = useMemo(() => {
     let filtered = orders;
-    const statusStr = (status: string | OrderStatus) => String(status).toLowerCase();
+    const statusStr = (status: string) => String(status).toLowerCase();
     
     if (selectedOrderTab === "unpaid") {
       filtered = filtered.filter(order => {
@@ -262,9 +305,10 @@ export default function AccountManagement() {
     
     // Filter by search query
     if (orderSearchQuery.trim()) {
+      const term = orderSearchQuery.toLowerCase()
       filtered = filtered.filter(order => 
-        order.id.toString().includes(orderSearchQuery) ||
-        order.name?.toLowerCase().includes(orderSearchQuery.toLowerCase())
+        order.id.toString().includes(term) ||
+        String(order.status).toLowerCase().includes(term)
       );
     }
     
@@ -501,7 +545,7 @@ export default function AccountManagement() {
           </div>
 
           {/* Right Content: Orders */}
-          <div className="flex-1 bg-white flex flex-col" style={{ height: "600px", maxHeight: "calc(100vh - 300px)" }}>
+          <div className="flex-1 bg-white flex flex-col min-h-0" style={{ height: "600px", maxHeight: "calc(100vh - 300px)" }}>
             <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50 flex-shrink-0">
               <div className="flex items-center gap-2 mb-3">
                 <Wallet className="w-4 h-4 text-gray-700" />
@@ -544,7 +588,7 @@ export default function AccountManagement() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4" style={{ maxHeight: "calc(100vh - 300px)" }}>
+            <div className="flex-1 p-4 min-h-0">
               {!selectedAccount ? (
                 <div className="text-center py-12 text-gray-500">
                   <Wallet className="w-12 h-12 mx-auto mb-4 text-gray-400" />
@@ -560,25 +604,36 @@ export default function AccountManagement() {
                   <p className="text-sm">Không có đơn hàng nào</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {filteredOrders.map((order) => (
+                  <div className="flex gap-4 min-h-0 h-full">
+                  {/* Left: Danh sách đơn hàng */}
+                    <div className="w-1/2 flex flex-col min-h-0">
+                      <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+                      {filteredOrders.map((order) => {
+                      const isActive = selectedOrderId === order.id
+                      return (
                     <div
                       key={order.id}
-                      className="p-3 rounded-lg border border-gray-200 bg-white hover:border-gray-300 transition-all"
+                          onClick={() => {
+                            setSelectedOrderId(order.id)
+                            fetchOrderDetails(order.id)
+                          }}
+                          className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                            isActive ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+                          }`}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <FileText className="w-4 h-4 text-gray-600" />
                         <span className="text-sm font-medium text-gray-700">
-                          Mã: P-{order.user_id}-B{order.id}
+                              Mã: P-{order.userId}-B{order.id}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mb-2 text-xs text-gray-600">
                         <Calendar className="w-3 h-3" />
-                        <span>Ngày: {formatDate(order.create_at || order.created_at || "")}</span>
+                            <span>Ngày: {formatDate(order.createAt || "")}</span>
                       </div>
-                      {order.total_price && (
+                          {typeof order.totalPrice === 'number' && (
                         <div className="text-sm font-semibold text-gray-800 mb-2">
-                          Tổng tiền: {formatCurrency(order.total_price)}
+                              Tổng tiền: {formatCurrency(order.totalPrice)}
                         </div>
                       )}
                       <div className="flex gap-2 items-center">
@@ -591,20 +646,107 @@ export default function AccountManagement() {
                         >
                           {getOrderStatusLabel(order.status)}
                         </Badge>
-                        {String(order.status).toLowerCase() !== "completed" && String(order.status).toLowerCase() !== "paid" && (
-                          <Button
-                            size="sm"
-                            className="bg-teal-500 hover:bg-teal-600 text-white text-xs px-3 py-1 h-auto"
-                            onClick={() => {
-                              alert("Chức năng xác nhận thanh toán sẽ được cập nhật thêm");
-                            }}
-                          >
-                            Xác nhận thanh toán
-                          </Button>
+                          </div>
+                        </div>
+                      )
+                      })}
+                      </div>
+                  </div>
+
+                    {/* Right: Chi tiết đơn hàng */}
+                    <div className="w-1/2 flex flex-col min-h-0">
+                    {!selectedOrderId ? (
+                      <div className="text-center py-10 text-gray-500 border border-dashed border-gray-300 rounded-lg bg-white">
+                        <p className="text-sm">Chọn một đơn hàng để xem chi tiết</p>
+                      </div>
+                    ) : loadingOrderDetails ? (
+                      <div className="flex justify-center items-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      </div>
+                    ) : (
+                      <div className="flex-1 overflow-y-auto space-y-3 pl-2">
+                        {/* Thông tin chung đơn hàng */}
+                        {(() => {
+                          const current = orders.find(o => o.id === selectedOrderId)
+                          if (!current) return null
+                          const statusStr = String(current.status)
+                          const note = current.note
+                          const ranking = current.ranking
+                          const comment = current.comment
+                          const created = current.createAt
+                          const total = current.totalPrice
+                          return (
+                            <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-sm font-semibold text-gray-800">Chi tiết đơn hàng #{current.id}</h4>
+                                <Badge className={`text-xs px-2 py-1 ${
+                                  (statusStr.toLowerCase() === "completed" || statusStr.toLowerCase() === "paid")
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-orange-100 text-orange-700"
+                                }`}>{getOrderStatusLabel(statusStr)}</Badge>
+                              </div>
+                              <div className="text-xs text-gray-600 mb-2">Ngày: {formatDate(created || "")}</div>
+                              {typeof total === 'number' && (
+                                <div className="text-sm font-medium text-gray-800 mb-2">Tổng tiền: {formatCurrency(total)}</div>
+                              )}
+                              {note && (
+                                <div className="text-sm text-gray-700"><span className="font-medium">Ghi chú:</span> {note}</div>
+                              )}
+                              {(ranking || comment) && (
+                                <div className="mt-2 text-sm text-gray-700">
+                                  <div className="font-medium">Feedback khách hàng</div>
+                                  {ranking ? <div>Đánh giá: {ranking}/5</div> : null}
+                                  {comment ? <div>Bình luận: {comment}</div> : null}
+                      </div>
                         )}
                       </div>
+                          )
+                        })()}
+
+                        {/* Danh sách chi tiết món */}
+                        <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                          <h5 className="text-sm font-semibold text-gray-800 mb-3">Món trong đơn</h5>
+                          {orderDetails.length === 0 ? (
+                            <div className="text-xs text-gray-500">Không có chi tiết món</div>
+                          ) : (
+                            <div className="space-y-2">
+                              {orderDetails.map((d: OrderDetailV3) => (
+                                <div key={d.id} className="p-3 border border-gray-100 rounded-md">
+                                  <div className="text-sm font-medium text-gray-800">{d.dish?.name || `Món #${d.dish?.id || ''}`}</div>
+                                  <div className="text-xs text-gray-600">Size: {d.size || 'N/A'}</div>
+                                  {d.notes && <div className="text-xs text-gray-700">Ghi chú: {d.notes}</div>}
+                                  {typeof d.totalCalories === 'number' && (
+                                    <div className="text-xs text-gray-600">Calories: {d.totalCalories}</div>
+                                  )}
                     </div>
                   ))}
+                            </div>
+                          )}
+                        </div>
+                        {/* Thông tin thanh toán */}
+                        <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                          <h5 className="text-sm font-semibold text-gray-800 mb-3">Thông tin thanh toán</h5>
+                          {loadingPayments ? (
+                            <div className="flex justify-center items-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>
+                          ) : (
+                            (() => {
+                              const p = payments.find(x => x.orderId === selectedOrderId)
+                              if (!p) return <div className="text-xs text-gray-500">Chưa có thông tin thanh toán</div>
+                              return (
+                                <div className="text-sm text-gray-700 space-y-1">
+                                  <div><span className="font-medium">Phương thức:</span> {p.paymentMethod || 'N/A'}</div>
+                                  <div><span className="font-medium">Trạng thái:</span> {p.status || 'N/A'}</div>
+                                  <div><span className="font-medium">Số tiền:</span> {typeof p.amount === 'number' ? formatCurrency(p.amount) : 'N/A'}</div>
+                                  {p.transactionId && <div><span className="font-medium">Mã giao dịch:</span> {p.transactionId}</div>}
+                                  {p.createdAt && <div><span className="font-medium">Thời gian:</span> {new Date(p.createdAt).toLocaleString('vi-VN')}</div>}
+                                </div>
+                              )
+                            })()
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

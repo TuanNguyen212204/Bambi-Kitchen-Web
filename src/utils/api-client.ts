@@ -237,3 +237,22 @@ export class BambiApiClient {
 export const bambiApi = new BambiApiClient()
 
 
+// Public client helpers: always skip auth header and avoid auth redirection side-effects
+export const bambiPublicApi = {
+  get: async function <T>(url: string, options?: RequestOptions) {
+    return bambiApi.get<T>(url, { ...(options || {}), skipAuth: true })
+  },
+  post: async function <T, D = unknown>(url: string, data?: D, options?: RequestOptions) {
+    return bambiApi.post<T, D>(url, data, { ...(options || {}), skipAuth: true })
+  },
+  put: async function <T, D = unknown>(url: string, data?: D, options?: RequestOptions) {
+    return bambiApi.put<T, D>(url, data, { ...(options || {}), skipAuth: true })
+  },
+  patch: async function <T, D = unknown>(url: string, data?: D, options?: RequestOptions) {
+    return bambiApi.patch<T, D>(url, data, { ...(options || {}), skipAuth: true })
+  },
+  delete: async function <T>(url: string, options?: RequestOptions) {
+    return bambiApi.delete<T>(url, { ...(options || {}), skipAuth: true })
+  }
+}
+

@@ -19,7 +19,8 @@ import { useAuthStore } from "@zustand/stores/auth";
 import { bambiApi } from "@utils/api";
 import { ProfileDetailModal } from "../../../components/customer/profile/ProfileDetailModal";
 import { EditProfileModal } from "../../../components/customer/profile/EditProfileModal";
-import { ChangePasswordModal } from "../../../components/customer/profile/ChangePasswordModal";
+import { ChangeEmailOtpModal } from "../../../components/customer/profile/ChangeEmailOtpModal";
+import { ChangePasswordOtpModal } from "../../../components/customer/profile/ChangePasswordOtpModal";
 
 interface Notification {
   title?: string;
@@ -42,6 +43,7 @@ export default function ProfilePage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showChangeEmailModal, setShowChangeEmailModal] = useState(false);
   
   // Real data states
   const [recentActivity, setRecentActivity] = useState<Notification[]>([]);
@@ -260,6 +262,15 @@ export default function ProfilePage() {
                         <Lock className="w-4 h-4 mr-2" />
                         Đổi mật khẩu
                       </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full justify-start text-orange-600 border-orange-300 hover:bg-orange-50"
+                        onClick={() => setShowChangeEmailModal(true)}
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Đổi email (OTP)
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -314,13 +325,18 @@ export default function ProfilePage() {
         }}
       />
 
-      <ChangePasswordModal
+      <ChangePasswordOtpModal
         open={showChangePasswordModal}
         onClose={() => setShowChangePasswordModal(false)}
+        email={user?.email || ""}
+      />
+
+      <ChangeEmailOtpModal
+        open={showChangeEmailModal}
+        onClose={() => setShowChangeEmailModal(false)}
+        user={{ id: user?.id, name: user?.name, email: user?.email }}
         onSuccess={() => {
-          if (user?.id) {
-            fetchUserAccount(user.id);
-          }
+          if (user?.id) fetchUserAccount(user.id)
         }}
       />
     </div>

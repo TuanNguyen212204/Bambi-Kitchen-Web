@@ -98,13 +98,13 @@ const Header = () => {
           ) : (
             <div className="flex items-center gap-2">
               <button 
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-[#ea6d27] rounded hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-[#ea6d27] rounded-full hover:bg-gray-50 transition-colors"
                 onClick={() => navigate(PATHS.LOGIN)}
               >
                 Login
               </button>
               <button 
-                className="px-4 py-2 text-sm font-medium bg-[#ea6d27] text-white rounded hover:bg-[#d85f1f] transition-colors"
+                className="px-4 py-2 text-sm font-medium bg-[#ea6d27] text-white rounded-full hover:bg-[#d85f1f] transition-colors"
                 onClick={() => navigate(PATHS.REGISTER)}
               >
                 Sign Up
