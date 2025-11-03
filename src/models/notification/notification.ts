@@ -1,15 +1,18 @@
 import type { OrderStatus } from "@models/order/order"
 import type { PaymentMethod, PaymentStatus } from "@models/payment/payment"
+import type { Account } from "@models/account/account"
 
 export interface Notification {
-  id: number
-  title: string
-  create_at: string
-  is_read: boolean
-  content: string
-  account_id: number
-  created_at?: string
-  updated_at?: string
+  id: number;
+  title: string;
+  message?: string;
+  content?: string;
+  createdAt?: string;
+  created_at?: string;
+  read?: boolean;
+  is_read?: boolean;
+  account?: Account;
+  account_id?: number;
 }
 
 export type NotificationType = 

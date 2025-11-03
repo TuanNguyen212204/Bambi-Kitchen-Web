@@ -8,6 +8,10 @@ export type StoreIngredient = Omit<Ingredient, "category"> & {
   stock?: number
   stockStatus?: StockStatus
   active?: boolean 
+  quantity?: number
+  available?: number
+  reserve?: number
+  pricePerUnit?: number
 }
 
 export interface InventoryTransaction {
@@ -40,9 +44,10 @@ export interface IngredientCategorySlice {
 }
 
 export interface IngredientFormSlice {
-  create: (payload: { name: string; categoryId: number; unit: string; file?: File }) => Promise<void>
-  update: (payload: { id: number; name: string; categoryId?: number; unit?: string; active?: boolean; available?: number; quantity?: number; reserve?: number; file?: File; removeImage?: boolean }) => Promise<void>
+  create: (payload: { name: string; categoryId: number; unit: string; pricePerUnit?: number; file?: File }) => Promise<void>
+  update: (payload: { id: number; name: string; categoryId?: number; unit?: string; active?: boolean; available?: number; quantity?: number; reserve?: number; pricePerUnit?: number; file?: File; removeImage?: boolean; silent?: boolean }) => Promise<void>
   remove: (id: number) => Promise<void>
+  toggleActive: (id: number, active: boolean) => Promise<void>
 }
 
 export interface IngredientStockSlice {
@@ -72,6 +77,7 @@ export type IngredientStore =
   IngredientStockSlice & 
   IngredientFilterSlice & {
   filteredItems: () => StoreIngredient[]
+  sessionCreatedIds?: number[]
 }
 
 export type IngredientState = IngredientStore

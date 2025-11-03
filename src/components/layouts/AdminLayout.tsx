@@ -4,11 +4,13 @@ import SidebarAdmin from "@ui/admin/SidebarAdmin";
 
 const AdminLayout = () => {
   return (
-    <div className="min-h-screen w-full bg-background">
+    <div className="min-h-screen w-full bg-background overflow-x-hidden">
       <HeaderAdmin />
-      <div className="flex">
+      <div className="pt-[82px] relative">
+        {/* Sidebar fixed */}
         <SidebarAdmin />
-        <main className="flex-1 p-6">
+        {/* Main content scrollable - margin-left sẽ được điều chỉnh bằng JS nếu sidebar collapsed */}
+        <main id="admin-main" className="transition-all pl-3 pr-3 pt-4 md:pt-6 pb-6 min-h-[calc(100vh-82px)] overflow-y-auto" style={{ marginLeft: '256px' }}>
           <Outlet />
         </main>
       </div>

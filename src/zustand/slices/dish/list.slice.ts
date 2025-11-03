@@ -6,6 +6,7 @@ export interface DishItem {
   name: string
   price?: number
   imageUrl?: string
+  description?: string
   public?: boolean
   active?: boolean
   usedQuantity?: number
@@ -16,7 +17,7 @@ export interface DishListSlice {
   items: DishItem[]
   loading: boolean
   error?: string
-  fetchAll: () => Promise<void>
+  fetchAll: (filterType?: "all" | "menu" | "inactive") => Promise<void>
   remove: (id: number) => Promise<void>
   togglePublic: (id: number) => Promise<void>
   toggleActive: (id: number) => Promise<void>
@@ -32,20 +33,40 @@ export const createDishListSlice: StateCreator<
   loading: false,
   error: undefined,
 
-  fetchAll: async () => {
+  fetchAll: async (filterType: "all" | "menu" | "inactive" = "all") => {
     set({ loading: true, error: undefined })
     try {
-      const { data } = await bambiApi.get<DishItem[]>(API_ENDPOINTS.API_DISHES as string)
-      set({ items: Array.isArray(data) ? data : [], loading: false })
+      // filterType "menu" -> dùng /api/dish (chỉ lấy public=true & active=true)
+      // filterType "all" hoặc "inactive" -> dùng /api/dish/get-all (tất cả dishes cho admin)
+      // Sau đó filter theo active=false nếu là "inactive"
+      const endpoint = filterType === "menu" 
+        ? API_ENDPOINTS.API_DISHES 
+        : API_ENDPOINTS.API_DISHES_ALL
+      const { data } = await bambiApi.get<DishItem[]>(endpoint as string)
+      let items = Array.isArray(data) ? data : []
+      
+      // Filter theo active=false nếu là "inactive"
+      if (filterType === "inactive") {
+        items = items.filter(d => d.active === false)
+      }
+      
+      set({ items, loading: false })
     } catch (e) {
-      set({ loading: false, error: "Không tải được danh sách món ăn" })
+      const { extractErrorMessage } = await import("@utils/errors")
+      set({ loading: false, error: extractErrorMessage(e) || "Không tải được danh sách món ăn" })
     }
   },
 
   remove: async (id: number) => {
     try {
+      await bambiApi.get<boolean>(API_ENDPOINTS.API_DISH_TOGGLE_ACTIVE(id))
       set((s) => ({ items: s.items.filter((x) => x.id !== id) }))
-    } catch {
+      const { toast } = await import("sonner")
+      toast.success("Đã xóa món ăn")
+    } catch (error) {
+      const { toast } = await import("sonner")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Xóa món ăn thất bại")
     }
   },
 
@@ -53,9 +74,10 @@ export const createDishListSlice: StateCreator<
     try {
       const { data } = await bambiApi.get<boolean>(API_ENDPOINTS.API_DISH_TOGGLE_PUBLIC(id))
       set((s) => ({ items: s.items.map((d) => (d.id === id ? { ...d, public: data } : d)) }))
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Đổi trạng thái công khai thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Đổi trạng thái công khai thất bại")
     }
   },
 
@@ -63,9 +85,10 @@ export const createDishListSlice: StateCreator<
     try {
       const { data } = await bambiApi.get<boolean>(API_ENDPOINTS.API_DISH_TOGGLE_ACTIVE(id))
       set((s) => ({ items: s.items.map((d) => (d.id === id ? { ...d, active: data } : d)) }))
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Đổi trạng thái hoạt động thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Đổi trạng thái hoạt động thất bại")
     }
   },
 })

@@ -1,5 +1,4 @@
 import { Card, CardContent } from "@components/ui/card/card";
-import { Badge } from "@components/ui/badge/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
@@ -8,10 +7,11 @@ import { NotificationSection } from "@components/admin/ingredient/NotificationSe
 import AddIngredientModal from "@components/admin/ingredient/AddIngredientModal";
 import EditIngredientModal from "@components/admin/ingredient/EditIngredientModal";
 import StockHistoryModal from "@components/admin/ingredient/StockHistoryModal";
-import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal";
-import { Grid3X3, List, Plus, Search, MoreVertical, Edit3, Trash2 as TrashIcon, Image as ImageIcon } from "lucide-react";
+import { Grid3X3, List, Plus, Search, MoreVertical, Image as ImageIcon, CheckCircle, XCircle } from "lucide-react";
 import { useIngredientStore } from "@zustand/stores/ingredients";
 import { useEffect, useState, useMemo } from "react";
+import { Switch } from "@components/ui/switch";
+import IngredientDetailModal from "@components/admin/ingredient/IngredientDetailModal";
 
 export const AdminIngredientsPage = () => {
   const currentDate = new Date().toLocaleString("vi-VN", {
@@ -21,14 +21,15 @@ export const AdminIngredientsPage = () => {
     timeZone: "Asia/Ho_Chi_Minh",
   });
   const store = useIngredientStore()
-  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, setStatusFilter, searchByName, selectedCategoryId, statusFilter, loading, filteredItems, viewMode, setViewMode, setSortBy, remove } = store
+  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, setStatusFilter, searchByName, selectedCategoryId, statusFilter, loading, filteredItems, viewMode, setViewMode, setSortBy, toggleActive } = store
   const [openAdd, setOpenAdd] = useState(false)
   const [keyword, setKeyword] = useState("")
-  const [editing, setEditing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; category?: unknown }>(null)
+  const [viewing, setViewing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; imgUrl?: string; stock?: number; quantity?: number; available?: number; reserve?: number; stockStatus?: 'out'|'low'|'normal'; category?: unknown; pricePerUnit?: number }>(null)
+  const [editing, setEditing] = useState<null | { id: number; name: string; unit?: string; active?: boolean; category?: unknown; pricePerUnit?: number }>(null)
   const [stockHistory, setStockHistory] = useState<null | { id: number; name: string; unit?: string }>(null)
-  const [deleting, setDeleting] = useState<null | { id: number; name: string }>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [imageRefreshKey, setImageRefreshKey] = useState(0)
+  const [optimisticActive, setOptimisticActive] = useState<Record<number, { value: boolean; originalValue: boolean }>>({})
 
   useEffect(() => { fetchAll() }, [fetchAll])
   useEffect(() => { fetchCategories() }, [fetchCategories])
@@ -37,6 +38,51 @@ export const AdminIngredientsPage = () => {
     setRefreshKey(prev => prev + 1)
     setImageRefreshKey(prev => prev + 1)
   }, [items])
+
+  // Đồng bộ optimistic state với store - xóa optimistic state khi store đã update đúng giá trị
+  useEffect(() => {
+    setOptimisticActive(prev => {
+      const newState = { ...prev }
+      let hasChanges = false
+      
+      Object.keys(newState).forEach(idStr => {
+        const id = Number(idStr)
+        const ingredient = items.find(i => i.id === id)
+        const optimistic = newState[id]
+        
+        // Xóa optimistic state khi store đã update với giá trị mới (khác với giá trị ban đầu)
+        if (ingredient && optimistic && ingredient.active !== optimistic.originalValue) {
+          delete newState[id]
+          hasChanges = true
+        }
+      })
+      
+      return hasChanges ? newState : prev
+    })
+  }, [items])
+
+  // Đồng bộ viewing state với items để modal detail hiển thị dữ liệu mới nhất
+  useEffect(() => {
+    if (viewing?.id) {
+      const updatedIngredient = items.find(i => i.id === viewing.id)
+      if (updatedIngredient) {
+        setViewing({
+          id: updatedIngredient.id,
+          name: updatedIngredient.name,
+          unit: updatedIngredient.unit,
+          active: updatedIngredient.active,
+          imgUrl: updatedIngredient.imgUrl,
+          stock: updatedIngredient.stock,
+          quantity: updatedIngredient.quantity,
+          available: updatedIngredient.available,
+          reserve: updatedIngredient.reserve,
+          stockStatus: updatedIngredient.stockStatus,
+          category: updatedIngredient.category,
+          pricePerUnit: updatedIngredient.pricePerUnit,
+        })
+      }
+    }
+  }, [items, viewing?.id])
   
   const getIngredientKey = useMemo(() => {
     return (ingredient: { id: number; imgUrl?: string }) => `${ingredient.id}-${ingredient.imgUrl}-${refreshKey}`
@@ -45,11 +91,21 @@ export const AdminIngredientsPage = () => {
   const total = items.length
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const newThisWeek = items.filter((i: { created_at?: string; createdAt?: string }) => {
-    const created = i?.created_at || i?.createdAt
-    if (!created) return false
-    const d = new Date(created)
-    return !isNaN(d.getTime()) && d >= sevenDaysAgo && d <= now
+  const parseCreatedDate = (value?: unknown): Date | undefined => {
+    if (!value) return undefined
+    const s = String(value)
+    const d1 = new Date(s)
+    if (!isNaN(d1.getTime())) return d1
+    const d2 = new Date(s.replace(' ', 'T'))
+    if (!isNaN(d2.getTime())) return d2
+    return undefined
+  }
+  const sessionCreatedIds = (store as unknown as { sessionCreatedIds?: number[] }).sessionCreatedIds || []
+  const newThisWeek = items.filter((i: { id: number; created_at?: unknown; createdAt?: unknown; createAt?: unknown; updated_at?: unknown; updatedAt?: unknown }) => {
+    const createdRaw = i?.created_at ?? i?.createdAt ?? (i as { createAt?: unknown }).createAt ?? i?.updated_at ?? i?.updatedAt
+    const d = parseCreatedDate(createdRaw)
+    if (d) return d >= sevenDaysAgo && d <= now
+    return sessionCreatedIds.includes(i.id)
   }).length
   const activeCount = items.filter((i: { active?: boolean }) => i.active ?? true).length
   const lowCount = items.filter((i: { stockStatus?: string }) => i.stockStatus === 'low').length
@@ -59,7 +115,7 @@ export const AdminIngredientsPage = () => {
     {
       title: "Tổng nguyên liệu",
       value: String(total),
-      subtitle: total > 0 ? `+${newThisWeek} loại mới tuần này` : "",
+      subtitle: `+${newThisWeek} loại mới tuần này`,
       icon: "📦",
       iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
@@ -139,7 +195,7 @@ export const AdminIngredientsPage = () => {
             <div className="flex items-center justify-between mb-4">
             <h2 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-lg leading-[27px]">Quản lý Nguyên liệu</h2>
             <div className="flex gap-2">
-              <Button className="bg-orange-600 hover:bg-orange-700 text-white h-auto px-3 py-1 text-sm" onClick={()=> setOpenAdd(true)}>
+              <Button className="bg-orange-600 hover:bg-orange-700 text-white h-auto px-3 py-2 text-sm" onClick={()=> setOpenAdd(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 <span className="[font-family:'Arial-Narrow',Helvetica] text-sm">Thêm nguyên liệu mới</span>
               </Button>
@@ -150,7 +206,7 @@ export const AdminIngredientsPage = () => {
             <div className="space-y-2">
               <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Tìm kiếm nguyên liệu</Label>
               <Input
-                placeholder="Tên nguyên liệu, nhà cung cấp..."
+                placeholder="Tên nguyên liệu..."
                 className="[font-family:'Arial-Narrow',Helvetica] font-normal text-sm h-auto py-2"
                 value={keyword}
                 onChange={(e)=> { setKeyword(e.target.value); setQuery(e.target.value) }}
@@ -220,11 +276,11 @@ export const AdminIngredientsPage = () => {
           </div>
 
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' : 'grid grid-cols-1 gap-3'}>
-            {filteredItems().map((ingredient: { id: number; name: string; unit?: string; category?: unknown; stock?: number; stockStatus?: 'out'|'low'|'normal'; imgUrl?: string; publicId?: string }) => (
+            {filteredItems().map((ingredient: { id: number; name: string; unit?: string; active?: boolean; category?: unknown; stock?: number; stockStatus?: 'out'|'low'|'normal'; imgUrl?: string; publicId?: string; pricePerUnit?: number }) => (
               <Card key={getIngredientKey(ingredient)} className={`bg-white border-2 border-gray-200`}>
                 <CardContent className="p-6 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="relative">
                         {ingredient.imgUrl ? (
                           <img 
@@ -246,39 +302,77 @@ export const AdminIngredientsPage = () => {
                         )}
                         <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${ingredient.stockStatus === 'out' ? 'bg-red-500' : ingredient.stockStatus === 'low' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                       </div>
-                      <div>
-                        <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px]">{ingredient.name}</h3>
-                        <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{ingredient.unit}</p>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px] truncate">{ingredient.name}</h3>
+                        {ingredient.unit && (
+                          <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{ingredient.unit}</p>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="bg-[#0000001a] hover:bg-[#0000001a] px-3 py-1">
-                        <span className="[font-family:'Arial-Narrow',Helvetica] font-normal text-gray-700 text-sm text-center">
-                          {(() => {
-                            const cat: unknown = (ingredient as unknown as { category?: unknown }).category
-                            if (cat && typeof cat === 'object' && 'name' in (cat as Record<string, unknown>)) {
-                              return String((cat as { name: unknown }).name ?? '')
+                    <div className="flex items-center gap-2 flex-shrink-0 self-center">
+                      <div className="flex items-center gap-1.5 flex-shrink-0" title={(optimisticActive[ingredient.id] !== undefined ? optimisticActive[ingredient.id].value : (ingredient.active ?? true)) ? "Đang hoạt động - Có thể sử dụng" : "Đang tắt - Không thể sử dụng"}>
+                        {(optimisticActive[ingredient.id] !== undefined ? optimisticActive[ingredient.id].value : (ingredient.active ?? true)) ? (
+                          <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        )}
+                        <Switch
+                          checked={optimisticActive[ingredient.id] !== undefined ? optimisticActive[ingredient.id].value : (ingredient.active ?? true)}
+                          onCheckedChange={async (checked) => {
+                            const originalValue = ingredient.active ?? true
+                            
+                            // Nếu đang filter theo active/inactive và toggle sẽ làm nguyên liệu biến mất, reset filter về "all"
+                            if (statusFilter === "active" && !checked) {
+                              setStatusFilter("all")
+                            } else if (statusFilter === "inactive" && checked) {
+                              setStatusFilter("all")
                             }
-                            return String(cat ?? '')
-                          })()}
-                        </span>
-                      </Badge>
-                      <div className="relative">
-                        <button className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center" onClick={(e)=>{
-                          const menu = (e.currentTarget.nextSibling as HTMLElement)
-                          if (menu) menu.classList.toggle('hidden')
-                        }}>
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        <div className="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10">
-                          <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setEditing(ingredient)}>
-                            <Edit3 className="w-4 h-4" /> Edit
-                          </button>
-                          <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setDeleting({ id: ingredient.id, name: ingredient.name })}>
-                            <TrashIcon className="w-4 h-4 text-red-600" /> Delete
-                          </button>
-                        </div>
+                            
+                            // Optimistic update - cập nhật ngay để animation hoạt động
+                            setOptimisticActive(prev => ({ 
+                              ...prev, 
+                              [ingredient.id]: { value: checked, originalValue }
+                            }))
+                            
+                            try {
+                              await toggleActive(ingredient.id, checked)
+                              // Optimistic state sẽ tự động được xóa bởi useEffect khi store update
+                            } catch (error) {
+                              // Revert nếu API thất bại
+                              setOptimisticActive(prev => {
+                                const newState = { ...prev }
+                                delete newState[ingredient.id]
+                                return newState
+                              })
+                              console.error("Error toggling active:", error)
+                            }
+                          }}
+                          className="flex-shrink-0"
+                        />
                       </div>
+                      <button 
+                        className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center flex-shrink-0 transition-colors self-center" 
+                        onClick={() => {
+                          const ing = ingredient as typeof ingredient & { quantity?: number; available?: number; reserve?: number }
+                          setViewing({
+                            id: ing.id, 
+                            name: ing.name,
+                            unit: ing.unit,
+                            imgUrl: ing.imgUrl,
+                            active: ing.active,
+                            stock: ing.stock,
+                            quantity: ing.quantity,
+                            available: ing.available,
+                            reserve: ing.reserve,
+                            stockStatus: ing.stockStatus,
+                            category: ing.category,
+                            pricePerUnit: ing.pricePerUnit
+                          })
+                        }}
+                        title="Xem chi tiết"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 
@@ -304,14 +398,6 @@ export const AdminIngredientsPage = () => {
                     </Button>
                   </div>
 
-                  <div className="bg-[#0000001a] rounded-md p-3 space-y-2">
-                    <h4 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-sm">Nhà cung cấp</h4>
-                    <div className="space-y-1">
-                      <p className="[font-family:'Inter-Bold',Helvetica] font-normal text-gray-700 text-xs opacity-80"><span className="font-bold">Công ty:</span><span className="[font-family:'Inter-Regular',Helvetica]"> N/A</span></p>
-                      <p className="[font-family:'Inter-Bold',Helvetica] font-normal text-gray-700 text-xs opacity-80"><span className="font-bold">Liên hệ:</span><span className="[font-family:'Inter-Regular',Helvetica]"> N/A</span></p>
-                      <p className="[font-family:'Inter-Bold',Helvetica] font-normal text-gray-700 text-xs opacity-80"><span className="font-bold">Giá:</span><span className="[font-family:'Inter-Regular',Helvetica]"> N/A</span></p>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -324,12 +410,19 @@ export const AdminIngredientsPage = () => {
         </div>
       </section>
 
+      {viewing && (
+        <IngredientDetailModal 
+          open={true} 
+          onClose={()=> setViewing(null)} 
+          ingredient={viewing}
+        />
+      )}
       {editing && (
         <EditIngredientModal 
           open={true} 
           onClose={()=> setEditing(null)} 
-          ingredient={((): { id: number; name: string; unit?: string; active?: boolean; ingredient_category_id?: number; categoryId?: number; category?: { id: number } | null; imgUrl?: string } => {
-            const maybeAny = editing as unknown as { ingredient_category_id?: number; categoryId?: number; category?: { id?: number } | null; imgUrl?: string }
+          ingredient={((): { id: number; name: string; unit?: string; active?: boolean; ingredient_category_id?: number; categoryId?: number; category?: { id: number } | null; imgUrl?: string; pricePerUnit?: number } => {
+            const maybeAny = editing as unknown as { ingredient_category_id?: number; categoryId?: number; category?: { id?: number } | null; imgUrl?: string; pricePerUnit?: number }
             const mappedCategory = (maybeAny.category && typeof maybeAny.category === 'object' && typeof maybeAny.category.id === 'number')
               ? { id: maybeAny.category.id }
               : null
@@ -342,6 +435,7 @@ export const AdminIngredientsPage = () => {
               categoryId: typeof maybeAny.categoryId === 'number' ? maybeAny.categoryId : undefined,
               category: mappedCategory ?? null,
               imgUrl: typeof maybeAny.imgUrl === 'string' ? maybeAny.imgUrl : undefined,
+              pricePerUnit: typeof maybeAny.pricePerUnit === 'number' ? maybeAny.pricePerUnit : (editing.pricePerUnit ?? undefined),
             }
           })()}
         />
@@ -350,23 +444,7 @@ export const AdminIngredientsPage = () => {
         <StockHistoryModal open={true} onClose={()=> setStockHistory(null)} ingredient={stockHistory} />
       )}
       <AddIngredientModal open={openAdd} onClose={()=> setOpenAdd(false)} />
-      <DeleteConfirmationModal
-        open={!!deleting}
-        onClose={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (deleting) {
-            try {
-              await remove(deleting.id);
-              setDeleting(null);
-            } catch (error) {
-              console.error("Error deleting ingredient:", error);
-            }
-          }
-        }}
-        title="Xác nhận xóa nguyên liệu"
-        itemName={deleting?.name || 'Không có tên'}
-        itemType="nguyên liệu"
-      />
+      {/* Xóa hộp thoại xác nhận toggle/xóa: BE không còn xoá, toggle nằm trong Edit */}
     </div>
   );
 };

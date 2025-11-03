@@ -27,42 +27,66 @@ export const createIngredientListSlice: StateCreator<IngredientListSlice, [], []
           if (typeof c.id === 'number') categoryId = c.id as number
         }
         const { category: _omit1, ...rest } = i as Ingredient; void _omit1
-        return { ...(rest as Omit<Ingredient, "category">), category: String(category ?? ""), categoryId }
+        const raw = i as unknown as { pricePerUnit?: number | string; quantity?: number | string; available?: number | string; reserve?: number | string }
+        const toNum = (v: unknown): number | undefined => {
+          if (typeof v === 'number') return v
+          if (typeof v === 'string') {
+            const n = Number(v)
+            return Number.isFinite(n) ? n : undefined
+          }
+          return undefined
+        }
+        const quantity = toNum(raw.quantity) ?? toNum(raw.available)
+        return { 
+          ...(rest as Omit<Ingredient, "category">), 
+          category: String(category ?? ""), 
+          categoryId, 
+          pricePerUnit: toNum(raw.pricePerUnit),
+          quantity,
+          available: toNum(raw.available),
+          reserve: toNum(raw.reserve),
+        }
       })
 
       const transactionsRes = await bambiApi.get<InventoryTransaction[]>(API_ENDPOINTS.API_INVENTORY_TRANSACTIONS)
       const transactions = transactionsRes.data || []
 
       const withStock: StoreIngredient[] = normalized.map(ing => {
-        const ingredientTransactions = transactions.filter(t => 
-          t.ingredient && t.ingredient.id === ing.id
-        )
-        
-        let totalStock = 0
-        ingredientTransactions.forEach(t => {
-          if (t.transactionType === true) { 
-            totalStock += t.quantity || 0
-          } else { 
-            totalStock -= t.quantity || 0
-          }
-        })
+        let computedStock: number | undefined = typeof ing.quantity === 'number' ? ing.quantity : undefined
 
-        const isOut = totalStock <= 0
-        const isLow = !isOut && totalStock <= 5
+        if (typeof computedStock !== 'number') {
+          const ingredientTransactions = transactions.filter(t => 
+            t.ingredient && t.ingredient.id === ing.id
+          )
+          let totalStock = 0
+          ingredientTransactions.forEach(t => {
+            if (t.transactionType === true) { 
+              totalStock += t.quantity || 0
+            } else { 
+              totalStock -= t.quantity || 0
+            }
+          })
+          computedStock = totalStock
+        }
+
+        const safeStock = typeof computedStock === 'number' ? computedStock : 0
+        const isOut = safeStock <= 0
+        const isLow = !isOut && safeStock <= 5
         const stockStatus: StockStatus = isOut ? "out" : isLow ? "low" : "normal"
 
         return { 
           ...ing, 
-          stock: totalStock,
+          stock: safeStock,
           stockStatus 
         }
       })
 
       set({ items: withStock, loading: false })
-    } catch {
+    } catch (error) {
       set({ loading: false })
       const { toast } = await import("sonner")
-      toast.error("Không thể tải nguyên liệu")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Không thể tải nguyên liệu")
     }
   },
 
@@ -75,17 +99,39 @@ export const createIngredientListSlice: StateCreator<IngredientListSlice, [], []
       })
       const item = res.data
       if (item) {
-        const catObj = (item as unknown as { category?: { name?: string } }).category
+        const catObj = (item as unknown as { category?: { name?: string; id?: number } }).category
         const category = typeof catObj === 'object' && catObj?.name ? String(catObj.name) : String((item as unknown as { category?: string }).category ?? "")
+        const categoryId = typeof catObj === 'object' && typeof catObj?.id === 'number' ? Number(catObj.id) : undefined
         const { category: _omit2, ...rest } = item as Ingredient; void _omit2
-        set({ items: [{ ...(rest as Omit<Ingredient, "category">), category }], loading: false })
+        const raw = item as unknown as { pricePerUnit?: number | string; quantity?: number | string; available?: number | string; reserve?: number | string }
+        const toNum = (v: unknown): number | undefined => {
+          if (typeof v === 'number') return v
+          if (typeof v === 'string') { const n = Number(v); return Number.isFinite(n) ? n : undefined }
+          return undefined
+        }
+        let computedStock = toNum(raw.quantity) ?? toNum(raw.available)
+        if (typeof computedStock !== 'number') {
+          try {
+            const txRes = await bambiApi.get<InventoryTransaction[]>(API_ENDPOINTS.API_INVENTORY_TRANSACTIONS)
+            const txs = (txRes.data || []).filter(t => t.ingredient && t.ingredient.id === (rest as Ingredient).id)
+            let total = 0
+            txs.forEach(t => { total += (t.transactionType === true ? 1 : -1) * (t.quantity || 0) })
+            computedStock = total
+          } catch { /* ignore */ }
+        }
+        const safeStock = typeof computedStock === 'number' ? computedStock : 0
+        const isOut = safeStock <= 0
+        const isLow = !isOut && safeStock <= 5
+        const stockStatus: StockStatus = isOut ? "out" : isLow ? "low" : "normal"
+        set({ items: [{ ...(rest as Omit<Ingredient, "category">), category, categoryId, stock: safeStock, stockStatus, quantity: toNum(raw.quantity), available: toNum(raw.available), reserve: toNum(raw.reserve), pricePerUnit: toNum(raw.pricePerUnit) }], loading: false })
       } else {
         set({ items: [], loading: false })
       }
-    } catch {
+    } catch (error) {
       set({ loading: false, items: [] })
       const { toast } = await import("sonner")
-      toast.error("Tìm kiếm thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Tìm kiếm thất bại")
     }
   },
 

@@ -47,7 +47,8 @@ export default function NotificationIcon({ className = "", onClick }: Notificati
 
   useEffect(() => {
     if (user?.role_id === 1 && items) {
-      const unreadCount = items.filter(item => !item.read).length
+      // Chuẩn hoá kiểm đếm lấy đúng unread
+      const unreadCount = items.filter(item => !(item.read ?? item.is_read)).length
       setUnreadCount(unreadCount)
     }
   }, [items, user?.role_id])

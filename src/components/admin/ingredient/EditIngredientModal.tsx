@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
+import { Switch } from "@components/ui/switch"
 import { useIngredientStore } from "@zustand/stores/ingredients"
 import { Upload, X } from "lucide-react"
 import { toast } from "sonner"
@@ -17,16 +18,22 @@ interface Props {
     active?: boolean; 
     ingredient_category_id?: number; 
     category?: { id: number } | null; 
-    imgUrl?: string 
+    imgUrl?: string;
+    pricePerUnit?: number;
+    quantity?: number;
+    available?: number;
+    reserve?: number;
+    stock?: number;
   } 
 }
 
 export default function EditIngredientModal({ open, onClose, ingredient }: Props) {
-  const { categories, fetchCategories, update, adjustStock } = useIngredientStore()
+  const { categories, fetchCategories, update, adjustStock, toggleActive } = useIngredientStore()
   const [delta, setDelta] = useState<string>("0")
   const [name, setName] = useState(ingredient?.name ?? "")
   const [unit, setUnit] = useState(ingredient?.unit ?? "GRAM")
   const [active, setActive] = useState<boolean>(ingredient?.active ?? true)
+  const [pricePerUnit, setPricePerUnit] = useState<string>(ingredient?.pricePerUnit?.toString() ?? "")
   const originalCategoryId = (
     ingredient.ingredient_category_id ??
     (ingredient as unknown as { categoryId?: number }).categoryId ??
@@ -50,6 +57,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       setName(ingredient?.name ?? "")
       setUnit(ingredient?.unit ?? "GRAM")
       setActive(ingredient?.active ?? true)
+      setPricePerUnit(ingredient?.pricePerUnit?.toString() ?? "")
       const cid = (
         ingredient.ingredient_category_id ??
         (ingredient as unknown as { categoryId?: number }).categoryId ??
@@ -94,13 +102,18 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
 
   const submit = async () => {
     if (!ingredient?.id) return
+    const currentPricePerUnit = ingredient.pricePerUnit ?? undefined
+    const newPricePerUnit = pricePerUnit.trim() ? parseFloat(pricePerUnit.trim()) : undefined
+    const priceChanged = currentPricePerUnit !== newPricePerUnit
+    
     const changedInfo =
       name !== (ingredient.name ?? "") ||
       unit !== (ingredient.unit ?? "GRAM") ||
       active !== (ingredient.active ?? true) ||
       typeof categoryId === "number" ||
       selectedFile !== null ||
-      removeCurrentImage
+      removeCurrentImage ||
+      priceChanged
 
     try {
       setNameError("")
@@ -114,6 +127,34 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       
       setLoading(true)
       if (changedInfo) {
+        // Fetch giá trị hiện tại từ API để đảm bảo có quantity, available, reserve chính xác
+        // Tránh trường hợp prop ingredient không có đầy đủ dữ liệu tồn kho
+        const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
+        let currentQuantity: number | undefined = undefined
+        let currentAvailable: number | undefined = undefined
+        let currentReserve: number | undefined = undefined
+        
+        try {
+          const currentRes = await bambiApi.get(API_ENDPOINTS.API_INGREDIENT_BY_ID(ingredient.id))
+          const currentData = currentRes.data || {}
+          currentQuantity = typeof (currentData as { quantity?: number }).quantity === 'number' 
+            ? (currentData as { quantity?: number }).quantity!
+            : undefined
+          currentAvailable = typeof (currentData as { available?: number }).available === 'number'
+            ? (currentData as { available?: number }).available!
+            : undefined
+          currentReserve = typeof (currentData as { reserve?: number }).reserve === 'number'
+            ? (currentData as { reserve?: number }).reserve!
+            : undefined
+        } catch (error) {
+          console.error("Error fetching current ingredient:", error)
+          // Fallback về prop nếu API fail
+          currentQuantity = typeof ingredient.quantity === 'number' ? ingredient.quantity : (typeof ingredient.stock === 'number' ? ingredient.stock : undefined)
+          currentAvailable = typeof ingredient.available === 'number' ? ingredient.available : undefined
+          currentReserve = typeof ingredient.reserve === 'number' ? ingredient.reserve : undefined
+        }
+        
+        // Đảm bảo giữ nguyên quantity, available, reserve khi chỉ update ảnh hoặc thông tin khác
         await update({ 
           id: ingredient.id, 
           name, 
@@ -121,7 +162,12 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           active, 
           categoryId: typeof categoryId === 'number' ? categoryId : originalCategoryId, 
           file: selectedFile || undefined,
-          removeImage: removeCurrentImage
+          removeImage: removeCurrentImage,
+          pricePerUnit: newPricePerUnit,
+          // Sử dụng giá trị từ API (hoặc fallback về prop)
+          quantity: currentQuantity,
+          available: currentAvailable,
+          reserve: currentReserve
         })
       }
       if (deltaNum) {
@@ -140,6 +186,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       onClose={onClose}
       title="Chỉnh sửa nguyên liệu"
       size="lg"
+      contentClassName="max-h-[80vh] overflow-y-auto"
     >
       <ModalForm onSubmit={(e) => { e.preventDefault(); submit() }}>
         <div>
@@ -178,15 +225,27 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
             <option value="PCS">PCS</option>
           </select>
         </div>
+
+        <div>
+          <Label className="mb-1 block">Giá mỗi đơn vị (tùy chọn)</Label>
+          <Input 
+            type="number"
+            step="0.01"
+            min="0"
+            value={pricePerUnit} 
+            onChange={(e)=> setPricePerUnit(e.target.value)} 
+            placeholder="VD: 50000" 
+          />
+        </div>
         
         <div className="flex items-center gap-2">
-          <input 
-            id="active" 
-            type="checkbox" 
-            checked={active} 
-            onChange={(e)=> setActive(e.target.checked)} 
-          />
-          <Label htmlFor="active">Đang hoạt động</Label>
+          <Switch id="active" checked={active} onCheckedChange={async (checked)=>{ 
+            setActive(checked)
+            if (ingredient?.id) {
+              try { await toggleActive(ingredient.id, checked) } catch { /* handled by store */ }
+            }
+          }} />
+          <Label htmlFor="active">{active ? "Đang hoạt động" : "Không hoạt động"}</Label>
         </div>
 
         <div>
@@ -208,22 +267,22 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
                 </label>
               </div>
             ) : (
-              <div className="relative">
-                <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
+              <div className="relative w-full">
+                <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 overflow-hidden w-full">
                   <img 
                     src={previewUrl || (removeCurrentImage ? undefined : ingredient.imgUrl)} 
                     alt={ingredient.name}
-                    className="w-12 h-12 object-cover rounded" 
+                    className="w-12 h-12 object-cover rounded shrink-0" 
                   />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">
+                  <div className="flex-1 w-0 overflow-hidden">
+                    <p className="block text-sm font-medium text-gray-900 truncate whitespace-nowrap" title={selectedFile?.name || "Hình ảnh hiện tại"}>
                       {selectedFile?.name || "Hình ảnh hiện tại"}
                     </p>
                     <p className="text-xs text-gray-500">
                       {selectedFile && `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`}
                     </p>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 shrink-0">
                     <input
                       type="file"
                       accept="image/*"
@@ -260,13 +319,18 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
         <div className="border-t pt-3 space-y-2">
           <div className="font-medium">Điều chỉnh tồn kho</div>
           <div className="flex items-center gap-2">
-            <Input 
-              className={`w-32 text-center ${deltaError? 'border-red-500' : ''}`} 
-              type="text" 
-              value={delta} 
-              onChange={(e)=> { setDelta(e.target.value); setDeltaError("") }} 
-              placeholder="0" 
-            />
+            <div className="relative">
+              <Input 
+                className={`w-40 pr-14 text-center ${deltaError? 'border-red-500' : ''}`} 
+                type="text" 
+                value={delta} 
+                onChange={(e)=> { setDelta(e.target.value); setDeltaError("") }} 
+                placeholder="0" 
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-600 select-none">
+                {unit}
+              </span>
+            </div>
             <Button type="button" variant="outline" onClick={()=> setDelta("0")}>Reset</Button>
           </div>
           {deltaError && <div className="text-red-600 text-xs">{deltaError}</div>}

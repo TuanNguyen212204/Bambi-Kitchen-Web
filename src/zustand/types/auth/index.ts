@@ -8,6 +8,7 @@ export interface User {
   avatar?: string
   created_at?: string
   status?: "active" | "inactive"
+  phone?: string
 }
 
 export interface UserMeResponse {

@@ -14,6 +14,7 @@ export default function AddIngredientModal({ open, onClose }: Props) {
   const [name, setName] = useState("")
   const [unit, setUnit] = useState("GRAM")
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined)
+  const [pricePerUnit, setPricePerUnit] = useState<string>("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [errors, setErrors] = useState<{ name?: string; category?: string }>({})
@@ -26,6 +27,7 @@ export default function AddIngredientModal({ open, onClose }: Props) {
       setName("")
       setUnit("GRAM")
       setCategoryId(undefined)
+      setPricePerUnit("")
       setSelectedFile(null)
       setPreviewUrl(null)
       setErrors({})
@@ -68,7 +70,8 @@ export default function AddIngredientModal({ open, onClose }: Props) {
     setLoading(true)
     try {
       const safeCategoryId = categoryId as number
-      await create({ name: name.trim(), categoryId: safeCategoryId, unit, file: selectedFile || undefined })
+      const priceValue = pricePerUnit.trim() ? parseFloat(pricePerUnit.trim()) : undefined
+      await create({ name: name.trim(), categoryId: safeCategoryId, unit, pricePerUnit: priceValue, file: selectedFile || undefined })
       onClose()
     } catch {
       // Error handling is done in store
@@ -83,6 +86,7 @@ export default function AddIngredientModal({ open, onClose }: Props) {
       onClose={onClose}
       title="Thêm nguyên liệu"
       size="md"
+      contentClassName="max-h-[80vh] overflow-y-auto"
     >
       <ModalForm onSubmit={(e) => { e.preventDefault(); submit() }}>
         <div>
@@ -126,6 +130,18 @@ export default function AddIngredientModal({ open, onClose }: Props) {
         </div>
 
         <div>
+          <Label className="mb-1 block">Giá mỗi đơn vị (tùy chọn)</Label>
+          <Input 
+            type="number"
+            step="0.01"
+            min="0"
+            value={pricePerUnit} 
+            onChange={(e)=> setPricePerUnit(e.target.value)} 
+            placeholder="VD: 50000" 
+          />
+        </div>
+
+        <div>
           <Label className="mb-1 block">Hình ảnh (tùy chọn)</Label>
           <div className="space-y-3">
             {!previewUrl ? (
@@ -144,11 +160,11 @@ export default function AddIngredientModal({ open, onClose }: Props) {
                 </label>
               </div>
             ) : (
-              <div className="relative">
-                <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50">
-                  <img src={previewUrl} alt="Preview" className="w-12 h-12 object-cover rounded" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{selectedFile?.name}</p>
+              <div className="relative w-full">
+                <div className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 overflow-hidden w-full">
+                  <img src={previewUrl} alt="Preview" className="w-12 h-12 object-cover rounded shrink-0" />
+                  <div className="flex-1 w-0 overflow-hidden">
+                    <p className="block text-sm font-medium text-gray-900 truncate whitespace-nowrap" title={selectedFile?.name || undefined}>{selectedFile?.name}</p>
                     <p className="text-xs text-gray-500">
                       {selectedFile && `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`}
                     </p>

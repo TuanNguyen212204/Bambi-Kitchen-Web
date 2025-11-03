@@ -13,8 +13,11 @@ export const API_ENDPOINTS = {
   ORDERS: "/orders",
   ORDER_CREATE: "/orders",
   ORDER_DETAIL: (id: string) => `/orders/${id}`,
+  API_ORDERS: "/api/order",
+  API_ORDER_BY_ACCOUNT: (accountId: number) => `/api/order?userId=${accountId}`,
+  API_ORDER_FEEDBACKS: "/api/order/getFeedbacks",
   FAVORITES: "/favorites",
-  PROFILE: "/profile",
+  PROFILE: "/api/account",
   
   API_NOTIFICATIONS: "/api/notification",
   API_NOTIFICATION_BY_ID: (id: number) => `/api/notification/${id}`,
@@ -24,10 +27,12 @@ export const API_ENDPOINTS = {
   API_INGREDIENTS: "/api/ingredient",
   API_INGREDIENT_BY_ID: (id: number) => `/api/ingredient/${id}`,
   API_INGREDIENT_SEARCH_BY_NAME: (name: string) => `/api/ingredient/search?name=${encodeURIComponent(name)}`,
+  API_INGREDIENT_TOGGLE_ACTIVE: (id: number) => `/api/ingredient/toggle-active/${id}`,
   API_INGREDIENT_CATEGORIES: "/api/ingredient-category",
   API_INGREDIENT_CATEGORY_BY_ID: (id: number) => `/api/ingredient-category/${id}`,
 
   API_DISHES: "/api/dish",
+  API_DISHES_ALL: "/api/dish/get-all", // Admin: tất cả dishes (không filter)
   API_DISH_BY_ID: (id: number) => `/api/dish/${id}`,
   API_DISH_TOGGLE_PUBLIC: (id: number) => `/api/dish/toggle-public/${id}`,
   API_DISH_TOGGLE_ACTIVE: (id: number) => `/api/dish/toggle-active/${id}`,
@@ -55,6 +60,7 @@ export const API_ENDPOINTS = {
   MENU: "/admin/menu",
   FEEDBACK: "/admin/feedback",
   INGREDIENT_STOCK: "/admin/ingredients/stock",
+  API_RECIPE_BY_DISH: (dishId: number) => `/api/recipe/by-dish/${dishId}`,
 } as const
 
 

@@ -32,19 +32,10 @@ export const useDishStore = create<DishStore>()(
           getFilteredItems: () => {
             const state = get()
             const q = (state as DishFilterSlice).query?.toLowerCase?.() || ""
-            const catId = (state as DishFilterSlice).selectedCategoryId
-            const status = (state as DishFilterSlice).statusFilter
+            // Bỏ filter category và status (vì đã filter ở API level)
             return (state as DishListSlice).items.filter((d) => {
               const byQ = !q || d.name.toLowerCase().includes(q)
-              const byCat = !catId || d.categoryId === catId
-              const byStatus = (
-                status === "all" ||
-                (status === "active" && (d.active ?? true)) ||
-                (status === "inactive" && (d.active === false)) ||
-                (status === "public" && (d.public === true)) ||
-                (status === "private" && (d.public === false))
-              )
-              return byQ && byCat && byStatus
+              return byQ
             })
           },
         }),

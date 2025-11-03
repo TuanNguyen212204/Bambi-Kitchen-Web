@@ -1,7 +1,7 @@
 import type { StateCreator } from "zustand"
 import type { SessionSlice, UserMeResponse } from "@/zustand/types"
 
-export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice> = (set) => ({
+export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice> = (set, get) => ({
   token: null,
   refreshToken: null,
   isAuthenticated: false,
@@ -28,13 +28,19 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       const loginRes = await bambiApi.post<string>(
         API_ENDPOINTS.AUTH_LOGIN,
         { username: phone, password },
-        { skipAuth: true }
+        { 
+          skipAuth: true,
+          headers: { 'x-silent-error': '1' } // Tắt toast tự động trong interceptor, chỉ toast trong catch block
+        }
       )
 
       const accessToken = loginRes.data
       set({ token: accessToken, refreshToken: null, isAuthenticated: true, loading: false })
 
-      const userResponse = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME)
+      // Nếu login thành công, gọi /me request
+      const userResponse = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME, {
+        headers: { 'x-silent-error': '1' } // Tắt toast tự động cho /me request
+      })
       const userMe = userResponse.data
       const normalizedRole = (userMe.role || "USER") as "USER" | "ADMIN" | "STAFF"
       const user = {
@@ -42,18 +48,18 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         name: userMe.name,
         role: normalizedRole,
         email: userMe.mail,
-        role_id: normalizedRole === "ADMIN" ? 1 : normalizedRole === "STAFF" ? 3 : 4,
+        role_id: (normalizedRole === "ADMIN" ? 1 : normalizedRole === "STAFF" ? 3 : 4) as 1 | 3 | 4,
       }
 
-      set({ user } as any)
+      set({ user })
 
       const { toast } = await import("sonner")
       toast.success("Đăng nhập thành công!")
 
     } catch (error) {
-      const apiError = error as { status?: number; userFriendlyMessage?: string }
-      const isUnauthorized = apiError.status === 401
-      const message = isUnauthorized ? "Số điện thoại hoặc mật khẩu không đúng" : (apiError.userFriendlyMessage || "Đăng nhập thất bại")
+      // Chỉ toast 1 lần duy nhất cho login error (cả login request và /me request fail đều vào đây)
+      const { extractErrorMessage, shouldToast } = await import("@utils/errors")
+      const message = extractErrorMessage(error)
 
       set({ 
         loading: false, 
@@ -61,10 +67,15 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         isAuthenticated: false 
       })
 
-      const { toast } = await import("sonner")
-      toast.error("Đăng nhập thất bại", {
-        description: message,
-      })
+      // Chỉ hiển thị message từ backend, không có title hardcode
+      // Dùng shouldToast với message để tránh duplicate toast
+      const toastKey = `login_${message}`
+      const canToast = message && message !== "Đã xảy ra lỗi không xác định" && shouldToast(toastKey)
+      
+      if (canToast) {
+        const { toast } = await import("sonner")
+        toast.error(message)
+      }
 
       throw error
     }
@@ -78,7 +89,10 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       await bambiApi.post(
         API_ENDPOINTS.AUTH_REGISTER,
         userData,
-        { skipAuth: true }
+        { 
+          skipAuth: true,
+          headers: { 'x-silent-error': '1' } // Tắt toast tự động trong interceptor, chỉ toast trong catch block
+        }
       )
       
       set({ loading: false })
@@ -89,24 +103,26 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       })
 
     } catch (error) {
-      const apiError = error as { userFriendlyMessage?: string }
-      const message = apiError.userFriendlyMessage || "Đăng ký thất bại"
+      const { extractErrorMessage } = await import("@utils/errors")
+      const message = extractErrorMessage(error)
       
       set({ 
         loading: false, 
         error: message 
       })
       
+      // Chỉ hiển thị message từ backend, không có title hardcode
       const { toast } = await import("sonner")
-      toast.error("Đăng ký thất bại", {
-        description: message,
-      })
+      toast.error(message)
       
       throw error
     }
   },
 
   logout: async () => {
+    const currentState = get()
+    const hadSession = !!currentState.token || currentState.isAuthenticated
+    
     set({
       user: null,
       token: null,
@@ -114,18 +130,23 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       isAuthenticated: false,
       loading: false,
       error: null,
-    } as any)
+    })
 
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
 
-    const toastModule = await import("sonner")
-    toastModule.toast.success("Đăng xuất thành công!", {
-      description: "Hẹn gặp lại!",
-    })
+    if (hadSession) {
+      const toastModule = await import("sonner")
+      toastModule.toast.success("Đăng xuất thành công!", {
+        description: "Hẹn gặp lại!",
+      })
+    }
   },
 
   verifyAuth: async () => {
+    const currentState = get()
+    const hadToken = !!currentState.token || currentState.isAuthenticated
+    
     set({ loading: true })
 
     try {
@@ -146,10 +167,12 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         loading: false,
       })
 
-      const { toast } = await import("sonner")
-      toast.warning("Phiên đăng nhập hết hạn", {
-        description: "Vui lòng đăng nhập lại",
-      })
+      if (hadToken) {
+        const { toast } = await import("sonner")
+        toast.warning("Phiên đăng nhập hết hạn", {
+          description: "Vui lòng đăng nhập lại",
+        })
+      }
     }
   },
 
@@ -181,17 +204,17 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         return
       }
 
-      const message = err.userFriendlyMessage || "Không thể gửi mã xác nhận"
+      const { extractErrorMessage } = await import("@utils/errors")
+      const message = extractErrorMessage(error)
 
       set({ 
         loading: false, 
         error: message 
       })
       
+      // Chỉ hiển thị message từ backend, không có title hardcode
       const { toast } = await import("sonner")
-      toast.error("Gửi mã xác nhận thất bại", {
-        description: message,
-      })
+      toast.error(message)
       
       throw error
     }
@@ -218,18 +241,17 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       return true
 
     } catch (error) {
-      const apiError = error as { userFriendlyMessage?: string }
-      const message = apiError.userFriendlyMessage || "Mã xác nhận không đúng hoặc đã hết hạn"
+      const { extractErrorMessage } = await import("@utils/errors")
+      const message = extractErrorMessage(error)
       
       set({ 
         loading: false, 
         error: message 
       })
       
+      // Chỉ hiển thị message từ backend, không có title hardcode
       const { toast } = await import("sonner")
-      toast.error("Xác thực mã thất bại", {
-        description: message,
-      })
+      toast.error(message)
       
       return false
     }
@@ -257,18 +279,17 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       })
 
     } catch (error) {
-      const apiError = error as { userFriendlyMessage?: string }
-      const message = apiError.userFriendlyMessage || "Không thể đặt lại mật khẩu"
+      const { extractErrorMessage } = await import("@utils/errors")
+      const message = extractErrorMessage(error)
       
       set({ 
         loading: false, 
         error: message 
       })
       
+      // Chỉ hiển thị message từ backend, không có title hardcode
       const { toast } = await import("sonner")
-      toast.error("Đặt lại mật khẩu thất bại", {
-        description: message,
-      })
+      toast.error(message)
       
       throw error
     }

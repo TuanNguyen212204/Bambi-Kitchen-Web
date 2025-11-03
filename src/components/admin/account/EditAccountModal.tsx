@@ -58,7 +58,8 @@ export const EditAccountModal: React.FC<EditAccountModalProps> = ({
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật tài khoản");
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Có lỗi xảy ra khi cập nhật tài khoản");
     }
   };
 

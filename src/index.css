@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  scrollbar-gutter: auto;
+  margin: 0 !important;
+  padding-right: 0 !important;
+}
+
+html, body {
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+
+html {
+  scrollbar-gutter: stable;
+  margin: 0 !important;
+  padding-right: 0 !important;
+}
+
 @layer utilities {
   .line-clamp-2 {
     display: -webkit-box;

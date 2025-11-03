@@ -328,15 +328,16 @@ export default function NotificationManagement() {
                             <Bell className="w-6 h-6 text-white" />
                           </div>
                           <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                            notification.read ? 'bg-green-500' : 'bg-yellow-500'
+                            (notification.read ?? notification.is_read)
+                              ? 'bg-green-500' : 'bg-yellow-500'
                           }`} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px] mb-1 line-clamp-2" title={notification.title}>
                             {notification.title || 'Không có tiêu đề'}
                           </h3>
-                          <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75 line-clamp-2" title={notification.message}>
-                            {notification.message || 'Không có nội dung'}
+                          <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75 line-clamp-2" title={notification.message || notification.content}>
+                            {notification.message || notification.content || 'Không có nội dung'}
                           </p>
                         </div>
                       </div>
@@ -373,18 +374,18 @@ export default function NotificationManagement() {
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm text-gray-700">Trạng thái</span>
-                        <Badge className={notification.read ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"}>
-                          {notification.read ? "Đã đọc" : "Chưa đọc"}
+                        <Badge className={(notification.read ?? notification.is_read) ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"}>
+                          {(notification.read ?? notification.is_read) ? "Đã đọc" : "Chưa đọc"}
                         </Badge>
                       </div>
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm text-gray-700">Ngày tạo</span>
-                        <span className="text-sm text-gray-700">{formatDate(notification.createdAt)}</span>
+                        <span className="text-sm text-gray-700">{formatDate(notification.createdAt || notification.created_at || "")}</span>
                       </div>
                       {notification.account && (
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm text-gray-700">Người nhận</span>
-                          <span className="text-sm text-gray-700">{notification.account.name}</span>
+                          <span className="text-sm text-gray-700">{notification.account?.name}</span>
                         </div>
                       )}
                     </div>
@@ -401,7 +402,7 @@ export default function NotificationManagement() {
                         {notification.account && (
                           <div className="flex justify-between items-center">
                             <span className="[font-family:'Inter-Bold',Helvetica] font-bold text-gray-700 text-xs opacity-80">Email:</span>
-                            <span className="[font-family:'Inter-Regular',Helvetica] text-gray-700 text-xs opacity-80 truncate ml-2">{notification.account.mail}</span>
+                            <span className="[font-family:'Inter-Regular',Helvetica] text-gray-700 text-xs opacity-80 truncate ml-2">{notification.account?.mail}</span>
                           </div>
                         )}
                       </div>

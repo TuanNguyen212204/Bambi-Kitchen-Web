@@ -10,9 +10,10 @@ export const createIngredientCategorySlice: StateCreator<IngredientCategorySlice
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
       const res = await bambiApi.get<IngredientCategory[]>(API_ENDPOINTS.API_INGREDIENT_CATEGORIES)
       set({ categories: res.data })
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Không thể tải danh mục")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Không thể tải danh mục")
     }
   },
 
@@ -24,9 +25,10 @@ export const createIngredientCategorySlice: StateCreator<IngredientCategorySlice
       const { toast } = await import("sonner")
       toast.success("Đã tạo danh mục")
       return res.data
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Tạo danh mục thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Tạo danh mục thất bại")
       return undefined
     }
   },
@@ -38,22 +40,31 @@ export const createIngredientCategorySlice: StateCreator<IngredientCategorySlice
       set((state) => ({ categories: state.categories.map(c => c.id === res.data.id ? res.data : c) }))
       const { toast } = await import("sonner")
       toast.success("Đã cập nhật danh mục")
-    } catch {
+    } catch (error) {
       const { toast } = await import("sonner")
-      toast.error("Cập nhật danh mục thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      toast.error(extractErrorMessage(error) || "Cập nhật danh mục thất bại")
     }
   },
 
   removeCategory: async (id: number) => {
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
-      await bambiApi.delete(API_ENDPOINTS.API_INGREDIENT_CATEGORY_BY_ID(id))
-      set((state) => ({ categories: state.categories.filter(c => c.id !== id) }))
+      const res = await bambiApi.delete(API_ENDPOINTS.API_INGREDIENT_CATEGORY_BY_ID(id), {
+        headers: { 'x-silent-error': '1' }
+      })
+      if (!(res.status >= 200 && res.status < 300)) throw new Error("Delete failed")
+      const list = await bambiApi.get<IngredientCategory[]>(API_ENDPOINTS.API_INGREDIENT_CATEGORIES, {
+        headers: { 'x-silent-error': '1' }
+      })
+      set({ categories: list.data ?? [] })
       const { toast } = await import("sonner")
       toast.success("Đã xóa danh mục")
-    } catch {
+    } catch (e: any) {
       const { toast } = await import("sonner")
-      toast.error("Xóa danh mục thất bại")
+      const { extractErrorMessage } = await import("@utils/errors")
+      const msg = extractErrorMessage(e) || "Xóa danh mục thất bại. Có thể danh mục đang được sử dụng."
+      toast.error(msg)
     }
   },
 })

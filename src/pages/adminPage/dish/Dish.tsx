@@ -4,27 +4,53 @@ import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
-import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal"
-import { Grid3X3, List, Plus, Search, MoreVertical, Edit3, Trash2 as TrashIcon, Image as ImageIcon } from "lucide-react"
+import { Switch } from "@components/ui/switch"
+import { Grid3X3, List, Plus, Search, MoreVertical, Image as ImageIcon, Globe, EyeOff } from "lucide-react"
 import { useDishStore } from "@zustand/stores/dish"
 import AddDishModal from "@components/admin/dish/AddDishModal"
 import EditDishModal from "@components/admin/dish/EditDishModal"
-import AddDishCategoryModal from "@components/admin/dish/AddDishCategoryModal"
+import DishDetailModal from "@components/admin/dish/DishDetailModal"
+// removed AddDishCategoryModal per new design
 
 const AdminDishPage = () => {
   const currentDate = new Date().toLocaleString("vi-VN", { weekday: "long", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })
 
   const store = useDishStore()
-  const { fetchAll, items, categories, fetchCategories, setQuery, setSelectedCategoryId, statusFilter, setStatusFilter, viewMode, setViewMode, remove } = store
+  const { fetchAll, items, setQuery, statusFilter, setStatusFilter, viewMode, setViewMode, togglePublic } = store
 
   const [openAdd, setOpenAdd] = useState(false)
-  const [openCategory, setOpenCategory] = useState(false)
+  // removed openCategory state per new design
   const [keyword, setKeyword] = useState("")
+  const [viewing, setViewing] = useState<null | { id: number; name: string; price?: number; imageUrl?: string; description?: string; public?: boolean; active?: boolean }>(null)
   const [editing, setEditing] = useState<null | { id: number; name: string }>(null)
-  const [deleting, setDeleting] = useState<null | { id: number; name: string }>(null)
+  const [optimisticPublic, setOptimisticPublic] = useState<Record<number, { value: boolean; originalValue: boolean }>>({})
 
-  useEffect(() => { fetchAll() }, [fetchAll])
-  useEffect(() => { fetchCategories() }, [fetchCategories])
+  // Fetch dữ liệu dựa trên statusFilter
+  useEffect(() => { 
+    fetchAll(statusFilter || "all")
+  }, [fetchAll, statusFilter])
+
+  // Đồng bộ optimistic state với store - xóa optimistic state khi store đã update đúng giá trị
+  useEffect(() => {
+    setOptimisticPublic(prev => {
+      const newState = { ...prev }
+      let hasChanges = false
+      
+      Object.keys(newState).forEach(idStr => {
+        const id = Number(idStr)
+        const dish = items.find(d => d.id === id)
+        const optimistic = newState[id]
+        
+        // Xóa optimistic state khi store đã update với giá trị mới (khác với giá trị ban đầu)
+        if (dish && optimistic && dish.public !== optimistic.originalValue) {
+          delete newState[id]
+          hasChanges = true
+        }
+      })
+      
+      return hasChanges ? newState : prev
+    })
+  }, [items])
 
   const filtered = useMemo(() => store.getFilteredItems(), [store])
 
@@ -73,23 +99,19 @@ const AdminDishPage = () => {
         </div>
       </section>
 
-      <section className="w-full bg-white rounded-xl border border-solid border-gray-200 shadow-[0px_1px_3px_#0000001a] overflow-hidden">
+      <section className="w-full bg-white rounded-xl border border-solid border-gray-200 shadow-[0px_1px_3px_#0000001a] overflow-visible">
         <div className="bg-gradient-to-r from-orange-100 to-amber-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-lg leading-[27px]">Quản lý Món ăn</h2>
             <div className="flex gap-2">
-              <Button className="bg-orange-600 hover:bg-orange-700 text-white h-auto px-3 py-1 text-sm" onClick={()=> setOpenAdd(true)}>
+              <Button className="bg-orange-600 hover:bg-orange-700 text-white h-auto px-3 py-2 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.1)]" onClick={()=> setOpenAdd(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 <span className="[font-family:'Arial-Narrow',Helvetica] text-sm">Thêm món mới</span>
-              </Button>
-              <Button className="bg-gray-600 hover:bg-gray-700 text-white h-auto px-3 py-1 text-sm" onClick={()=> setOpenCategory(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                <span className="[font-family:'Arial-Narrow',Helvetica] text-sm">Thêm danh mục</span>
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Tìm kiếm món</Label>
               <Input
@@ -100,31 +122,18 @@ const AdminDishPage = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Danh mục</Label>
-              <Select value={store.selectedCategoryId ? String(store.selectedCategoryId) : 'all'} onValueChange={(val)=> setSelectedCategoryId(val === 'all' ? undefined : Number(val))}>
-                <SelectTrigger className="bg-white h-auto py-2 text-sm">
-                  <SelectValue placeholder="Tất cả danh mục" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả danh mục</SelectItem>
-                  {categories.map((c: { id: number; name: string }) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Trạng thái</Label>
-              <Select value={statusFilter || 'all'} onValueChange={(val)=> setStatusFilter((val as "all" | "active" | "inactive" | "public" | "private") || 'all')}>
+              <Label className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-700 text-sm">Hiển thị</Label>
+              <Select value={statusFilter || 'all'} onValueChange={(val)=> {
+                const newFilter = (val as "all" | "menu" | "inactive") || 'all'
+                setStatusFilter(newFilter)
+              }}>
                 <SelectTrigger className="bg-white h-auto py-2 text-sm">
                   <SelectValue placeholder="Tất cả" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="active">Hoạt động</SelectItem>
-                  <SelectItem value="inactive">Không hoạt động</SelectItem>
-                  <SelectItem value="public">Công khai</SelectItem>
-                  <SelectItem value="private">Riêng tư</SelectItem>
+                  <SelectItem value="all">Tất cả sản phẩm</SelectItem>
+                  <SelectItem value="menu">Hiển thị trên menu</SelectItem>
+                  <SelectItem value="inactive">Sản phẩm không hoạt động</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -153,87 +162,144 @@ const AdminDishPage = () => {
             </div>
           </div>
 
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' : 'grid grid-cols-1 gap-3'}>
-            {filtered.map((dish) => (
-              <Card key={dish.id} className={`bg-white border-2 border-gray-200`}>
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="relative">
-                        {dish.imageUrl ? (
-                          <img 
-                            key={`${dish.id}-${dish.imageUrl}`}
-                            src={dish.imageUrl} 
-                            alt={dish.name}
-                            className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
-                            onError={(e)=>{
-                              const target = e.currentTarget as HTMLImageElement
-                              target.onerror = null
-                              target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='10'%3ENo Image%3C/text%3E%3C/svg%3E"
-                            }}
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
-                            <ImageIcon className="w-6 h-6 text-gray-400" />
-                          </div>
-                        )}
-                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${!dish.active ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                      </div>
-                      <div>
-                        <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px]">{dish.name}</h3>
-                        {dish.price && typeof dish.price === 'number' && (
-                          <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{dish.price.toLocaleString('vi-VN')} đ</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <button className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center" onClick={(e)=>{
-                          const menu = (e.currentTarget.nextSibling as HTMLElement)
-                          if (menu) menu.classList.toggle('hidden')
-                        }}>
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        <div className="absolute right-0 mt-1 bg-white border rounded shadow hidden z-10">
-                          <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setEditing({ id: dish.id, name: dish.name })}>
-                            <Edit3 className="w-4 h-4" /> Edit
-                          </button>
-                          <button className="px-3 py-2 flex items-center gap-2 w-full hover:bg-gray-100" onClick={()=> setDeleting({ id: dish.id, name: dish.name })}>
-                            <TrashIcon className="w-4 h-4 text-red-600" /> Delete
-                          </button>
+          {store.loading && items.length === 0 ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Đang tải món ăn...</p>
+              </div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {keyword.trim() ? "Không tìm thấy món ăn" : "Chưa có món ăn nào"}
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {keyword.trim()
+                  ? `Không có món ăn nào khớp với "${keyword.trim()}"`
+                  : "Bắt đầu bằng cách tạo món ăn đầu tiên"}
+              </p>
+              <Button className="bg-orange-600 hover:bg-orange-700" onClick={()=> setOpenAdd(true)}>
+                Tạo món đầu tiên
+              </Button>
+            </div>
+          ) : (
+            <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' : 'grid grid-cols-1 gap-3'}>
+              {filtered.map((dish) => (
+                <Card key={dish.id} className={`bg-white border-2 border-gray-200`}>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="relative">
+                          {dish.imageUrl ? (
+                            <img 
+                              key={`${dish.id}-${dish.imageUrl}`}
+                              src={dish.imageUrl} 
+                              alt={dish.name}
+                              className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                              onError={(e)=>{
+                                const target = e.currentTarget as HTMLImageElement
+                                target.onerror = null
+                                target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='10'%3ENo Image%3C/text%3E%3C/svg%3E"
+                              }}
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                              <ImageIcon className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                          <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${!dish.active ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px] truncate">{dish.name}</h3>
+                          {dish.price && typeof dish.price === 'number' && (
+                            <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{dish.price.toLocaleString('vi-VN')} đ</p>
+                          )}
                         </div>
                       </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 self-center">
+                        <div className="flex items-center gap-1.5 flex-shrink-0" title={(optimisticPublic[dish.id] !== undefined ? optimisticPublic[dish.id].value : (dish.public ?? true)) ? "Công khai - Hiển thị cho khách hàng" : "Riêng tư - Chỉ hiển thị nội bộ"}>
+                          {(optimisticPublic[dish.id] !== undefined ? optimisticPublic[dish.id].value : (dish.public ?? true)) ? (
+                            <Globe className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                          ) : (
+                            <EyeOff className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          )}
+                          <Switch
+                            checked={optimisticPublic[dish.id] !== undefined ? optimisticPublic[dish.id].value : (dish.public ?? true)}
+                            onCheckedChange={async (checked) => {
+                              const originalValue = dish.public ?? true
+                              
+                              // Nếu đang filter "menu" và toggle sẽ làm món không còn public hoặc active, không cần reset filter
+                              // Vì khi fetch lại, món sẽ tự động biến mất khỏi danh sách
+                              
+                              // Optimistic update - cập nhật ngay để animation hoạt động
+                              setOptimisticPublic(prev => ({ 
+                                ...prev, 
+                                [dish.id]: { value: checked, originalValue }
+                              }))
+                              
+                              try {
+                                await togglePublic(dish.id)
+                                // Refresh danh sách sau khi toggle
+                                await fetchAll(statusFilter === "menu" ? "menu" : "all")
+                                // Optimistic state sẽ tự động được xóa bởi useEffect khi store update
+                              } catch (error) {
+                                // Revert nếu API thất bại
+                                setOptimisticPublic(prev => {
+                                  const newState = { ...prev }
+                                  delete newState[dish.id]
+                                  return newState
+                                })
+                                console.error("Error toggling public:", error)
+                                const { toast } = await import("sonner")
+                                const { extractErrorMessage } = await import("@utils/errors")
+                                toast.error(extractErrorMessage(error) || "Đổi trạng thái công khai thất bại")
+                              }
+                            }}
+                            className="flex-shrink-0"
+                          />
+                        </div>
+                        <button 
+                          className="w-8 h-8 rounded hover:bg-black/10 flex items-center justify-center flex-shrink-0 transition-colors self-center" 
+                          onClick={() => setViewing({ 
+                            id: dish.id, 
+                            name: dish.name,
+                            price: dish.price,
+                            imageUrl: dish.imageUrl,
+                            description: dish.description,
+                            public: dish.public,
+                            active: dish.active
+                          })}
+                          title="Xem chi tiết"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
       <AddDishModal open={openAdd} onClose={()=> setOpenAdd(false)} />
-      <AddDishCategoryModal open={openCategory} onClose={()=> setOpenCategory(false)} />
+      {viewing && (
+        <DishDetailModal 
+          open={true} 
+          onClose={()=> setViewing(null)} 
+          dish={viewing}
+        />
+      )}
       {editing && (
         <EditDishModal open={true} onClose={()=> setEditing(null)} dish={{ id: editing.id, name: editing.name }} />
       )}
-      <DeleteConfirmationModal
-        open={!!deleting}
-        onClose={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (deleting) {
-            try {
-              await remove(deleting.id);
-              setDeleting(null);
-            } catch (error) {
-              console.error("Error deleting dish:", error);
-            }
-          }
-        }}
-        title="Xác nhận xóa món ăn"
-        itemName={deleting?.name || 'Không có tên'}
-        itemType="món ăn"
-      />
     </div>
   )
 }
