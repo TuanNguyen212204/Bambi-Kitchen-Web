@@ -14,8 +14,15 @@ export const API_ENDPOINTS = {
   ORDER_CREATE: "/orders",
   ORDER_DETAIL: (id: string) => `/orders/${id}`,
   API_ORDERS: "/api/order",
-  API_ORDER_BY_ACCOUNT: (accountId: number) => `/api/order?userId=${accountId}`,
+  // API v3: lấy đơn hàng theo userId: /api/order/user/{userId}
+  API_ORDERS_BY_USER: (userId: number) => `/api/order/user/${userId}`,
+  API_ORDER_BY_ID: (id: number) => `/api/order/${id}`,
+  // Order feedbacks & update feedback
   API_ORDER_FEEDBACKS: "/api/order/getFeedbacks",
+  API_ORDER_FEEDBACK_UPDATE: "/api/order/feedback",
+  // Order details
+  API_ORDER_DETAILS: "/api/order-detail",
+  API_ORDER_DETAILS_BY_ORDER: (orderId: number) => `/api/order-detail/by-order/${orderId}`,
   FAVORITES: "/favorites",
   PROFILE: "/api/account",
   
@@ -23,6 +30,9 @@ export const API_ENDPOINTS = {
   API_NOTIFICATION_BY_ID: (id: number) => `/api/notification/${id}`,
   API_NOTIFICATION_BY_ACCOUNT: (id: number) => `/api/notification/to-account/${id}`,
   API_NOTIFICATION_MARK_READ: (id: number) => `/api/notification/${id}/check-read`,
+
+  // Payments
+  API_PAYMENTS_BY_ACCOUNT: (accountId: number) => `/api/payment/to-account/${accountId}`,
 
   API_INGREDIENTS: "/api/ingredient",
   API_INGREDIENT_BY_ID: (id: number) => `/api/ingredient/${id}`,
@@ -37,10 +47,14 @@ export const API_ENDPOINTS = {
   API_DISH_TOGGLE_PUBLIC: (id: number) => `/api/dish/toggle-public/${id}`,
   API_DISH_TOGGLE_ACTIVE: (id: number) => `/api/dish/toggle-active/${id}`,
   API_DISH_SAVE_CUSTOM: "/api/dish/save-custom-dish",
+  API_DISH_TEMPLATES: "/api/dish-template",
+  API_DISH_TEMPLATE_BY_SIZE: (size: "S"|"M"|"L") => `/api/dish-template/${size}`,
   API_DISH_CATEGORIES: "/api/dish-category",
   API_DISH_CATEGORY_BY_ID: (id: number) => `/api/dish-category/${id}`,
-  API_DISH_TEMPLATES: "/api/dish-template",
-  API_DISH_TEMPLATE_BY_SIZE: (sizeCode: "S"|"M"|"L") => `/api/dish-template/${sizeCode}`,
+  // Recipes & Ingredients for stock checking
+  API_RECIPES: "/api/recipe",
+  API_RECIPE_BY_DISH: (id: number) => `/api/recipe/by-dish/${id}`,
+  // NOTE: API_INGREDIENTS đã được khai báo ở trên
 
   API_DISCOUNTS: "/api/discount",
   API_DISCOUNT_BY_ID: (id: number) => `/api/discount/${id}`,
@@ -60,7 +74,7 @@ export const API_ENDPOINTS = {
   MENU: "/admin/menu",
   FEEDBACK: "/admin/feedback",
   INGREDIENT_STOCK: "/admin/ingredients/stock",
-  API_RECIPE_BY_DISH: (dishId: number) => `/api/recipe/by-dish/${dishId}`,
+  // NOTE: API_RECIPE_BY_DISH đã được khai báo ở trên
 } as const
 
 
