@@ -25,7 +25,7 @@ export const createIngredientStockSlice: StateCreator<IngredientStockSlice, [], 
       const newQuantity = Math.max(0, recalculatedStock)
       
       // Cập nhật quantity của ingredient bằng cách gọi update function
-      const currentState = get() as unknown as { update?: (payload: { id: number; name: string; quantity?: number; available?: number; reserve?: number; unit?: string; active?: boolean; categoryId?: number; silent?: boolean }) => Promise<void> }
+      const currentState = get() as unknown as { update?: (payload: { id: number; name: string; quantity?: number; available?: number; reserve?: number; unit?: string; active?: boolean; categoryId?: number; pricePerUnit?: number; silent?: boolean }) => Promise<void> }
       // Lấy lại metadata của ingredient để điền đủ params cho update
       const ingredientRes = await bambiApi.get(API_ENDPOINTS.API_INGREDIENT_BY_ID(ingredientId))
       const currentIngredient = ingredientRes.data || {}
