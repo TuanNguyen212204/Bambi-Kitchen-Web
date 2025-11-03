@@ -9,8 +9,7 @@ import { Search } from "lucide-react"
 
 type Dish = { id: number; name?: string; price?: number }
 type DishTemplate = { size: "S"|"M"|"L"; name?: string; priceRatio?: number; quantityRatio?: number }
-type RecipeItem = { id: number; ingredient: { id: number; name?: string; available?: number }; quantity: number; dish: { id: number } }
-type Ingredient = { id: number; name?: string; available?: number }
+// Remove verbose recipe/inventory typing in this streamlined modal version
 type OrderItemDraft = { dishId?: number; name?: string; quantity?: number; size: "S"|"M"|"L" }
 
 interface Props {
