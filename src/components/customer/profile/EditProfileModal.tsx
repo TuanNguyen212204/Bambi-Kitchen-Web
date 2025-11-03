@@ -22,6 +22,7 @@ interface ProfileUpdateRequest {
   phone?: string;
   role: "USER" | "STAFF" | "ADMIN";
   active: boolean;
+  password?: string;
 }
 
 export function EditProfileModal({ open, onClose, user, onSuccess }: EditProfileModalProps) {
@@ -62,7 +63,9 @@ export function EditProfileModal({ open, onClose, user, onSuccess }: EditProfile
         mail: user?.email,
         phone: phoneValue || undefined,
         role: formData.role,
-        active: user?.status === 'active'
+        active: user?.status === 'active',
+        // Backend hiện đang null-pointer khi password vắng mặt => gửi chuỗi rỗng để tránh NPE
+        password: ""
       };
       
       await updateProfile(profileData as any);
