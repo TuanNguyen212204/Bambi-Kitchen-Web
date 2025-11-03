@@ -51,6 +51,10 @@ export const createIngredientStockSlice: StateCreator<IngredientStockSlice, [], 
           unit: (currentIngredient as { unit?: string }).unit || 'GRAM',
           active: (currentIngredient as { active?: boolean }).active !== undefined ? (currentIngredient as { active?: boolean }).active! : true,
           categoryId: (currentIngredient as { category?: { id?: number } }).category?.id || (currentIngredient as unknown as { categoryId?: number }).categoryId,
+          // Giữ nguyên đơn giá để tránh bị BE set về 0 nếu không truyền
+          pricePerUnit: typeof (currentIngredient as { pricePerUnit?: number }).pricePerUnit === 'number'
+            ? (currentIngredient as { pricePerUnit?: number }).pricePerUnit!
+            : undefined,
           silent: true,
         })
       }
