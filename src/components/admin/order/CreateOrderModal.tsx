@@ -32,8 +32,7 @@ export default function CreateOrderModal(props: Props) {
   const [q, setQ] = useState("")
   const [dishes, setDishes] = useState<Dish[]>([])
   const [templates, setTemplates] = useState<DishTemplate[]>([])
-  const [ingredients, setIngredients] = useState<Ingredient[]>([])
-  const [recipes, setRecipes] = useState<RecipeItem[]>([])
+  // inventory datasets tạm thời không dùng trong modal rút gọn
   const [items, setItems] = useState<OrderItemDraft[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [accounts, setAccounts] = useState<Array<{ id: number; name?: string; mail?: string; role?: string }>>([])
@@ -42,18 +41,15 @@ export default function CreateOrderModal(props: Props) {
   useEffect(() => {
     if (!open) return
     ;(async () => {
-      const [aRes, dRes, tRes, iRes, rRes] = await Promise.all([
+      const [aRes, dRes, tRes] = await Promise.all([
         bambiApi.get<any[]>(API_ENDPOINTS.API_ACCOUNTS),
         bambiApi.get<Dish[]>(API_ENDPOINTS.API_DISHES),
         bambiApi.get<DishTemplate[]>(API_ENDPOINTS.API_DISH_TEMPLATES),
-        bambiApi.get<Ingredient[]>(API_ENDPOINTS.API_INGREDIENTS),
-        bambiApi.get<RecipeItem[]>(API_ENDPOINTS.API_RECIPES),
       ])
       setAccounts((aRes.data || []).filter((x: any) => String(x.role).toUpperCase() === 'USER'))
       setDishes(dRes.data || [])
       setTemplates(tRes.data || [])
-      setIngredients(iRes.data || [])
-      setRecipes(rRes.data || [])
+      // bỏ load ingredients/recipes trong phiên bản này
     })()
   }, [open])
 

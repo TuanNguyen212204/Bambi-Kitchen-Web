@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Quote, Star, ChevronLeft, ChevronRight } from "lucide-react";
-import { bambiApi } from "@utils/api";
+import { bambiPublicApi } from "@utils/api";
 import { API_ENDPOINTS } from "@utils/endpoints";
 
 // Types
