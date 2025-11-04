@@ -219,9 +219,7 @@ export class BambiApiClient {
     }
   }
 
-  private logout() {
-    useAuthStore.getState().logout()
-  }
+  // logout helper removed (no longer auto-logs users out inside the interceptor)
 
   async get<T>(url: string, options?: RequestOptions): Promise<ApiResponse<T>> {
     const response = await this.client.get<T>(url, options)
