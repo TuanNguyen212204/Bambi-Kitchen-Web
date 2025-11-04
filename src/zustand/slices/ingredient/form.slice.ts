@@ -115,8 +115,12 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
       if (typeof payload.reserve === 'number') {
         formData.append('reserve', String(payload.reserve))
       }
-      if (payload.pricePerUnit !== undefined && payload.pricePerUnit !== null) {
+      // Always send pricePerUnit if it's a valid number, including 0
+      if (typeof payload.pricePerUnit === 'number' && !isNaN(payload.pricePerUnit)) {
         formData.append('pricePerUnit', payload.pricePerUnit.toString())
+      } else if (payload.pricePerUnit === null || payload.pricePerUnit === undefined) {
+        // Explicitly send empty string or null if clearing the price
+        formData.append('pricePerUnit', '')
       }
 
       if (payload.file) {
@@ -149,7 +153,12 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
         ...(typeof payload.quantity === 'number' ? { quantity: payload.quantity } : {}),
         ...(typeof payload.available === 'number' ? { available: payload.available } : {}),
         ...(typeof payload.reserve === 'number' ? { reserve: payload.reserve } : {}),
-        ...(typeof payload.pricePerUnit === 'number' ? { pricePerUnit: payload.pricePerUnit } : {}),
+        // Include pricePerUnit if it's a valid number (including 0), or explicitly send null/undefined
+        ...(typeof payload.pricePerUnit === 'number' && !isNaN(payload.pricePerUnit) 
+          ? { pricePerUnit: payload.pricePerUnit } 
+          : payload.pricePerUnit === null || payload.pricePerUnit === undefined
+          ? { pricePerUnit: null }
+          : {}),
       }
       await bambiApi.put(API_ENDPOINTS.API_INGREDIENTS, formData, {
         params: { ingredient: ingredientParams },
