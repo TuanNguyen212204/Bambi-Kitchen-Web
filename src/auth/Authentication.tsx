@@ -27,7 +27,8 @@ export default function Authentication({ children, fallback }: AuthenticationPro
     }
   }, [user, verifyAuth])
 
-  if (loading) {
+  // Chỉ hiển thị loading khi chưa có user và đang xác thực
+  if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2">
