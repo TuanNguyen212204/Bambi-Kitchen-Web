@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom"
 import { PATHS } from "@config/path"
+import { ROLES } from "@/config/routes"
 import { API_BASE_URL } from "@utils/http"
 import { API_ENDPOINTS } from "@utils/endpoints"
 import { Card, CardContent, CardHeader } from "@components/ui/card/card"
@@ -66,13 +67,15 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    if (user && user.role) {
-      const destination = user.role === "ADMIN"
-        ? PATHS.ADMIN
-        : user.role === "STAFF"
-        ? PATHS.STAFF
-        : PATHS.HOME
-      
+    if (user) {
+      const roleId = (user as any).role_id
+      let destination = PATHS.HOME
+      if (roleId === ROLES.ADMIN) {
+        // Vào thẳng dashboard admin sau khi đăng nhập
+        destination = `${PATHS.ADMIN}/dashboard`
+      } else if (roleId === ROLES.STAFF) {
+        destination = PATHS.STAFF
+      }
       navigate(destination, { replace: true })
     }
   }, [user, navigate])

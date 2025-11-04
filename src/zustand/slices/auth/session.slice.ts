@@ -21,7 +21,8 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
   }),
   
   login: async (phone, password) => {
-    set({ loading: true, error: null })
+    // Reset transient auth state at the beginning to avoid stale user from previous session
+    set({ loading: true, error: null, user: null, isAuthenticated: false })
     
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
@@ -35,8 +36,25 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       )
 
       const accessToken = loginRes.data
-      // Set token vào state trước để interceptor có thể sử dụng
-      set({ token: accessToken, refreshToken: null, isAuthenticated: true, loading: false })
+      // Ghi đè token cũ trước để interceptor dùng ngay
+      set({ token: accessToken, refreshToken: null, isAuthenticated: true })
+
+      // Thiết lập tạm thời user từ payload JWT để tránh chớp nháy/nhầm phiên cũ
+      try {
+        const base64 = accessToken.split(".")[1]
+        const json = JSON.parse(atob(base64)) as { sub?: string; name?: string; email?: string; roles?: string[] }
+        if (json?.sub) {
+          const role = (Array.isArray(json.roles) && json.roles[0] ? json.roles[0] : "USER") as "ADMIN" | "STAFF" | "USER"
+          const tempUser = {
+            id: Number(json.sub),
+            name: (json.name as string) || "",
+            email: (json.email as string) || "",
+            role,
+            role_id: (role === "ADMIN" ? 1 : role === "STAFF" ? 3 : 4) as 1 | 3 | 4,
+          }
+          set({ user: tempUser })
+        }
+      } catch { /* ignore decode errors */ }
       
       // Đợi một chút để ensure token được persist và interceptor có thể đọc được
       // Zustand persist là async, cần đợi để tránh race condition
