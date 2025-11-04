@@ -115,8 +115,8 @@ const SidebarAdmin = () => {
   }, [collapsed]);
 
   return (
-    <aside className={[collapsed ? "w-16" : "w-64", "fixed left-0 top-[82px] h-[calc(100vh-82px)] z-40 border-r bg-white p-3 transition-all overflow-visible flex flex-col"].join(" ")}> 
-      <div className={["flex items-center", collapsed ? "justify-center" : "justify-between", "h-10"].join(" ")}> 
+    <aside className={[collapsed ? "w-16" : "w-64", "fixed left-0 top-[82px] h-[calc(100vh-82px)] z-40 border-r bg-white transition-all flex flex-col"].join(" ")}> 
+      <div className={["flex items-center", collapsed ? "justify-center" : "justify-between", "h-10 px-3 pt-3 flex-shrink-0"].join(" ")}> 
         {!collapsed && (
           <div className="text-sm font-medium text-gray-700">Menu</div>
         )}
@@ -130,7 +130,8 @@ const SidebarAdmin = () => {
         </button>
       </div>
 
-      <nav className="flex flex-col gap-2 pt-4 flex-1">
+      {/* Menu items có thể scroll */}
+      <nav className="flex flex-col gap-2 pt-4 px-3 flex-1 overflow-y-auto overflow-x-hidden min-h-0">
         {groups.map((group) => {
           const GroupIcon = group.icon;
           const isOpen = openGroups[group.key];
@@ -179,8 +180,8 @@ const SidebarAdmin = () => {
         })}
       </nav>
 
-      {/* Nút logout ở dưới sidebar */}
-      <div className="mt-auto pt-4 border-t border-gray-200">
+      {/* Nút logout cố định ở dưới sidebar */}
+      <div className="px-3 pb-3 pt-4 border-t border-gray-200 flex-shrink-0 bg-white">
         <button
           onClick={handleLogout}
           className={[
