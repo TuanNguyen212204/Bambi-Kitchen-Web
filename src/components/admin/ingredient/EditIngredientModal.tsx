@@ -130,11 +130,12 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       
       setLoading(true)
       if (changedInfo) {
-        // Fetch giá trị hiện tại từ API để đảm bảo có quantity, available, reserve chính xác
+        // Fetch giá trị hiện tại từ API để đảm bảo có quantity, available, reserve, pricePerUnit chính xác
         // Tránh trường hợp prop ingredient không có đầy đủ dữ liệu tồn kho
         const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
         let currentQuantity: number | undefined = undefined
         let currentReserve: number | undefined = undefined
+        let currentPricePerUnit: number | undefined = undefined
         
         try {
           const currentRes = await bambiApi.get(API_ENDPOINTS.API_INGREDIENT_BY_ID(ingredient.id))
@@ -145,11 +146,16 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           currentReserve = typeof (currentData as { reserve?: number }).reserve === 'number'
             ? (currentData as { reserve?: number }).reserve!
             : undefined
+          // Fetch pricePerUnit từ API để giữ nguyên nếu không thay đổi
+          currentPricePerUnit = typeof (currentData as { pricePerUnit?: number }).pricePerUnit === 'number'
+            ? (currentData as { pricePerUnit?: number }).pricePerUnit!
+            : undefined
         } catch (error) {
           console.error("Error fetching current ingredient:", error)
           // Fallback về prop nếu API fail
           currentQuantity = typeof ingredient.quantity === 'number' ? ingredient.quantity : (typeof ingredient.stock === 'number' ? ingredient.stock : undefined)
           currentReserve = typeof ingredient.reserve === 'number' ? ingredient.reserve : undefined
+          currentPricePerUnit = typeof ingredient.pricePerUnit === 'number' ? ingredient.pricePerUnit : undefined
         }
         
         // Tính lại available = quantity - reserve để đảm bảo tính nhất quán
@@ -161,8 +167,11 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           ? currentQuantity // Nếu không có reserve, available = quantity
           : undefined
         
-        // Đảm bảo giữ nguyên quantity, reserve khi chỉ update ảnh hoặc thông tin khác
+        // Đảm bảo giữ nguyên quantity, reserve, pricePerUnit khi chỉ update ảnh hoặc thông tin khác
         // Tính lại available để đảm bảo tính nhất quán
+        // Nếu newPricePerUnit là undefined (user không thay đổi), giữ nguyên giá trị hiện tại từ API
+        const finalPricePerUnit = newPricePerUnit !== undefined ? newPricePerUnit : currentPricePerUnit
+        
         await update({ 
           id: ingredient.id, 
           name, 
@@ -171,7 +180,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           categoryId: typeof categoryId === 'number' ? categoryId : originalCategoryId, 
           file: selectedFile || undefined,
           removeImage: removeCurrentImage,
-          pricePerUnit: newPricePerUnit,
+          pricePerUnit: finalPricePerUnit, // Luôn gửi pricePerUnit (mới hoặc giữ nguyên từ API)
           // Sử dụng giá trị từ API (hoặc fallback về prop)
           quantity: currentQuantity,
           available: calculatedAvailable, // Tính lại available thay vì giữ nguyên giá trị cũ
