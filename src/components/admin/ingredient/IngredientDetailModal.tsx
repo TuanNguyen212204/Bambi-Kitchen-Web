@@ -5,6 +5,7 @@ import { Badge } from "@components/ui/badge";
 import { Image as ImageIcon, Edit3, Trash2, Package, DollarSign, Box } from "lucide-react";
 import { useIngredientStore } from "@zustand/stores/ingredients";
 import EditIngredientModal from "./EditIngredientModal";
+import { ConfirmationModal } from "@components/ui/modal/modal";
 
 interface IngredientDetailModalProps {
   open: boolean;
@@ -21,6 +22,7 @@ export function IngredientDetailModal({
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { remove } = useIngredientStore();
 
   useEffect(() => {
@@ -55,10 +57,16 @@ export function IngredientDetailModal({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    // Mở modal xác nhận thay vì xóa trực tiếp
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
     if (!ingredient || !ingredient.id) return;
     
     setIsDeleting(true);
+    setShowDeleteConfirm(false);
     try {
       await remove(ingredient.id);
       onClose();
@@ -300,6 +308,18 @@ export function IngredientDetailModal({
           }}
         />
       )}
+
+      <ConfirmationModal
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa nguyên liệu"
+        description={`Bạn có chắc chắn muốn xóa nguyên liệu "${ingredient?.name || displayDetails?.name || ''}" không? Hành động này không thể hoàn tác.`}
+        confirmText="Xóa nguyên liệu"
+        cancelText="Hủy"
+        variant="destructive"
+        loading={isDeleting}
+      />
     </>
   );
 }

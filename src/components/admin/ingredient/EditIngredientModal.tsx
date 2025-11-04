@@ -103,7 +103,10 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
   const submit = async () => {
     if (!ingredient?.id) return
     const currentPricePerUnit = ingredient.pricePerUnit ?? undefined
-    const newPricePerUnit = pricePerUnit.trim() ? parseFloat(pricePerUnit.trim()) : undefined
+    // Parse pricePerUnit: handle empty string as undefined, but allow 0 as valid value
+    const priceValue = pricePerUnit.trim()
+    const parsedPrice = priceValue === "" ? undefined : parseFloat(priceValue)
+    const newPricePerUnit = (parsedPrice !== undefined && !isNaN(parsedPrice)) ? parsedPrice : undefined
     const priceChanged = currentPricePerUnit !== newPricePerUnit
     
     const changedInfo =
@@ -131,7 +134,6 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
         // Tránh trường hợp prop ingredient không có đầy đủ dữ liệu tồn kho
         const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
         let currentQuantity: number | undefined = undefined
-        let currentAvailable: number | undefined = undefined
         let currentReserve: number | undefined = undefined
         
         try {
@@ -140,9 +142,6 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           currentQuantity = typeof (currentData as { quantity?: number }).quantity === 'number' 
             ? (currentData as { quantity?: number }).quantity!
             : undefined
-          currentAvailable = typeof (currentData as { available?: number }).available === 'number'
-            ? (currentData as { available?: number }).available!
-            : undefined
           currentReserve = typeof (currentData as { reserve?: number }).reserve === 'number'
             ? (currentData as { reserve?: number }).reserve!
             : undefined
@@ -150,11 +149,20 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           console.error("Error fetching current ingredient:", error)
           // Fallback về prop nếu API fail
           currentQuantity = typeof ingredient.quantity === 'number' ? ingredient.quantity : (typeof ingredient.stock === 'number' ? ingredient.stock : undefined)
-          currentAvailable = typeof ingredient.available === 'number' ? ingredient.available : undefined
           currentReserve = typeof ingredient.reserve === 'number' ? ingredient.reserve : undefined
         }
         
-        // Đảm bảo giữ nguyên quantity, available, reserve khi chỉ update ảnh hoặc thông tin khác
+        // Tính lại available = quantity - reserve để đảm bảo tính nhất quán
+        // Lưu ý: Nếu reserve âm (ví dụ: -16), available = quantity - (-16) = quantity + 16
+        // Điều này có thể đúng nếu backend cho phép reserve âm (có thể là logic đặc biệt)
+        const calculatedAvailable = (typeof currentQuantity === 'number' && typeof currentReserve === 'number')
+          ? Math.max(0, currentQuantity - currentReserve) // Giữ nguyên công thức toán học
+          : (typeof currentQuantity === 'number' && currentQuantity >= 0)
+          ? currentQuantity // Nếu không có reserve, available = quantity
+          : undefined
+        
+        // Đảm bảo giữ nguyên quantity, reserve khi chỉ update ảnh hoặc thông tin khác
+        // Tính lại available để đảm bảo tính nhất quán
         await update({ 
           id: ingredient.id, 
           name, 
@@ -166,7 +174,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           pricePerUnit: newPricePerUnit,
           // Sử dụng giá trị từ API (hoặc fallback về prop)
           quantity: currentQuantity,
-          available: currentAvailable,
+          available: calculatedAvailable, // Tính lại available thay vì giữ nguyên giá trị cũ
           reserve: currentReserve
         })
       }
