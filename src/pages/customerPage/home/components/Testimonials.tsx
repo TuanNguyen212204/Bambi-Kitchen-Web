@@ -105,19 +105,9 @@ const Testimonials: React.FC<TestimonialsProps> = ({ testimonials: propTestimoni
         const filteredFeedbacks = feedbackData.filter((fb) => (fb.ranking ?? 0) >= 3);
         setFeedbacks(filteredFeedbacks);
 
-        // Fetch orders để tính thời gian giao hàng
-        try {
-          const ordersResponse = await bambiPublicApi.get<OrdersResponse[]>(API_ENDPOINTS.API_ORDERS);
-          const ordersData = ordersResponse.data || [];
-          // Chỉ lấy orders đã hoàn thành (COMPLETED hoặc PAID)
-          const completedOrders = ordersData.filter(
-            (order) => order.status === "COMPLETED" || order.status === "PAID"
-          );
-          setOrders(completedOrders);
-        } catch (error) {
-          // Nếu không fetch được orders, để mảng rỗng
-          setOrders([]);
-        }
+        // Không gọi API yêu cầu xác thực từ trang public để tránh 401 cho người chưa đăng nhập
+        // Nếu cần số liệu, backend nên cung cấp endpoint public hoặc lấy từ feedbacks
+        setOrders([])
       } catch (error) {
         // Silent error - chỉ set empty array, không hiển thị lỗi cho user
         setFeedbacks([]);

@@ -35,11 +35,19 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       )
 
       const accessToken = loginRes.data
+      // Set token vào state trước để interceptor có thể sử dụng
       set({ token: accessToken, refreshToken: null, isAuthenticated: true, loading: false })
+      
+      // Đợi một chút để ensure token được persist và interceptor có thể đọc được
+      // Zustand persist là async, cần đợi để tránh race condition
+      await new Promise(resolve => setTimeout(resolve, 50))
 
-      // Nếu login thành công, gọi /me request
+      // Nếu login thành công, gọi /me request với token đã được set
       const userResponse = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME, {
-        headers: { 'x-silent-error': '1' } // Tắt toast tự động cho /me request
+        headers: { 
+          'x-silent-error': '1', // Tắt toast tự động cho /me request
+          'Authorization': `Bearer ${accessToken}` // Đảm bảo token được set vào header
+        }
       })
       const userMe = userResponse.data
       const normalizedRole = (userMe.role || "USER") as "USER" | "ADMIN" | "STAFF"
@@ -147,17 +155,23 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
     const currentState = get()
     const hadToken = !!currentState.token || currentState.isAuthenticated
     
+    // Nếu đã có user và token, không cần verify lại (tránh race condition sau khi login)
+    if (currentState.user && currentState.token && currentState.token !== "session-based") {
+      return
+    }
+    
     set({ loading: true })
 
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
       await bambiApi.get(API_ENDPOINTS.AUTH_ME)
       
-      set({
-        token: "session-based",
+      // Không ghi đè token (tránh gán "session-based" làm hỏng Authorization header)
+      set((state) => ({
+        token: state.token,
         isAuthenticated: true,
         loading: false,
-      })
+      }))
 
     } catch {
       set({
