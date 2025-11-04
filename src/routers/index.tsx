@@ -73,8 +73,8 @@ export const AppRoute = memo(() => {
           return r.protected && r.role?.includes(ROLES.ADMIN) && r.layout === "admin" && !isHidden;
         })
         .map((route) => ({
-          index: route.path === "dashboard",
-          path: route.path === "dashboard" ? undefined : route.path,
+          // Không auto-index dashboard nữa; luôn dùng đường dẫn tường minh
+          path: route.path,
           element: createRouteElement(route.component, LoadingFallback),
           errorElement: ErrorFallback,
         })),

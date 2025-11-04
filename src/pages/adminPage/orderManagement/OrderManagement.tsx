@@ -274,7 +274,7 @@ const OrderManagement = () => {
         </div>
 
         {/* Right detail */}
-        <div className="w-1/2 p-4" style={{ maxHeight: "calc(100vh - 300px)" }}>
+        <div className="w-1/2 p-4 overflow-y-auto min-h-0" style={{ maxHeight: "calc(100vh - 300px)" }}>
           {!selectedOrderId ? (
             <div className="text-center py-10 text-gray-500 border border-dashed border-gray-300 rounded-lg bg-white">
               Chọn một đơn hàng để xem chi tiết
