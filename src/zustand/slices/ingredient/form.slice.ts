@@ -116,12 +116,16 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
         formData.append('reserve', String(payload.reserve))
       }
       // Always send pricePerUnit if it's a valid number, including 0
+      // Nếu pricePerUnit là undefined, không gửi (để backend giữ nguyên giá trị cũ)
+      // Nếu pricePerUnit là null hoặc rỗng, gửi empty string để clear
+      // Nếu pricePerUnit là số (kể cả 0), gửi giá trị đó
       if (typeof payload.pricePerUnit === 'number' && !isNaN(payload.pricePerUnit)) {
         formData.append('pricePerUnit', payload.pricePerUnit.toString())
-      } else if (payload.pricePerUnit === null || payload.pricePerUnit === undefined) {
-        // Explicitly send empty string or null if clearing the price
+      } else if (payload.pricePerUnit === null) {
+        // Explicitly send empty string to clear the price
         formData.append('pricePerUnit', '')
       }
+      // Nếu undefined, không gửi field này để backend giữ nguyên giá trị hiện tại
 
       if (payload.file) {
         if (!validateFileSize(payload.file)) {
@@ -153,10 +157,12 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
         ...(typeof payload.quantity === 'number' ? { quantity: payload.quantity } : {}),
         ...(typeof payload.available === 'number' ? { available: payload.available } : {}),
         ...(typeof payload.reserve === 'number' ? { reserve: payload.reserve } : {}),
-        // Include pricePerUnit if it's a valid number (including 0), or explicitly send null/undefined
+        // Include pricePerUnit if it's a valid number (including 0)
+        // Nếu undefined, không gửi trong query params để backend giữ nguyên
+        // Nếu null, gửi null để clear
         ...(typeof payload.pricePerUnit === 'number' && !isNaN(payload.pricePerUnit) 
           ? { pricePerUnit: payload.pricePerUnit } 
-          : payload.pricePerUnit === null || payload.pricePerUnit === undefined
+          : payload.pricePerUnit === null
           ? { pricePerUnit: null }
           : {}),
       }
