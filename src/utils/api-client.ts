@@ -137,12 +137,12 @@ export class BambiApiClient {
         const looksLikeProtectedApi = url.startsWith("/api/")
         // 403: không tự động đăng xuất (thường do không đủ quyền). Chỉ điều hướng sang trang unauthorized
         if (status === 403 && hasToken && looksLikeProtectedApi && !isLoginRequest) {
-          try {
-            const { toast } = await import("sonner")
+            try {
+              const { toast } = await import("sonner")
             if (shouldToast("unauthorized_route")) {
               toast.error(BambiApiClient.getErrorMessage(error), { description: "Bạn không có quyền truy cập tài nguyên này." })
-            }
-          } catch { void 0 }
+              }
+            } catch { void 0 }
           if (typeof window !== "undefined") {
             window.location.href = "/unauthorized"
           }

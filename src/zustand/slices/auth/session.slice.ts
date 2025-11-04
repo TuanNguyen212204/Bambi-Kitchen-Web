@@ -7,6 +7,8 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
   isAuthenticated: false,
   loading: false,
   error: null,
+  // Đánh dấu khi user đã được đồng bộ đầy đủ từ /me
+  userHydrated: false,
   
   setSession: (token, refreshToken = null) => set({ 
     token, 
@@ -22,7 +24,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
   
   login: async (phone, password) => {
     // Reset transient auth state at the beginning to avoid stale user from previous session
-    set({ loading: true, error: null, user: null, isAuthenticated: false })
+    set({ loading: true, error: null, user: null, isAuthenticated: false, userHydrated: false })
     
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
@@ -43,6 +45,9 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       try {
         const base64 = accessToken.split(".")[1]
         const json = JSON.parse(atob(base64)) as { sub?: string; name?: string; email?: string; roles?: string[] }
+        if (import.meta.env.DEV) {
+          console.log("[Auth] JWT roles:", json?.roles, "sub:", json?.sub)
+        }
         if (json?.sub) {
           const role = (Array.isArray(json.roles) && json.roles[0] ? json.roles[0] : "USER") as "ADMIN" | "STAFF" | "USER"
           const tempUser = {
@@ -68,16 +73,36 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         }
       })
       const userMe = userResponse.data
-      const normalizedRole = (userMe.role || "USER") as "USER" | "ADMIN" | "STAFF"
+      if (import.meta.env.DEV) {
+        console.log("[Auth] /me:", userMe)
+      }
+      // So khớp role giữa JWT và /me, ưu tiên vai trò THẤP HƠN để tránh escalate quyền do cookie phiên cũ trên server
+      const tokenStr = get().token || ""
+      let tokenRole: "USER" | "ADMIN" | "STAFF" | null = null
+      let tokenSub: number | null = null
+      try {
+        const base64Payload = tokenStr.split(".")[1]
+        const json = JSON.parse(atob(base64Payload)) as { sub?: string; roles?: string[] }
+        const rawRole = (Array.isArray(json.roles) && json.roles[0]) || "USER"
+        const normalized = String(rawRole).replace(/^ROLE_/i, "") as "USER" | "ADMIN" | "STAFF"
+        tokenRole = (normalized === "ADMIN" || normalized === "STAFF" || normalized === "USER") ? normalized : "USER"
+        tokenSub = json?.sub ? Number(json.sub) : null
+      } catch { /* ignore */ }
+
+      const meRole = (userMe.role || "USER") as "USER" | "ADMIN" | "STAFF"
+      const rank = (r: "USER" | "STAFF" | "ADMIN") => (r === "ADMIN" ? 3 : r === "STAFF" ? 2 : 1)
+      const resolvedRole = tokenRole ? (rank(meRole) < rank(tokenRole) ? meRole : tokenRole) : meRole
+      const resolvedId = (tokenRole && tokenRole !== meRole && tokenSub) ? tokenSub : userMe.id
+
       const user = {
-        id: userMe.id,
+        id: resolvedId,
         name: userMe.name,
-        role: normalizedRole,
+        role: resolvedRole,
         email: userMe.mail,
-        role_id: (normalizedRole === "ADMIN" ? 1 : normalizedRole === "STAFF" ? 3 : 4) as 1 | 3 | 4,
+        role_id: (resolvedRole === "ADMIN" ? 1 : resolvedRole === "STAFF" ? 3 : 4) as 1 | 3 | 4,
       }
 
-      set({ user })
+      set({ user, userHydrated: true, loading: false })
 
       const { toast } = await import("sonner")
       toast.success("Đăng nhập thành công!")
@@ -90,7 +115,8 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       set({ 
         loading: false, 
         error: message,
-        isAuthenticated: false 
+        isAuthenticated: false,
+        userHydrated: false 
       })
 
       // Chỉ hiển thị message từ backend, không có title hardcode
@@ -178,17 +204,26 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       return
     }
     
-    set({ loading: true })
+    set({ loading: true, userHydrated: false })
 
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
-      await bambiApi.get(API_ENDPOINTS.AUTH_ME)
+      const me = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME)
       
       // Không ghi đè token (tránh gán "session-based" làm hỏng Authorization header)
       set((state) => ({
         token: state.token,
         isAuthenticated: true,
         loading: false,
+        // Nếu chưa có user (VD refresh trang), đồng bộ user dựa trên /me
+        user: state.user || (me.data ? {
+          id: me.data.id,
+          name: me.data.name,
+          role: (me.data.role || "USER") as "USER" | "ADMIN" | "STAFF",
+          email: me.data.mail,
+          role_id: ((me.data.role || "USER") === "ADMIN" ? 1 : (me.data.role === "STAFF" ? 3 : 4)) as 1 | 3 | 4,
+        } : state.user),
+        userHydrated: true,
       }))
 
     } catch {
@@ -197,6 +232,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         refreshToken: null,
         isAuthenticated: false,
         loading: false,
+        userHydrated: false,
       })
 
       if (hadToken) {

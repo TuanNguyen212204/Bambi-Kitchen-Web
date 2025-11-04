@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState, startTransition } from "react"
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom"
 import { PATHS } from "@config/path"
 import { ROLES } from "@/config/routes"
@@ -20,7 +20,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { login, loading, user } = useAuthStore()
+  const { login, loading, user, userHydrated } = useAuthStore()
 
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
@@ -28,6 +28,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ phone?: string; password?: string }>({})
   const [successMessage, setSuccessMessage] = useState("")
+  const submittingRef = useRef(false)
+  const navigatedRef = useRef(false)
 
   // Xử lý error từ query param (khi Google login bị hủy)
   useEffect(() => {
@@ -43,6 +45,9 @@ export default function LoginPage() {
   const handleSubmit = async (e?: React.FormEvent<HTMLButtonElement | HTMLFormElement>) => {
     if (e) e.preventDefault()
 
+    if (submittingRef.current) return
+    submittingRef.current = true
+    
     
     const payload: LoginPayload = createLoginPayload(phone, password)
     const validation = validateLoginPayload(payload)
@@ -55,7 +60,7 @@ export default function LoginPage() {
     }
     
     setFieldErrors(ve)
-    if (Object.keys(ve).length > 0) return
+    if (Object.keys(ve).length > 0) { submittingRef.current = false; return }
 
     try {
       setError("")
@@ -63,22 +68,28 @@ export default function LoginPage() {
       
     } catch {
       setError("Số điện thoại hoặc mật khẩu không đúng")
+    } finally {
+      submittingRef.current = false
     }
   }
 
   useEffect(() => {
-    if (user) {
-      const roleId = (user as any).role_id
+    // Chỉ điều hướng khi user đã được đồng bộ đầy đủ từ /me và chưa điều hướng lần nào
+    if (user && userHydrated && !navigatedRef.current) {
+      const roleId = (user as { role_id?: number }).role_id
       let destination = PATHS.HOME
       if (roleId === ROLES.ADMIN) {
-        // Vào thẳng dashboard admin sau khi đăng nhập
-        destination = `${PATHS.ADMIN}/dashboard`
+        // Vào thẳng trang admin (không auto chuyển dashboard)
+        destination = `${PATHS.ADMIN}`
       } else if (roleId === ROLES.STAFF) {
         destination = PATHS.STAFF
       }
-      navigate(destination, { replace: true })
+      navigatedRef.current = true
+      startTransition(() => {
+        navigate(destination, { replace: true })
+      })
     }
-  }, [user, navigate])
+  }, [user, userHydrated, navigate])
 
   useEffect(() => {
     const message = location.state?.message
