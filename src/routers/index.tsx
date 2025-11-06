@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom"
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import { Suspense, lazy, memo } from "react"
 import Authentication from "@/auth/Authentication"
 import Authorization from "@/auth/Authorization"
@@ -65,7 +65,10 @@ export const AppRoute = memo(() => {
         </Authentication>
       ),
       errorElement: ErrorFallback,
-      children: PRIVATE_ROUTES
+      children: [
+        // Khi truy cập /admin, tự động điều hướng tới /admin/dashboard
+        { index: true, element: <Navigate to="dashboard" replace /> },
+        ...PRIVATE_ROUTES
         .filter((r) => {
           // Ẩn các routes bị disable (giữ code để sử dụng trong tương lai)
           const HIDDEN_ROUTES = ["dish-categories", "sold-ingredients"];
@@ -78,6 +81,7 @@ export const AppRoute = memo(() => {
           element: createRouteElement(route.component, LoadingFallback),
           errorElement: ErrorFallback,
         })),
+      ],
     },
     ...CUSTOMER_PRIVATE_ROUTES.map((route) => ({
       path: route.path,
