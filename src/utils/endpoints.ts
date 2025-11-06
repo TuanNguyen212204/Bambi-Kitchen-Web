@@ -61,6 +61,12 @@ export const API_ENDPOINTS = {
   
   API_INVENTORY_TRANSACTIONS: "/api/inventory-transaction",
   
+  // Admin Dashboard (API v3)
+  API_ADMIN_TOTAL_REVENUE: "/api/admin/payments/total-revenue",
+  API_ADMIN_ORDERS: "/api/admin/order",
+  API_ADMIN_LOW_STOCK: "/api/admin/ingredients/low-stock",
+  API_ADMIN_MOST_POPULAR_DISHES: "/api/admin/dishes/most-popular",
+  
   AI_ANALYZE: "/ai/analyze",
   AI_SUGGESTIONS: "/ai/suggestions",
   
