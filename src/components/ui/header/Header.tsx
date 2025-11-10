@@ -7,10 +7,13 @@ import { PATHS } from "@config/path";
 import { ROLES } from "@config/routes";
 import NotificationIcon from "@/components/ui/notification/NotificationIcon";
 import NotificationDropdown from "@/components/ui/notification/NotificationDropdown";
+import CartIcon from "@/components/ui/cart/CartIcon";
+import CartDropdown from "@/components/ui/cart/CartDropdown";
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuthStore();
   const navigate = useNavigate();
   const toggleMenu = () => setMenuOpen((prev) => !prev);
@@ -43,10 +46,25 @@ const Header = () => {
           <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" aria-label="Tìm kiếm">
             <Search size={18} />
           </button>
+          <div className="relative">
+            <CartIcon 
+              onClick={() => {
+                setCartOpen(!cartOpen)
+                if (!cartOpen) setNotificationOpen(false)
+              }}
+            />
+            <CartDropdown 
+              isOpen={cartOpen}
+              onClose={() => setCartOpen(false)}
+            />
+          </div>
           {isAuthenticated && (
             <div className="relative">
               <NotificationIcon 
-                onClick={() => setNotificationOpen(!notificationOpen)}
+                onClick={() => {
+                  setNotificationOpen(!notificationOpen)
+                  if (!notificationOpen) setCartOpen(false)
+                }}
               />
               <NotificationDropdown 
                 isOpen={notificationOpen}
