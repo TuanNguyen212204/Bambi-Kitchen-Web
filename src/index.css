@@ -106,3 +106,12 @@ html {
 .animate-scroll {
   animation: scroll 60s linear infinite;
 }
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

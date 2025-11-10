@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useMemo } from "react"
 import { ShoppingCart, Plus, Minus, Trash2, X } from "lucide-react"
 import { useCartStore } from "@zustand/stores/cart"
 import { useNavigate } from "react-router-dom"
@@ -13,6 +13,14 @@ export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
   const { items, totalPrice, updateQuantity, removeItem, clearCart } = useCartStore()
   const navigate = useNavigate()
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Memoize image URLs để tránh re-render và nhấp nháy
+  const itemsWithImageUrl = useMemo(() => {
+    return items.map(item => ({
+      ...item,
+      imageUrl: item.dish.img_url || item.dish.imgUrl || "/placeholder-dish.png"
+    }))
+  }, [items])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -80,17 +88,22 @@ export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {items.map((item) => (
+            {itemsWithImageUrl.map((item) => (
               <div key={item.id} className="p-4 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start gap-3">
                   {/* Dish Image */}
                   <div className="flex-shrink-0 w-16 h-16 rounded-md overflow-hidden bg-gray-100">
                     <img
-                      src={item.dish.img_url || item.dish.imgUrl || "/placeholder-dish.png"}
+                      src={item.imageUrl}
                       alt={item.dish.name}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      key={item.imageUrl} // Key dựa trên URL để tránh re-render không cần thiết
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/placeholder-dish.png"
+                        const target = e.target as HTMLImageElement
+                        if (target.src !== "/placeholder-dish.png") {
+                          target.src = "/placeholder-dish.png"
+                        }
                       }}
                     />
                   </div>
@@ -100,6 +113,35 @@ export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
                     <h4 className="text-sm font-medium text-gray-900 truncate">
                       {item.dish.name}
                     </h4>
+                    {item.dish.type === "custom" && (() => {
+                      try {
+                        const customData = item.notes ? JSON.parse(item.notes) : null
+                        if (customData && customData.template) {
+                          return (
+                            <div className="mt-1 space-y-1">
+                              <p className="text-xs text-orange-600 font-medium">
+                                Tô tùy chỉnh
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Size: {customData.template.size}
+                              </p>
+                              {customData.recipe && customData.recipe.length > 0 && (
+                                <p className="text-xs text-gray-500">
+                                  {customData.recipe.length} nguyên liệu
+                                </p>
+                              )}
+                            </div>
+                          )
+                        }
+                      } catch (e) {
+                        // Invalid JSON, ignore
+                      }
+                      return (
+                        <p className="text-xs text-orange-600 mt-1 font-medium">
+                          Tô tùy chỉnh
+                        </p>
+                      )
+                    })()}
                     <p className="text-xs text-gray-500 mt-1">
                       {formatPrice(item.dish.price)}
                     </p>

@@ -8,6 +8,7 @@ export interface IngredientCategory {
   id: number
   name: string
   description?: string
+  priority?: number
 }
 
 export interface IngredientCategoryEntity {
