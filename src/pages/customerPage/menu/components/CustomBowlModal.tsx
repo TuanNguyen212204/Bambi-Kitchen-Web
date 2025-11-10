@@ -908,8 +908,6 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
                         const ingredient = ingredients.find(ing => ing.id === selected.ingredientId)
                         if (!ingredient) return null
                         
-                        const category = ingredientCategories.find(cat => cat.id === ingredient.categoryId)
-                        
                         // Xác định loại nguyên liệu từ priority
                         const typeLabel = selected.priority === 1 ? "Tinh Bột" 
                           : selected.priority === 2 ? "Protein"
