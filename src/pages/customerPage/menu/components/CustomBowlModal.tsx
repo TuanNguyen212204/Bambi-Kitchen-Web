@@ -213,9 +213,9 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
   // Get max limit for current step
   const getMaxLimit = () => {
     if (!selectedTemplate) return null
-    if (currentStep === "carb") return selectedTemplate.max_Carb
-    if (currentStep === "protein") return selectedTemplate.max_Protein
-    if (currentStep === "vegetable") return selectedTemplate.max_Vegetable
+    if (currentStep === "carb") return selectedTemplate.max_Carb ?? null
+    if (currentStep === "protein") return selectedTemplate.max_Protein ?? null
+    if (currentStep === "vegetable") return selectedTemplate.max_Vegetable ?? null
     return null
   }
   
@@ -909,7 +909,6 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
                         if (!ingredient) return null
                         
                         const category = ingredientCategories.find(cat => cat.id === ingredient.categoryId)
-                        const categoryName = category?.name || "Khác"
                         
                         // Xác định loại nguyên liệu từ priority
                         const typeLabel = selected.priority === 1 ? "Tinh Bột" 

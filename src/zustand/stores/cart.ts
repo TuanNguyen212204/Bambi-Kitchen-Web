@@ -214,23 +214,27 @@ if (typeof window !== "undefined") {
   setTimeout(async () => {
     try {
       const { useAuthStore } = await import("./auth")
-      useAuthStore.subscribe(
-        (state) => ({ isAuthenticated: state.isAuthenticated, userId: state.user?.id }),
-        (authState, prevAuthState) => {
-          // Nếu auth state thay đổi (login/logout)
-          if (authState.isAuthenticated !== prevAuthState.isAuthenticated || 
-              authState.userId !== prevAuthState.userId) {
-            if (authState.isAuthenticated && authState.userId) {
-              // User đã đăng nhập, load cart của user
-              useCartStore.getState().loadUserCart(authState.userId)
-            } else {
-              // User đã đăng xuất, clear cart
-              useCartStore.getState().clearCart()
-            }
+      useAuthStore.subscribe((state, prevState) => {
+        const authState = {
+          isAuthenticated: state.isAuthenticated,
+          userId: state.user?.id,
+        }
+        const prevAuthState = {
+          isAuthenticated: prevState?.isAuthenticated ?? false,
+          userId: prevState?.user?.id,
+        }
+
+        if (
+          authState.isAuthenticated !== prevAuthState.isAuthenticated ||
+          authState.userId !== prevAuthState.userId
+        ) {
+          if (authState.isAuthenticated && authState.userId) {
+            useCartStore.getState().loadUserCart(authState.userId)
+          } else {
+            useCartStore.getState().clearCart()
           }
-        },
-        { equalityFn: (a, b) => a.isAuthenticated === b.isAuthenticated && a.userId === b.userId }
-      )
+        }
+      })
     } catch {
       // Ignore errors nếu không thể subscribe
     }
