@@ -93,19 +93,25 @@ export default function CartDropdown({ isOpen, onClose }: CartDropdownProps) {
                 <div className="flex items-start gap-3">
                   {/* Dish Image */}
                   <div className="flex-shrink-0 w-16 h-16 rounded-md overflow-hidden bg-gray-100">
-                    <img
-                      src={item.imageUrl}
-                      alt={item.dish.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      key={item.imageUrl} // Key dựa trên URL để tránh re-render không cần thiết
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        if (target.src !== "/placeholder-dish.png") {
-                          target.src = "/placeholder-dish.png"
-                        }
-                      }}
-                    />
+                    {item.imageUrl && item.imageUrl !== "/placeholder-dish.png" ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.dish.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        key={item.imageUrl}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          target.style.display = 'none'
+                          if (target.nextElementSibling) {
+                            (target.nextElementSibling as HTMLElement).style.display = 'flex'
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-full h-full ${item.imageUrl && item.imageUrl !== "/placeholder-dish.png" ? 'hidden' : 'flex'} items-center justify-center`}>
+                      <span className="text-gray-400 text-[10px] text-center px-1">Không có ảnh</span>
+                    </div>
                   </div>
 
                   {/* Dish Info */}

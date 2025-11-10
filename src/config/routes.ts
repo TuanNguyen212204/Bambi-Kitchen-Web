@@ -10,6 +10,7 @@ const Success = lazy(() => import("@pages/success"))
 const ErrorPage = lazy(() => import("@pages/error/ErrorPage"))
 const OrdersPage = lazy(() => import("@pages/customerPage/orders/OrdersPage"))
 const ProfilePage = lazy(() => import("@pages/customerPage/profile/ProfilePage"))
+const CheckoutPage = lazy(() => import("@pages/customerPage/checkout/CheckoutPage"))
 
 const Home = lazy(() => import("@pages/customerPage/home/HomePage"))
 const MenuPage = lazy(() => import("@pages/customerPage/menu/MenuPage"))
@@ -160,6 +161,13 @@ export const CUSTOMER_PUBLIC_ROUTES: RouteConfig[] = [
 ]
 
 export const CUSTOMER_PRIVATE_ROUTES: RouteConfig[] = [
+  {
+    path: PATHS.ORDER,
+    component: CheckoutPage,
+    label: "Thanh toán",
+    protected: true,
+    role: [ROLES.CUSTOMER],
+  },
   {
     path: PATHS.ORDERS,
     component: OrdersPage,

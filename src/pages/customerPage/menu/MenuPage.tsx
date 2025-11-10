@@ -5,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@components/ui/button"
 import type { DishListSlice } from "@/zustand/slices/dish/list.slice"
 import type { DishCategory } from "@/models/category/category"
-import { useCartStore } from "@/zustand/stores/cart"
 import { Plus } from "lucide-react"
 import { useAuthStore } from "@zustand/stores/auth"
 import { useLocation, useNavigate } from "react-router-dom"
@@ -17,7 +16,8 @@ import PorkImg from "@assets/Menu/pork.png"
 import BeefImg from "@assets/Menu/beef.png"
 import ShrimpsImg from "@assets/Menu/shrimps.png"
 import BackgroundMenu from "@assets/Menu/backgroundMenu.png"
-import CustomBowlModal from "./components/CustomBowlModal"
+import CustomBowlModal from "@/components/customer/menu/CustomBowlModal"
+import PresetDishModal from "@/components/customer/menu/PresetDishModal"
 
 const fallbackImages = [TunaImg, PorkImg, BeefImg, ShrimpsImg]
 const getFallbackImage = (idx: number) => fallbackImages[idx % fallbackImages.length]
@@ -46,9 +46,12 @@ type LocalDishStore = {
   setSelectedCategoryId?: (id?: number) => void
 }
 
-const MenuCard: React.FC<{ dish: MenuDish, idx: number }>
-  = ({ dish, idx }) => {
-  const { addItem } = useCartStore()
+const MenuCard: React.FC<{ 
+  dish: MenuDish
+  idx: number
+  onAddToCart: (dish: MenuDish) => void
+}>
+  = ({ dish, idx, onAddToCart }) => {
   const { isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
@@ -58,18 +61,9 @@ const MenuCard: React.FC<{ dish: MenuDish, idx: number }>
       toast.info("Vui lòng đăng nhập để thêm món vào giỏ", {
         action: { label: "Đăng nhập", onClick: () => navigate(PATHS.LOGIN, { state: { from: location.pathname } }) },
       })
-    return
+      return
     }
-    // Convert MenuDish to Dish format for cart
-    const cartDish = {
-      id: dish.id,
-      name: dish.name,
-      price: dish.price || 0,
-      imageUrl: dish.imageUrl,
-      imgUrl: dish.imageUrl,
-      description: dish.description,
-    } as any
-    addItem(cartDish, 1)
+    onAddToCart(dish)
   }
   
   return (
@@ -113,6 +107,13 @@ const MenuPage: React.FC = () => {
   const [activeAnchorId, setActiveAnchorId] = useState<string | undefined>(anchors[0]?.id)
   const [showAllDishes, setShowAllDishes] = useState(false)
   const [customBowlModalOpen, setCustomBowlModalOpen] = useState(false)
+  const [presetDishModalOpen, setPresetDishModalOpen] = useState(false)
+  const [selectedDish, setSelectedDish] = useState<MenuDish | null>(null)
+
+  const handlePresetDishAdd = (dish: MenuDish) => {
+    setSelectedDish(dish)
+    setPresetDishModalOpen(true)
+  }
   
   // Số lượng dishes hiển thị ban đầu (hầu hết nhưng không phải tất cả)
   const INITIAL_DISHES_COUNT = 12
@@ -264,43 +265,64 @@ const MenuPage: React.FC = () => {
                 // Tính tổng số dishes từ tất cả categories
                 const totalDishes = ordered.reduce((sum, cat) => sum + (grouped.get(cat)?.length || 0), 0)
                 
-                // Tính số dishes đã hiển thị
-                let displayedCount = 0
-                const shouldShowMore = !showAllDishes && totalDishes > INITIAL_DISHES_COUNT
+                // Tính số dishes đã hiển thị khi chưa mở rộng
+                let displayedCountWhenCollapsed = 0
+                ordered.forEach((cat) => {
+                  const dishes = grouped.get(cat) || []
+                  if (displayedCountWhenCollapsed < INITIAL_DISHES_COUNT) {
+                    const remaining = INITIAL_DISHES_COUNT - displayedCountWhenCollapsed
+                    displayedCountWhenCollapsed += Math.min(dishes.length, remaining)
+                  }
+                })
                 
                 const sections = ordered.map((cat) => {
                   const dishes = grouped.get(cat) || []
-                  const dishesToDisplay = shouldShowMore && displayedCount < INITIAL_DISHES_COUNT
-                    ? dishes.slice(0, Math.max(0, INITIAL_DISHES_COUNT - displayedCount))
-                    : shouldShowMore && displayedCount >= INITIAL_DISHES_COUNT
-                    ? []
-                    : dishes
+                  const dishesToDisplay = showAllDishes 
+                    ? dishes // Hiển thị tất cả khi đã mở rộng
+                    : (() => {
+                        // Tính số dishes đã hiển thị trước category này
+                        let countBeforeThis = 0
+                        for (const c of ordered) {
+                          if (c === cat) break
+                          const ds = grouped.get(c) || []
+                          if (countBeforeThis < INITIAL_DISHES_COUNT) {
+                            const remaining = INITIAL_DISHES_COUNT - countBeforeThis
+                            countBeforeThis += Math.min(ds.length, remaining)
+                          } else {
+                            break
+                          }
+                        }
+                        // Hiển thị dishes của category này
+                        if (countBeforeThis >= INITIAL_DISHES_COUNT) {
+                          return [] // Đã hiển thị đủ, không hiển thị category này
+                        }
+                        const remaining = INITIAL_DISHES_COUNT - countBeforeThis
+                        return dishes.slice(0, Math.min(dishes.length, remaining))
+                      })()
                   
-                  displayedCount += dishesToDisplay.length
-                  
-                  if (dishesToDisplay.length === 0) return null
+                  if (dishesToDisplay.length === 0 && !showAllDishes) return null
                   
                   return (
                     <section key={cat} id={slugify(cat)} className="scroll-mt-28">
                       <h3 className="text-2xl font-bold text-gray-900 mb-4">{cat}</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-7">
                         {dishesToDisplay.map((dish, idx) => (
-                          <MenuCard key={dish.id} dish={dish} idx={idx} />
+                          <MenuCard key={dish.id} dish={dish} idx={idx} onAddToCart={handlePresetDishAdd} />
                         ))}
                       </div>
                     </section>
                   )
                 }).filter(Boolean)
                 
-                // Thêm nút "Xem thêm" sau section cuối cùng nếu cần
-                const showMoreButton = shouldShowMore && displayedCount < totalDishes ? (
+                // Thêm nút "Xem thêm"/"Thu gọn" sau section cuối cùng nếu cần
+                const showMoreButton = totalDishes > INITIAL_DISHES_COUNT ? (
                   <div key="show-more" className="text-center mt-8">
                     <Button
-                      onClick={() => setShowAllDishes(true)}
+                      onClick={() => setShowAllDishes(!showAllDishes)}
                       variant="outline"
                       className="px-6 py-2 border-2 border-orange-500 text-orange-500 hover:bg-orange-50"
                     >
-                      Xem thêm ({totalDishes - displayedCount} món)
+                      {showAllDishes ? "Thu gọn" : `Xem thêm (${totalDishes - displayedCountWhenCollapsed} món)`}
                     </Button>
                   </div>
                 ) : null
@@ -353,6 +375,14 @@ const MenuPage: React.FC = () => {
       <CustomBowlModal 
         open={customBowlModalOpen}
         onClose={() => setCustomBowlModalOpen(false)}
+      />
+      <PresetDishModal
+        open={presetDishModalOpen}
+        onClose={() => {
+          setPresetDishModalOpen(false)
+          setSelectedDish(null)
+        }}
+        dish={selectedDish}
       />
     </main>
   )
