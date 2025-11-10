@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { LogOut, User as UserIcon, Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { LogOut, User as UserIcon } from "lucide-react";
 import { useAuthStore } from "@/zustand/stores/auth";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import logo from "@assets/logo.png";
 import { PATHS } from "@config/path";
 import { ROLES } from "@config/routes";
@@ -16,11 +16,60 @@ const Header = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const toggleMenu = () => setMenuOpen((prev) => !prev);
+  const location = useLocation();
+  
+  // Hàm đóng tất cả dropdowns
+  const closeAllDropdowns = () => {
+    setMenuOpen(false);
+    setNotificationOpen(false);
+    setCartOpen(false);
+  };
+
+  // Hàm mở cart dropdown và đóng các dropdown khác
+  const handleCartToggle = () => {
+    if (cartOpen) {
+      setCartOpen(false);
+    } else {
+      closeAllDropdowns();
+      setCartOpen(true);
+    }
+  };
+
+  // Hàm mở notification dropdown và đóng các dropdown khác
+  const handleNotificationToggle = () => {
+    if (notificationOpen) {
+      setNotificationOpen(false);
+    } else {
+      closeAllDropdowns();
+      setNotificationOpen(true);
+    }
+  };
+
+  // Hàm mở user menu dropdown và đóng các dropdown khác
+  const handleMenuToggle = () => {
+    if (menuOpen) {
+      setMenuOpen(false);
+    } else {
+      closeAllDropdowns();
+      setMenuOpen(true);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate(PATHS.LOGIN);
+    closeAllDropdowns();
   };
+
+  // Đóng tất cả dropdowns khi click vào navigation links hoặc logo
+  // Note: Các dropdown component đã có logic riêng để đóng khi click bên ngoài dropdown
+  // Chúng ta chỉ cần đóng khi navigate hoặc click vào các phần tử navigation
+
+  // Đóng dropdowns khi navigate (thay đổi route)
+  useEffect(() => {
+    closeAllDropdowns();
+  }, [location.pathname]);
+
   return (
     <header className="fixed top-0 left-0 w-full h-[82px] bg-white z-50 shadow-md px-0">
       <div className="max-w-[1600px] mx-auto w-full h-full flex items-center px-2">
@@ -43,28 +92,21 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-4">
-          <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" aria-label="Tìm kiếm">
-            <Search size={18} />
-          </button>
-          <div className="relative">
-            <CartIcon 
-              onClick={() => {
-                setCartOpen(!cartOpen)
-                if (!cartOpen) setNotificationOpen(false)
-              }}
-            />
-            <CartDropdown 
-              isOpen={cartOpen}
-              onClose={() => setCartOpen(false)}
-            />
-          </div>
+          {isAuthenticated && (
+            <div className="relative">
+              <CartIcon 
+                onClick={handleCartToggle}
+              />
+              <CartDropdown 
+                isOpen={cartOpen}
+                onClose={() => setCartOpen(false)}
+              />
+            </div>
+          )}
           {isAuthenticated && (
             <div className="relative">
               <NotificationIcon 
-                onClick={() => {
-                  setNotificationOpen(!notificationOpen)
-                  if (!notificationOpen) setCartOpen(false)
-                }}
+                onClick={handleNotificationToggle}
               />
               <NotificationDropdown 
                 isOpen={notificationOpen}
@@ -74,7 +116,11 @@ const Header = () => {
           )}
           {isAuthenticated ? (
             <div className="relative">
-              <button className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" onClick={toggleMenu} aria-label="Tài khoản">
+              <button 
+                className="w-9 h-9 p-0 flex items-center justify-center rounded hover:bg-gray-50" 
+                onClick={handleMenuToggle} 
+                aria-label="Tài khoản"
+              >
                 <UserIcon size={18} />
               </button>
               {menuOpen && (
@@ -84,7 +130,7 @@ const Header = () => {
                     <button
                       className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
                       onClick={() => {
-                        setMenuOpen(false);
+                        closeAllDropdowns();
                         navigate(PATHS.ADMIN);
                       }}
                     >
@@ -95,7 +141,7 @@ const Header = () => {
                   <button
                     className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
                     onClick={() => {
-                      setMenuOpen(false);
+                      closeAllDropdowns();
                       if (user?.role_id === ROLES.ADMIN) {
                         navigate(`${PATHS.ADMIN}/profile`);
                       } else {
@@ -106,7 +152,10 @@ const Header = () => {
                     <UserIcon size={16} />
                     Thông tin người dùng
                   </button>
-                  <button className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2" onClick={handleLogout}>
+                  <button 
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2" 
+                    onClick={handleLogout}
+                  >
                     <LogOut size={16} />
                     Đăng xuất
                   </button>

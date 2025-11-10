@@ -104,6 +104,14 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
 
       set({ user, userHydrated: true, loading: false })
 
+      // Load cart của user sau khi login thành công
+      try {
+        const { useCartStore } = await import("@/zustand/stores/cart")
+        useCartStore.getState().loadUserCart(user.id)
+      } catch {
+        // Ignore errors
+      }
+
       const { toast } = await import("sonner")
       toast.success("Đăng nhập thành công!")
 
@@ -187,6 +195,14 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
 
+    // Clear cart khi đăng xuất
+    try {
+      const { useCartStore } = await import("@/zustand/stores/cart")
+      useCartStore.getState().clearCart()
+    } catch {
+      // Ignore errors
+    }
+
     if (hadSession) {
       const toastModule = await import("sonner")
       toastModule.toast.success("Đăng xuất thành công!", {
@@ -211,20 +227,32 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       const me = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME)
       
       // Không ghi đè token (tránh gán "session-based" làm hỏng Authorization header)
+      const userData = me.data ? {
+        id: me.data.id,
+        name: me.data.name,
+        role: (me.data.role || "USER") as "USER" | "ADMIN" | "STAFF",
+        email: me.data.mail,
+        role_id: ((me.data.role || "USER") === "ADMIN" ? 1 : (me.data.role === "STAFF" ? 3 : 4)) as 1 | 3 | 4,
+      } : null
+      
       set((state) => ({
         token: state.token,
         isAuthenticated: true,
         loading: false,
         // Nếu chưa có user (VD refresh trang), đồng bộ user dựa trên /me
-        user: state.user || (me.data ? {
-          id: me.data.id,
-          name: me.data.name,
-          role: (me.data.role || "USER") as "USER" | "ADMIN" | "STAFF",
-          email: me.data.mail,
-          role_id: ((me.data.role || "USER") === "ADMIN" ? 1 : (me.data.role === "STAFF" ? 3 : 4)) as 1 | 3 | 4,
-        } : state.user),
+        user: state.user || userData,
         userHydrated: true,
       }))
+
+      // Load cart của user nếu có user data
+      if (userData?.id) {
+        try {
+          const { useCartStore } = await import("@/zustand/stores/cart")
+          useCartStore.getState().loadUserCart(userData.id)
+        } catch {
+          // Ignore errors
+        }
+      }
 
     } catch {
       set({

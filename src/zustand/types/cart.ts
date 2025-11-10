@@ -19,5 +19,6 @@ export interface CartState {
   updateNotes: (itemId: number, notes: string) => void
   clearCart: () => void
   getItemQuantity: (dishId: number) => number
+  loadUserCart: (userId: number) => void
 }
 
