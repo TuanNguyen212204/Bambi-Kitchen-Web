@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Quote, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Quote, Star } from "lucide-react";
 import { bambiPublicApi } from "@utils/api";
 import { API_ENDPOINTS } from "@utils/endpoints";
 
@@ -54,7 +54,7 @@ const TestimonialCard: React.FC<{ testimonial: Testimonial }> = ({ testimonial }
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+    <div className="flex-shrink-0 w-[380px] bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 mx-3 min-w-[380px]">
       <div className="flex items-center mb-4">
         <img
           src={testimonial.avatar}
@@ -69,7 +69,6 @@ const TestimonialCard: React.FC<{ testimonial: Testimonial }> = ({ testimonial }
       
       <div className="flex items-center mb-3">
         {renderStars(testimonial.rating)}
-        <span className="ml-2 text-sm text-gray-500">({testimonial.orderDate})</span>
       </div>
       
       <div className="relative">
@@ -81,12 +80,10 @@ const TestimonialCard: React.FC<{ testimonial: Testimonial }> = ({ testimonial }
 };
 
 const Testimonials: React.FC<TestimonialsProps> = ({ testimonials: propTestimonials }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [feedbacks, setFeedbacks] = useState<FeedbackDto[]>([]);
   const [allFeedbacks, setAllFeedbacks] = useState<FeedbackDto[]>([]); // Tất cả feedback để tính stats
   const [orders, setOrders] = useState<OrdersResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const itemsPerPage = 3;
 
   // Fetch feedbacks and orders from API
   useEffect(() => {
@@ -141,19 +138,12 @@ const Testimonials: React.FC<TestimonialsProps> = ({ testimonials: propTestimoni
     }));
   }, [feedbacks, propTestimonials]);
 
-  const nextTestimonials = () => {
-    setCurrentIndex((prev) => 
-      prev + itemsPerPage >= testimonials.length ? 0 : prev + itemsPerPage
-    );
-  };
-
-  const prevTestimonials = () => {
-    setCurrentIndex((prev) => 
-      prev - itemsPerPage < 0 ? Math.max(0, testimonials.length - itemsPerPage) : prev - itemsPerPage
-    );
-  };
-
-  const currentTestimonials = testimonials.slice(currentIndex, currentIndex + itemsPerPage);
+  // Duplicate testimonials để tạo hiệu ứng infinite scroll
+  const duplicatedTestimonials = useMemo(() => {
+    if (testimonials.length === 0) return [];
+    // Duplicate 2 lần để đảm bảo scroll mượt mà
+    return [...testimonials, ...testimonials];
+  }, [testimonials]);
 
   // Tính toán stats từ dữ liệu thực
   const stats = useMemo(() => {
@@ -217,49 +207,34 @@ const Testimonials: React.FC<TestimonialsProps> = ({ testimonials: propTestimoni
             <p className="text-gray-500">Chưa có đánh giá nào</p>
           </div>
         ) : (
-          <div className="relative">
-            {/* Navigation Buttons */}
-            {testimonials.length > itemsPerPage && (
-              <>
-                <button
-                  onClick={prevTestimonials}
-                  className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  <ChevronLeft className="w-5 h-5 text-gray-600" />
-                </button>
-                
-                <button
-                  onClick={nextTestimonials}
-                  className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  <ChevronRight className="w-5 h-5 text-gray-600" />
-                </button>
-              </>
-            )}
-
-            {/* Testimonials Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {currentTestimonials.map((testimonial) => (
-                <TestimonialCard key={testimonial.id} testimonial={testimonial} />
-              ))}
+          <div className="relative overflow-hidden py-8">
+            {/* Gradient overlays để tạo hiệu ứng fade ở 2 bên */}
+            <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-orange-50 via-orange-50/50 to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-orange-50 via-orange-50/50 to-transparent z-10 pointer-events-none"></div>
+            
+            {/* Scrolling Container với animation */}
+            <div className="overflow-hidden">
+              <div 
+                className="flex"
+                style={{
+                  animation: `scroll-horizontal ${testimonials.length * 25}s linear infinite`,
+                }}
+              >
+                {duplicatedTestimonials.map((testimonial, index) => (
+                  <TestimonialCard key={`${testimonial.id}-${index}`} testimonial={testimonial} />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Dots Indicator */}
-        {testimonials.length > itemsPerPage && (
-          <div className="flex justify-center mt-8 space-x-2">
-            {Array.from({ length: Math.ceil(testimonials.length / itemsPerPage) }).map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentIndex(index * itemsPerPage)}
-                className={`w-3 h-3 rounded-full transition-colors ${
-                  index === Math.floor(currentIndex / itemsPerPage)
-                    ? 'bg-orange-500'
-                    : 'bg-gray-300'
-                }`}
-              />
-            ))}
+            <style>{`
+              @keyframes scroll-horizontal {
+                0% {
+                  transform: translateX(0);
+                }
+                100% {
+                  transform: translateX(calc(-404px * ${testimonials.length}));
+                }
+              }
+            `}</style>
           </div>
         )}
 
