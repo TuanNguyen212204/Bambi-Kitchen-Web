@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react"
-import { X, ChevronLeft, ChevronRight, Check, ChefHat } from "lucide-react"
+import { X, ChevronLeft, ChevronRight, Check } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { toast } from "sonner"

@@ -97,7 +97,7 @@ export const CheckoutCartItemsSection: React.FC<CheckoutCartItemsSectionProps> =
     <div className="space-y-4">
       {items.map((item) => {
         const itemPrice = (item.dish.price || 0) * item.quantity
-        const hasImage = item.dish.imgUrl || item.dish.imageUrl || item.dish.img_url
+        const hasImage = item.dish.imgUrl || item.dish.img_url
         const itemData = parseItemData(item.notes)
         const recipeModifications = getRecipeModifications(itemData.recipe)
         const size = itemData.dishTemplate?.size
@@ -109,7 +109,7 @@ export const CheckoutCartItemsSection: React.FC<CheckoutCartItemsSectionProps> =
               <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                 {hasImage ? (
                   <img
-                    src={item.dish.imgUrl || item.dish.imageUrl || item.dish.img_url}
+                    src={item.dish.imgUrl || item.dish.img_url}
                     alt={item.dish.name}
                     className="w-full h-full object-cover"
                     loading="lazy"
