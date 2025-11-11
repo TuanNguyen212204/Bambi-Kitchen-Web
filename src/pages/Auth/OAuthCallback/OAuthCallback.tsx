@@ -17,11 +17,14 @@ const OAuthCallback = () => {
     const handleOAuthCallback = async () => {
       try {
         const token = searchParams.get('token');
+        console.log('[OAuthCallback] Mounted. Current URL:', window.location.href);
+        console.log('[OAuthCallback] Token from query:', token ? '(present)' : '(missing)');
         
         if (!token) {
           // Một số luồng backend trả token qua cookie (HTTP-only) mà không đính kèm trên URL.
           // Thử gọi /me: nếu đã đăng nhập, điều hướng theo role; nếu chưa, báo lỗi.
           try {
+            console.log('[OAuthCallback] No token in URL. Trying /me to check session via cookie...');
             const meResp = await bambiApi.get<{ id: number; name?: string; mail?: string; phone?: string; role?: 'ADMIN'|'STAFF'|'USER' }>(API_ENDPOINTS.AUTH_ME);
             const me = meResp.data
             const finalUser = {
@@ -37,9 +40,12 @@ const OAuthCallback = () => {
                finalUser.role === 'STAFF' ? PATHS.ADMIN_ORDERS : 
                PATHS.HOME);
             localStorage.removeItem('redirectAfterLogin');
-            navigate(redirectTo, { replace: true })
+            console.log('[OAuthCallback] /me success. Redirecting to (no-token flow):', redirectTo);
+            // Dùng hard navigation để tránh bất kỳ guard nào chặn giữa đường
+            window.location.replace(`${window.location.origin}${redirectTo}`);
             return
           } catch {
+            console.warn('[OAuthCallback] /me failed and no token in URL.');
             setError('Không tìm thấy token trong URL');
             setIsProcessing(false);
             return;
@@ -47,7 +53,10 @@ const OAuthCallback = () => {
         }
 
         // 1) Lưu token ngay để các request sau dùng được Authorization
+        console.log('[OAuthCallback] Setting session token...');
         setSession(token);
+        // Đợi một nhịp ngắn để đảm bảo persist/interceptor có thể đọc được token
+        await new Promise((r) => setTimeout(r, 50));
 
         // 2) Phân tích role trực tiếp từ token và điều hướng NGAY (tránh bị thấy trang login do độ trễ /me)
         let roleFromToken: 'ADMIN' | 'STAFF' | 'USER' = 'USER'
@@ -65,14 +74,19 @@ const OAuthCallback = () => {
           }
           userFromToken = typedUser
           setUser(typedUser)
-        } catch { /* ignore */ }
+          console.log('[OAuthCallback] Decoded JWT payload role:', roleFromToken, 'userId:', typedUser.id);
+        } catch { /* ignore */ 
+          console.warn('[OAuthCallback] Failed to decode token payload.');
+        }
 
         const immediateRedirect = localStorage.getItem('redirectAfterLogin') || 
           (roleFromToken === 'ADMIN' ? PATHS.ADMIN :
            roleFromToken === 'STAFF' ? PATHS.ADMIN_ORDERS :
            PATHS.HOME);
         localStorage.removeItem('redirectAfterLogin');
-        navigate(immediateRedirect, { replace: true });
+        console.log('[OAuthCallback] Redirecting immediately to:', immediateRedirect, 'using hard replace.');
+        // Dùng hard replace để tránh race-condition với Authentication/Authorization guard
+        window.location.replace(`${window.location.origin}${immediateRedirect}`);
 
         // 3) Gọi /me ở nền để hydrate dữ liệu người dùng chính xác hơn (không điều hướng lại)
         try {
