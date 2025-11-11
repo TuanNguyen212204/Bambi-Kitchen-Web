@@ -19,9 +19,31 @@ const OAuthCallback = () => {
         const token = searchParams.get('token');
         
         if (!token) {
-          setError('Không tìm thấy token trong URL');
-          setIsProcessing(false);
-          return;
+          // Một số luồng backend trả token qua cookie (HTTP-only) mà không đính kèm trên URL.
+          // Thử gọi /me: nếu đã đăng nhập, điều hướng theo role; nếu chưa, báo lỗi.
+          try {
+            const meResp = await bambiApi.get<{ id: number; name?: string; mail?: string; phone?: string; role?: 'ADMIN'|'STAFF'|'USER' }>(API_ENDPOINTS.AUTH_ME);
+            const me = meResp.data
+            const finalUser = {
+              id: me.id,
+              name: me.name || 'User',
+              email: me.mail || '',
+              role: me.role || 'USER' as const,
+              role_id: (me.role === 'ADMIN' ? 1 : me.role === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
+            }
+            setUser(finalUser)
+            const redirectTo = localStorage.getItem('redirectAfterLogin') || 
+              (finalUser.role === 'ADMIN' ? PATHS.ADMIN : 
+               finalUser.role === 'STAFF' ? PATHS.STAFF : 
+               PATHS.HOME);
+            localStorage.removeItem('redirectAfterLogin');
+            navigate(redirectTo, { replace: true })
+            return
+          } catch {
+            setError('Không tìm thấy token trong URL');
+            setIsProcessing(false);
+            return;
+          }
         }
 
         setSession(token);
