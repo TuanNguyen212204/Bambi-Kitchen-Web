@@ -84,7 +84,7 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
           const current = useIngredientStore.getState().sessionCreatedIds || []
           useIngredientStore.setState({ sessionCreatedIds: Array.from(new Set([...current, id])) })
         }
-      } catch { }
+      } catch { /* ignore optional session id tracking */ }
       await useIngredientStore.getState().fetchAll()
 
       const { toast } = await import("sonner")
@@ -173,7 +173,7 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
       
       // Refresh the ingredient list after updating
       const { useIngredientStore } = await import("@zustand/stores/ingredients")
-      useIngredientStore.getState().fetchAll()
+      await useIngredientStore.getState().fetchAll()
       
       if (!payload.silent) {
         const { toast } = await import("sonner")
