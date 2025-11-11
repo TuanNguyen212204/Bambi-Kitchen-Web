@@ -82,7 +82,8 @@ export default function LoginPage() {
         // Vào thẳng trang admin (không auto chuyển dashboard)
         destination = `${PATHS.ADMIN}`
       } else if (roleId === ROLES.STAFF) {
-        destination = PATHS.STAFF
+        // Staff vào khu quản trị, trang đầu tiên là Đơn hàng
+        destination = `${PATHS.ADMIN_ORDERS}`
       }
       navigatedRef.current = true
       startTransition(() => {
