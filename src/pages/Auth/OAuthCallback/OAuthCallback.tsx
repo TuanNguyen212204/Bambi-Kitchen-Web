@@ -51,19 +51,20 @@ const OAuthCallback = () => {
 
         // 2) Phân tích role trực tiếp từ token và điều hướng NGAY (tránh bị thấy trang login do độ trễ /me)
         let roleFromToken: 'ADMIN' | 'STAFF' | 'USER' = 'USER'
-        let userFromToken: { id?: number; name?: string; email?: string; role?: 'ADMIN'|'STAFF'|'USER'; role_id?: 1|3|4 } | null = null
+        let userFromToken: { id: number; name: string; email: string; role: 'ADMIN'|'STAFF'|'USER'; role_id: 1|3|4 } | null = null
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
           const role = (payload.roles?.[0] || 'USER') as 'ADMIN'|'STAFF'|'USER'
           roleFromToken = role
-          userFromToken = {
-            id: parseInt(payload.sub),
-            name: payload.name || payload.email || 'User',
-            email: payload.email || '',
+          const typedUser = {
+            id: Number.isFinite(Number(payload.sub)) ? parseInt(payload.sub) : 0,
+            name: (payload.name || payload.email || 'User') as string,
+            email: (payload.email || '') as string,
             role,
             role_id: (role === 'ADMIN' ? 1 : role === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
           }
-          setUser(userFromToken)
+          userFromToken = typedUser
+          setUser(typedUser)
         } catch { /* ignore */ }
 
         const immediateRedirect = localStorage.getItem('redirectAfterLogin') || 
