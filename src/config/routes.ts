@@ -223,7 +223,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminOrders,
     label: "Orders",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {
@@ -231,7 +231,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminMenu,
     label: "Menu",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   // Ẩn tạm thời - giữ code để sử dụng trong tương lai
@@ -248,7 +248,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminIngredientCategory,
     label: "Ingredient Categories",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {
@@ -256,7 +256,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminDishTemplate,
     label: "Dish Templates",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {
@@ -264,7 +264,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminIngredients,
     label: "Ingredients",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {
@@ -272,7 +272,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminFeedback,
     label: "Feedback",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {
@@ -304,7 +304,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminNotifications,
     label: "Quản lý Thông báo",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {

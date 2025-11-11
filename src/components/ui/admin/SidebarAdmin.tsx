@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { PATHS } from "@/config/path";
 import { useAuthStore } from "@/zustand/stores/auth";
+import { ROLES } from "@/config/routes";
 import { useNavigate } from "react-router-dom";
 
 type Item = { to: string; label: string; icon: React.ComponentType<{ className?: string }> }
@@ -85,17 +86,53 @@ const groups: Group[] = [
 const SidebarAdmin = () => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
   const navigate = useNavigate();
+
+  // Lọc nhóm và item theo role
+  const visibleGroups = useMemo(() => {
+    const roleId = user?.role_id
+    // clone sâu đơn giản
+    const cloneGroups: Group[] = groups.map(g => ({ ...g, items: g.items.slice() }))
+
+    if (roleId === ROLES.ADMIN) {
+      // ADMIN: chỉ Tổng quan (Dashboard) và Người dùng (Khách hàng, Staff)
+      return cloneGroups
+        .map((g) => {
+          if (g.key === "overview") {
+            return { ...g, items: g.items.filter(it => it.to === PATHS.ADMIN) }
+          }
+          if (g.key === "user") {
+            return g
+          }
+          return { ...g, items: [] }
+        })
+        .filter(g => g.items.length > 0)
+    }
+
+    // STAFF: tất cả trừ Dashboard và nhóm Người dùng
+    return cloneGroups
+      .map((g) => {
+        if (g.key === "overview") {
+          // chỉ giữ Đơn hàng
+          return { ...g, items: g.items.filter(it => it.to === PATHS.ADMIN_ORDERS) }
+        }
+        if (g.key === "user") {
+          return { ...g, items: [] }
+        }
+        return g
+      })
+      .filter(g => g.items.length > 0)
+  }, [user?.role_id])
 
   const initiallyOpen = useMemo(() => {
     const path = location.pathname;
     const result: Record<string, boolean> = {};
-    groups.forEach((g) => {
+    (visibleGroups || []).forEach((g) => {
       result[g.key] = g.items.some((it) => path.startsWith(it.to));
     });
     return result;
-  }, [location.pathname]);
+  }, [location.pathname, visibleGroups]);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(initiallyOpen);
 
@@ -132,7 +169,7 @@ const SidebarAdmin = () => {
 
       {/* Menu items có thể scroll */}
       <nav className="flex flex-col gap-2 pt-4 px-3 flex-1 overflow-y-auto overflow-x-hidden min-h-0">
-        {groups.map((group) => {
+        {visibleGroups.map((group) => {
           const GroupIcon = group.icon;
           const isOpen = openGroups[group.key];
           return (
