@@ -91,7 +91,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
           const recipe: Record<number, number> = {}
           
           // Trường hợp 1: Response là array trực tiếp (array of Recipe với ingredient và quantity)
-          // Đây là format đúng: mỗi item có ingredient object và quantity trong recipe
+          // Đây là format legacy: mỗi item có ingredient object và quantity trong recipe
           if (Array.isArray(res.data)) {
             res.data.forEach((r: any) => {
               if (r.ingredient?.id && typeof r.quantity === 'number') {
@@ -100,18 +100,32 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
             })
             setIngredients(recipe)
           }
-          // Trường hợp 2: Response là object có ingredients array (IngredientsGetByDishResponse)
-          // LƯU Ý: IngredientsGetByDishResponse.ingredients là array of Ingredient
-          // Ingredient.quantity là tổng số lượng trong kho, KHÔNG phải quantity trong recipe
-          // Cần lấy từ Recipe entity riêng, không parse từ đây
-          // Nếu API chỉ trả về IngredientsGetByDishResponse (không có quantity trong recipe),
-          // thì không set ingredients từ đây (giữ nguyên state hiện tại hoặc dùng props)
+          // Trường hợp 2: Response là IngredientsGetByDishResponse object (API v3)
+          // Theo API docs: ingredients là array of IngredientDetail
+          // IngredientDetail có: id, name, storedQuantity, neededQuantity, category, imageUrl
+          // Cần lấy neededQuantity (số lượng cần để làm món) để set vào ingredients state
           else if (res.data && typeof res.data === 'object' && 'ingredients' in res.data && Array.isArray((res.data as any).ingredients)) {
-            // KHÔNG lấy quantity từ Ingredient vì đó là quantity trong kho, không phải trong recipe
-            // Chỉ set ingredients nếu có quantity từ recipe (nhưng IngredientsGetByDishResponse không có)
-            // Giữ nguyên state hiện tại hoặc dùng từ dish?.ingredients prop
-            console.warn("API returned IngredientsGetByDishResponse but it doesn't contain recipe quantities. Keeping current ingredients state.")
-            // Không set ingredients từ đây vì không có quantity trong recipe
+            const responseData = res.data as {
+              ingredients?: Array<{
+                id: number
+                name?: string
+                storedQuantity?: number
+                neededQuantity?: number
+                category?: {
+                  id?: number
+                  name?: string
+                }
+                imageUrl?: string
+              }>
+            }
+            
+            const ingArray = responseData.ingredients || []
+            ingArray.forEach((ing) => {
+              if (ing.id && typeof ing.neededQuantity === 'number') {
+                recipe[ing.id] = ing.neededQuantity
+              }
+            })
+            setIngredients(recipe)
           }
         } catch (error) {
           console.error("Error fetching recipe:", error)

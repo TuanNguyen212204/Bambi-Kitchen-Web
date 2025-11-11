@@ -4,6 +4,7 @@ import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
 import { Image as ImageIcon, Edit3, Utensils, DollarSign } from "lucide-react";
 import EditDishModal from "./EditDishModal";
+import { useIngredientStore } from "@zustand/stores/ingredients";
 
 interface DishDetailModalProps {
   open: boolean;
@@ -17,12 +18,22 @@ export function DishDetailModal({
   dish 
 }: DishDetailModalProps) {
   const [dishDetails, setDishDetails] = useState<any>(null);
-  const [recipe, setRecipe] = useState<Array<{ ingredient: { id: number; name: string; unit?: string }; quantity: number }>>([]);
+  const [recipe, setRecipe] = useState<Array<{ 
+    ingredient: { id: number; name: string; unit?: string }; 
+    quantity: number;
+    storedQuantity?: number;
+    neededQuantity?: number;
+  }>>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { items: ingredientList, fetchAll } = useIngredientStore();
 
   useEffect(() => {
     if (open && dish?.id) {
+      // Fetch ingredients nếu chưa có (để lấy unit)
+      if (ingredientList.length === 0) {
+        fetchAll().catch(() => {});
+      }
       loadDishDetails();
     } else {
       setDishDetails(null);
@@ -41,14 +52,24 @@ export function DishDetailModal({
       const dishRes = await bambiApi.get(API_ENDPOINTS.API_DISH_BY_ID(dish.id));
       setDishDetails(dishRes.data);
       
-      // Load recipe - API trả về IngredientsGetByDishResponse hoặc array of Recipe
+      // Load recipe - API trả về IngredientsGetByDishResponse (API v3)
       try {
         const recipeRes = await bambiApi.get(API_ENDPOINTS.API_RECIPE_BY_DISH(dish.id));
-        let recipeData: Array<{ ingredient: { id: number; name: string; unit?: string }; quantity: number }> = [];
+        let recipeData: Array<{ 
+          ingredient: { id: number; name: string; unit?: string }; 
+          quantity: number;
+          storedQuantity?: number;
+          neededQuantity?: number;
+        }> = [];
         
-        // Trường hợp 1: Response là array trực tiếp (array of Recipe với ingredient và quantity)
+        // Trường hợp 1: Response là array trực tiếp (array of Recipe với ingredient và quantity) - Legacy format
         if (Array.isArray(recipeRes.data)) {
-          const validRecipes: Array<{ ingredient: { id: number; name: string; unit?: string }; quantity: number }> = [];
+          const validRecipes: Array<{ 
+            ingredient: { id: number; name: string; unit?: string }; 
+            quantity: number;
+            storedQuantity?: number;
+            neededQuantity?: number;
+          }> = [];
           recipeRes.data.forEach((r: any) => {
             if (r.ingredient && typeof r.quantity === 'number') {
               validRecipes.push({
@@ -57,24 +78,46 @@ export function DishDetailModal({
                   name: r.ingredient.name || '',
                   unit: r.ingredient.unit
                 },
-                quantity: r.quantity
+                quantity: r.quantity,
+                storedQuantity: r.ingredient.available || r.ingredient.quantity,
+                neededQuantity: r.quantity
               });
             }
           });
           recipeData = validRecipes;
         }
-        // Trường hợp 2: Response là object có ingredients array
+        // Trường hợp 2: Response là IngredientsGetByDishResponse object (API v3)
+        // Theo API docs: ingredients là array of IngredientDetail
+        // IngredientDetail có: id, name, storedQuantity, neededQuantity, category, imageUrl
         else if (recipeRes.data && typeof recipeRes.data === 'object' && 'ingredients' in recipeRes.data && Array.isArray((recipeRes.data as any).ingredients)) {
-          // Nếu ingredients là array của Ingredient (không có quantity), cần lấy từ Recipe riêng
-          // Hoặc có thể structure khác, tạm thời giữ nguyên
-          recipeData = (recipeRes.data as any).ingredients.map((ing: any) => ({
-            ingredient: {
-              id: ing.id,
-              name: ing.name || '',
-              unit: ing.unit
-            },
-            quantity: ing.quantity || 0
-          }));
+          const responseData = recipeRes.data as {
+            ingredients?: Array<{
+              id: number
+              name?: string
+              storedQuantity?: number
+              neededQuantity?: number
+              category?: {
+                id?: number
+                name?: string
+              }
+              imageUrl?: string
+            }>
+          }
+          
+          recipeData = (responseData.ingredients || []).map((ing: any) => {
+            // Lấy unit từ allIngredients nếu có (IngredientDetail không có unit field)
+            const ingredientFromStore = ingredientList.find(i => i.id === ing.id)
+            return {
+              ingredient: {
+                id: ing.id,
+                name: ing.name || '',
+                unit: ingredientFromStore?.unit
+              },
+              quantity: ing.neededQuantity || 0,
+              storedQuantity: ing.storedQuantity || 0,
+              neededQuantity: ing.neededQuantity || 0
+            };
+          });
         }
         
         setRecipe(recipeData);
@@ -186,17 +229,50 @@ export function DishDetailModal({
                   <div className="border rounded-lg overflow-hidden">
                     <div className="max-h-60 overflow-y-auto">
                       <div className="divide-y">
-                        {recipe.map((r, idx) => (
-                          <div key={idx} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3">
-                            <div className="text-sm text-gray-800 truncate" title={r.ingredient.name}>
-                              {r.ingredient.name}
+                        {recipe.map((r, idx) => {
+                          const formatUnit = (unit?: string) => {
+                            if (!unit) return "";
+                            const unitMap: Record<string, string> = {
+                              GRAM: "g",
+                              KILOGRAM: "kg",
+                              LITER: "l",
+                              PCS: "phần",
+                            };
+                            return unitMap[unit.toUpperCase()] || unit.toLowerCase();
+                          };
+                          
+                          const unit = formatUnit(r.ingredient.unit);
+                          const storedQty = r.storedQuantity ?? 0;
+                          const neededQty = r.neededQuantity ?? r.quantity ?? 0;
+                          const isLowStock = storedQty < neededQty;
+                          
+                          return (
+                            <div key={idx} className="px-4 py-3 hover:bg-gray-50">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-sm font-medium text-gray-800 truncate flex-1" title={r.ingredient.name}>
+                                  {r.ingredient.name}
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 text-xs">
+                                <div>
+                                  <span className="text-gray-500">Cần dùng: </span>
+                                  <span className="font-semibold text-gray-800">
+                                    {neededQty.toLocaleString('vi-VN')} {unit}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Trong kho: </span>
+                                  <span className={`font-semibold ${isLowStock ? 'text-red-600' : 'text-gray-800'}`}>
+                                    {storedQty.toLocaleString('vi-VN')} {unit}
+                                  </span>
+                                  {isLowStock && (
+                                    <Badge variant="destructive" className="ml-2 text-xs">Thiếu</Badge>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-right text-sm tabular-nums">{r.quantity}</div>
-                            <div className="text-xs uppercase text-gray-500 w-14 text-right">
-                              {String(r.ingredient.unit || '').toLowerCase()}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
