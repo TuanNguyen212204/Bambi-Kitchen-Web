@@ -143,7 +143,7 @@ const Header = () => {
                       className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
                       onClick={() => {
                         closeAllDropdowns();
-                        navigate(PATHS.STAFF);
+                        navigate(PATHS.ADMIN_ORDERS);
                       }}
                     >
                       <UserIcon size={16} />
