@@ -34,7 +34,7 @@ const OAuthCallback = () => {
             setUser(finalUser)
             const redirectTo = localStorage.getItem('redirectAfterLogin') || 
               (finalUser.role === 'ADMIN' ? PATHS.ADMIN : 
-               finalUser.role === 'STAFF' ? PATHS.STAFF : 
+               finalUser.role === 'STAFF' ? PATHS.ADMIN_ORDERS : 
                PATHS.HOME);
             localStorage.removeItem('redirectAfterLogin');
             navigate(redirectTo, { replace: true })
@@ -99,7 +99,7 @@ const OAuthCallback = () => {
 
         const redirectTo = localStorage.getItem('redirectAfterLogin') || 
           (finalUser?.role === 'ADMIN' ? PATHS.ADMIN : 
-           finalUser?.role === 'STAFF' ? PATHS.STAFF : 
+           finalUser?.role === 'STAFF' ? PATHS.ADMIN_ORDERS : 
            PATHS.HOME);
         localStorage.removeItem('redirectAfterLogin');
         
