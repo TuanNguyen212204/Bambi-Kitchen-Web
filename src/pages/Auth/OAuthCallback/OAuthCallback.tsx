@@ -63,26 +63,32 @@ const OAuthCallback = () => {
         let userFromToken: { id: number; name: string; email: string; role: 'ADMIN'|'STAFF'|'USER'; role_id: 1|3|4 } | null = null
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
-          const role = (payload.roles?.[0] || 'USER') as 'ADMIN'|'STAFF'|'USER'
-          roleFromToken = role
+          const rawRole = (payload.roles?.[0] || 'USER') as string
+          const normalizedRole = (rawRole.startsWith('ROLE_') ? rawRole.slice(5) : rawRole) as 'ADMIN'|'STAFF'|'USER'
+          roleFromToken = normalizedRole
           const typedUser = {
             id: Number.isFinite(Number(payload.sub)) ? parseInt(payload.sub) : 0,
             name: (payload.name || payload.email || 'User') as string,
             email: (payload.email || '') as string,
-            role,
-            role_id: (role === 'ADMIN' ? 1 : role === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
+            role: normalizedRole,
+            role_id: (normalizedRole === 'ADMIN' ? 1 : normalizedRole === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
           }
           userFromToken = typedUser
           setUser(typedUser)
-          console.log('[OAuthCallback] Decoded JWT payload role:', roleFromToken, 'userId:', typedUser.id);
+          console.log('[OAuthCallback] Decoded JWT payload role:', rawRole, '->', normalizedRole, 'userId:', typedUser.id);
         } catch { /* ignore */ 
           console.warn('[OAuthCallback] Failed to decode token payload.');
         }
 
-        const immediateRedirect = localStorage.getItem('redirectAfterLogin') || 
+        // Tính đích đến ưu tiên theo role. Bỏ qua redirect lưu nếu nó trỏ tới trang auth (vd: /login)
+        const storedRedirect = localStorage.getItem('redirectAfterLogin') || ''
+        const AUTH_PAGES = new Set([PATHS.LOGIN, PATHS.REGISTER, PATHS.OAUTH_CALLBACK, PATHS.UNAUTHORIZED, PATHS.UNAUTHENTICATED])
+        const useStored = storedRedirect && !AUTH_PAGES.has(storedRedirect)
+        const fallbackByRole =
           (roleFromToken === 'ADMIN' ? PATHS.ADMIN :
            roleFromToken === 'STAFF' ? PATHS.ADMIN_ORDERS :
-           PATHS.HOME);
+           PATHS.HOME)
+        const immediateRedirect = useStored ? storedRedirect : fallbackByRole
         localStorage.removeItem('redirectAfterLogin');
         console.log('[OAuthCallback] Redirecting immediately to:', immediateRedirect, 'using hard replace.');
         // Dùng hard replace để tránh race-condition với Authentication/Authorization guard
@@ -96,8 +102,9 @@ const OAuthCallback = () => {
             id: userMe.id,
             name: userMe.name || userFromToken?.name || 'User',
             email: userMe.mail || userFromToken?.email || '',
-            role: (userMe.role || userFromToken?.role || 'USER') as 'ADMIN'|'STAFF'|'USER',
-            role_id: (userMe.role === 'ADMIN' ? 1 : userMe.role === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
+            role: ((userMe.role || userFromToken?.role || 'USER') as string).replace(/^ROLE_/, '') as 'ADMIN'|'STAFF'|'USER',
+            role_id: (((userMe.role || userFromToken?.role || 'USER') as string).replace(/^ROLE_/, '') === 'ADMIN' ? 1 :
+                      ((userMe.role || userFromToken?.role || 'USER') as string).replace(/^ROLE_/, '') === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
           };
           setUser(finalUser);
 
