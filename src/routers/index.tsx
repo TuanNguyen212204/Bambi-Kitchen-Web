@@ -86,7 +86,7 @@ export const AppRoute = memo(() => {
           const HIDDEN_ROUTES = ["dish-categories", "sold-ingredients"];
           const isHidden = HIDDEN_ROUTES.includes(r.path);
           // Hiển thị route nếu được bảo vệ, thuộc layout admin, không hidden, và role của route bao gồm ADMIN hoặc STAFF
-          const allowRoles = [ROLES.ADMIN, ROLES.STAFF]
+          const allowRoles: number[] = [ROLES.ADMIN, ROLES.STAFF]
           const canSee = r.protected && r.layout === "admin" && !isHidden && r.role?.some((role) => allowRoles.includes(role))
           return canSee
         })
