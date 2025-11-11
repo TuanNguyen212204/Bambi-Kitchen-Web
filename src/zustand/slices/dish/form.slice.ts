@@ -45,13 +45,23 @@ export const createDishFormSlice: StateCreator<
     
     // Theo OpenAPI: account là required field
     // Ghi chú: "Account chỉ cần gửi Id, mấy field khác để trống"
-    // Backend có thể expect account.id phải có giá trị, không null
-    if (payload.account?.id != null) {
-      form.append("account.id", String(payload.account.id));
-    } else {
-      // Nếu không có account.id, có thể cần gửi rỗng hoặc để backend tự lấy từ token
-      // Nhưng theo OpenAPI, account là required nên phải có
-      console.warn("Account ID is missing, backend may auto-assign from JWT token");
+    // Luôn cố gắng đính kèm account.id: ưu tiên từ payload, fallback từ auth storage
+    let accountIdToSend: number | undefined = payload.account?.id
+    if (accountIdToSend == null) {
+      try {
+        const authStorage = localStorage.getItem("bambi-auth-storage")
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage) as { state?: { user?: { id?: number } } }
+          if (typeof parsed?.state?.user?.id === "number") {
+            accountIdToSend = parsed.state.user.id
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    if (accountIdToSend != null) {
+      form.append("account.id", String(accountIdToSend));
     }
     
     form.append("dishType", payload.dishType);
