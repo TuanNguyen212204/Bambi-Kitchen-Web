@@ -64,7 +64,6 @@ export async function chatWithAIFallback(message: string): Promise<string> {
     // Nếu POST lỗi (đặc biệt là 500), thử GET làm fallback
     if (error instanceof ChatError && error.shouldRetry) {
       try {
-        console.log("POST failed, trying GET as fallback...")
         return await chatWithAI(message)
       } catch (fallbackError) {
         // Nếu cả hai đều lỗi, throw lỗi cuối cùng

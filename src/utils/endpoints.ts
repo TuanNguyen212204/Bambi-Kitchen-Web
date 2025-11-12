@@ -33,6 +33,10 @@ export const API_ENDPOINTS = {
   API_NOTIFICATION_BY_ID: (id: number) => `/api/notification/${id}`,
   API_NOTIFICATION_BY_ACCOUNT: (id: number) => `/api/notification/to-account/${id}`,
   API_NOTIFICATION_MARK_READ: (id: number) => `/api/notification/${id}/check-read`,
+  API_NOTIFICATION_SEND: "/api/notification/send",
+  API_NOTIFICATION_SEND_TO_EXACT: "/api/notification/send-to-exact",
+  API_NOTIFICATION_SEND_TO_ALL: "/api/notification/send-to-all",
+  API_NOTIFICATION_DEVICE: "/api/notification/device",
 
   // Payments
   API_PAYMENTS_BY_ACCOUNT: (accountId: number) => `/api/payment/to-account/${accountId}`,

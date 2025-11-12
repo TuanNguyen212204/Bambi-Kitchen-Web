@@ -45,9 +45,6 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       try {
         const base64 = accessToken.split(".")[1]
         const json = JSON.parse(atob(base64)) as { sub?: string; name?: string; email?: string; roles?: string[] }
-        if (import.meta.env.DEV) {
-          console.log("[Auth] JWT roles:", json?.roles, "sub:", json?.sub)
-        }
         if (json?.sub) {
           const role = (Array.isArray(json.roles) && json.roles[0] ? json.roles[0] : "USER") as "ADMIN" | "STAFF" | "USER"
           const tempUser = {
@@ -73,9 +70,6 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         }
       })
       const userMe = userResponse.data
-      if (import.meta.env.DEV) {
-        console.log("[Auth] /me:", userMe)
-      }
       // So khớp role giữa JWT và /me, ưu tiên vai trò THẤP HƠN để tránh escalate quyền do cookie phiên cũ trên server
       const tokenStr = get().token || ""
       let tokenRole: "USER" | "ADMIN" | "STAFF" | null = null

@@ -54,8 +54,14 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
     setIsLoading(true);
     try {
       if (user.role_id === 1) {
-        setNotifications(adminNotifications.map(normalizeField));
+        // Admin: fetch từ API để lấy tất cả notifications
+        const { fetchAll } = useNotificationStore.getState();
+        await fetchAll();
+        // Sau khi fetch, lấy từ store
+        const { items } = useNotificationStore.getState();
+        setNotifications(items.map(normalizeField));
       } else {
+        // User thường: fetch notifications của user đó
         const response = await bambiApi.get(API_ENDPOINTS.API_NOTIFICATION_BY_ACCOUNT(user.id), {
           signal,
         });
@@ -98,6 +104,13 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
     };
   }, [isOpen, user?.id])
 
+  // Khi admin notifications thay đổi, cập nhật local state
+  useEffect(() => {
+    if (isOpen && user?.role_id === 1 && adminNotifications.length > 0) {
+      setNotifications(adminNotifications.map(normalizeField));
+    }
+  }, [isOpen, user?.role_id, adminNotifications])
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -117,17 +130,37 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   const handleMarkAsRead = async (notificationId: number) => {
     try {
       if (user?.role_id === 1) {
+        // Admin: dùng store method
         await markAsRead(notificationId);
       } else {
-        await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(notificationId));
+        // User thường: gọi API trực tiếp
+        // PATCH không cần body theo API v3 docs
+        try {
+          await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(notificationId));
+          // Cập nhật state local ngay lập tức để UX tốt hơn
+          setNotifications((prev) =>
+            prev.map((notif) =>
+              notif.id === notificationId ? { ...notif, read: true, is_read: true } : notif
+            )
+          );
+          // Refresh lại danh sách để đảm bảo đồng bộ
+          await fetchNotifications();
+        } catch (patchError: any) {
+          const status = patchError?.response?.status;
+          if (status === 403) {
+            // Lỗi 403: có thể là CORS hoặc không có quyền
+            const { toast } = await import("sonner");
+            toast.error("Không thể đánh dấu đã đọc. Vui lòng kiểm tra lại quyền truy cập hoặc liên hệ admin.", {
+              description: "Lỗi: 403 Forbidden. Có thể là vấn đề CORS hoặc quyền truy cập.",
+            });
+          } else {
+            throw patchError; // Re-throw để xử lý ở catch bên ngoài
+          }
+        }
       }
-      setNotifications((prev) =>
-        prev.map((notif) =>
-          notif.id === notificationId ? { ...notif, read: true, is_read: true } : notif
-        )
-      );
     } catch (error) {
       console.error("Error marking notification as read:", error);
+      // Đã xử lý lỗi ở trên, không cần làm gì thêm
     }
   };
 

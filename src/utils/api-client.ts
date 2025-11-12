@@ -65,9 +65,6 @@ export class BambiApiClient {
         // Không gửi cookie kèm theo để tránh server ưu tiên session cookie cũ (VD: phiên admin)
         // Thay vào đó luôn ưu tiên Authorization Bearer token hiện tại
         config.withCredentials = false
-        if (import.meta.env.DEV) {
-          console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`)
-        }
 
         return config
       },
@@ -76,9 +73,6 @@ export class BambiApiClient {
 
     this.client.interceptors.response.use(
       (response) => {
-        if (import.meta.env.DEV) {
-          console.log(`[API] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`)
-        }
         return response
       },
       async (error) => {
@@ -136,7 +130,9 @@ export class BambiApiClient {
         }
         const looksLikeProtectedApi = url.startsWith("/api/")
         // 403: không tự động đăng xuất (thường do không đủ quyền). Chỉ điều hướng sang trang unauthorized
-        if (status === 403 && hasToken && looksLikeProtectedApi && !isLoginRequest) {
+        // Tuy nhiên, với notification check-read, có thể là lỗi CORS nên không redirect
+        const isNotificationCheckRead = normalizedUrl.includes("/notification/") && normalizedUrl.includes("/check-read")
+        if (status === 403 && hasToken && looksLikeProtectedApi && !isLoginRequest && !isNotificationCheckRead) {
             try {
               const { toast } = await import("sonner")
             if (shouldToast("unauthorized_route")) {
@@ -146,6 +142,13 @@ export class BambiApiClient {
           if (typeof window !== "undefined") {
             window.location.href = "/unauthorized"
           }
+          return Promise.reject(new ApiError(error))
+        }
+        
+        // Xử lý riêng cho notification check-read: có thể là lỗi CORS
+        if (status === 403 && isNotificationCheckRead) {
+          // Không redirect, chỉ log và để component tự xử lý
+          console.warn("403 Forbidden on notification check-read - có thể là lỗi CORS từ backend")
           return Promise.reject(new ApiError(error))
         }
 
