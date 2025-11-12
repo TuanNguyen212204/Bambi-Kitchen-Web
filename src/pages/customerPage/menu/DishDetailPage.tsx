@@ -412,7 +412,7 @@ function normalizeRecipeResponse(data: unknown, ingredientSource: StoreIngredien
           imageUrl: recipe.ingredient.imgUrl || recipe.ingredient.imageUrl,
         } satisfies IngredientSummary
       })
-      .filter((ing): ing is IngredientSummary => Boolean(ing))
+      .filter((ing): ing is IngredientSummary => ing !== null)
 
     return mapped.map(enrich)
   }
@@ -443,7 +443,7 @@ function normalizeRecipeResponse(data: unknown, ingredientSource: StoreIngredien
           imageUrl: ing.imageUrl,
         } satisfies IngredientSummary
       })
-      .filter((ing): ing is IngredientSummary => Boolean(ing))
+      .filter((ing): ing is IngredientSummary => ing !== null)
 
     return normalized.map(enrich)
   }
