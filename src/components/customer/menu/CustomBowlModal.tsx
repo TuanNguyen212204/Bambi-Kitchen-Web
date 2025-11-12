@@ -39,6 +39,16 @@ const STEP_LABELS: Record<Step, string> = {
 
 const STEP_ORDER: Step[] = ["size", "carb", "protein", "vegetable", "side"]
 
+const normalizeQuantity = (value: number): number => {
+  if (!Number.isFinite(value)) return 0
+  if (value === 0) return 0
+  const abs = Math.abs(value)
+  const precision = abs < 1 ? 3 : abs < 10 ? 2 : 1
+  return Number(value.toFixed(precision))
+}
+
+const formatQuantityDisplay = (value: number): string => normalizeQuantity(value).toString()
+
 // Giới hạn số lượng tối đa cho mỗi nguyên liệu theo đơn vị (giống các quán ăn/web khác)
 // - PCS (phần): tối đa 3 phần
 // - GRAM: tối đa 500 gram (0.5kg) 
@@ -262,8 +272,8 @@ export default function CustomBowlModal({ open, onClose, editingItemId, initialD
     return getSelectedCountByPriority(currentPriority)
   }
 
-  // Get step amount for ingredient based on unit
-  const getStepAmount = (unit?: string): number => {
+// Get step amount for ingredient based on unit
+const getStepAmount = (unit?: string): number => {
     if (!unit) return 200
     const unitUpper = unit.toUpperCase()
     switch (unitUpper) {
@@ -308,12 +318,12 @@ export default function CustomBowlModal({ open, onClose, editingItemId, initialD
       // Kiểm tra số lượng có sẵn trong kho (available) và giới hạn tối đa theo đơn vị
       const baseDefaultQuantity = getStepAmount(ingredient.unit)
       // Áp dụng quantityRatio vào số lượng mặc định
-      const defaultQuantity = Math.round(baseDefaultQuantity * quantityRatio)
+      const defaultQuantity = normalizeQuantity(baseDefaultQuantity * quantityRatio)
       
       const maxAvailable = ingredient.available ?? Infinity
       const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
       // Max quantity sau khi scale theo quantityRatio (nhưng không được vượt quá available)
-      const maxQuantityScaled = Math.min(maxAvailable, Math.round(maxQuantityByUnit * quantityRatio))
+      const maxQuantityScaled = normalizeQuantity(maxQuantityByUnit * quantityRatio)
       const maxQuantity = Math.min(maxAvailable, maxQuantityScaled)
       
       // Kiểm tra số lượng mặc định không vượt quá giới hạn
@@ -350,15 +360,15 @@ export default function CustomBowlModal({ open, onClose, editingItemId, initialD
     const currentQty = selectedIng.quantity
     const baseStepAmount = getStepAmount(ingredient.unit)
     // Áp dụng quantityRatio vào step amount
-    const stepAmount = Math.round(baseStepAmount * quantityRatio)
-    const newQty = currentQty + (delta * stepAmount)
+    const stepAmount = normalizeQuantity(baseStepAmount * quantityRatio)
+    const newQty = normalizeQuantity(currentQty + (delta * stepAmount))
     const maxAvailable = ingredient.available ?? Infinity
     const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
     // Max quantity sau khi scale theo quantityRatio (nhưng không được vượt quá available)
-    const maxQuantityScaled = Math.min(maxAvailable, Math.round(maxQuantityByUnit * quantityRatio))
+    const maxQuantityScaled = normalizeQuantity(maxQuantityByUnit * quantityRatio)
     const maxQuantity = Math.min(maxAvailable, maxQuantityScaled)
     // Minimum quantity sau khi scale theo quantityRatio
-    const minQuantity = Math.round(getStepAmount(ingredient.unit) * quantityRatio)
+    const minQuantity = normalizeQuantity(getStepAmount(ingredient.unit) * quantityRatio)
     
     // Nếu đang tăng số lượng (delta > 0), kiểm tra số lượng có sẵn trong kho và giới hạn tối đa theo đơn vị
     if (delta > 0 && newQty > maxQuantity) {
@@ -377,7 +387,7 @@ export default function CustomBowlModal({ open, onClose, editingItemId, initialD
     if (finalQuantity >= minQuantity) {
       setSelectedIngredients(prev => prev.map(ing =>
         ing.ingredientId === ingredientId
-          ? { ...ing, quantity: finalQuantity }
+          ? { ...ing, quantity: normalizeQuantity(finalQuantity) }
           : ing
       ))
     } else {
@@ -439,7 +449,7 @@ export default function CustomBowlModal({ open, onClose, editingItemId, initialD
       template: selectedTemplate,
       recipe: selectedIngredients.map(ing => ({
         ingredientId: ing.ingredientId,
-        quantity: Math.round(ing.quantity), // Đảm bảo số nguyên (API có thể yêu cầu)
+        quantity: normalizeQuantity(ing.quantity),
         sourceType: "ADDON" as const,
       })),
     }
@@ -730,6 +740,9 @@ export default function CustomBowlModal({ open, onClose, editingItemId, initialD
                           isSelected
                         )
                         const selectedIng = selectedIngredients.find(ing => ing.ingredientId === ingredient.id)
+                        const quantityRatio = selectedTemplate?.quantityRatio || 1
+                        const stepAmountScaled = normalizeQuantity(getStepAmount(ingredient.unit) * quantityRatio)
+                        const maxQuantityByUnitScaled = normalizeQuantity(getMaxQuantityForUnit(ingredient.unit) * quantityRatio)
                         
                         return (
                           <div
@@ -776,14 +789,14 @@ export default function CustomBowlModal({ open, onClose, editingItemId, initialD
                                       handleAdjustQuantity(ingredient.id, -1)
                                     }}
                                     className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
-                                    disabled={selectedIng.quantity <= getStepAmount(ingredient.unit)}
-                                    title={`Giảm ${getStepAmount(ingredient.unit)} ${formatUnit(ingredient.unit)}`}
+                                    disabled={selectedIng.quantity <= stepAmountScaled}
+                                    title={`Giảm ${formatQuantityDisplay(stepAmountScaled)} ${formatUnit(ingredient.unit)}`}
                                   >
                                     <Minus size={14} className="mr-1" />
-                                    <span>{getStepAmount(ingredient.unit)}</span>
+                                    <span>{formatQuantityDisplay(stepAmountScaled)}</span>
                                   </button>
                                   <span className="flex-1 text-center text-xs text-gray-700 font-medium">
-                                    {selectedIng.quantity} {formatUnit(ingredient.unit)}
+                                    {formatQuantityDisplay(selectedIng.quantity)} {formatUnit(ingredient.unit)}
                                   </span>
                                   <button
                                     onClick={(e) => {
@@ -793,14 +806,13 @@ export default function CustomBowlModal({ open, onClose, editingItemId, initialD
                                     className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
                                     disabled={(() => {
                                       const maxAvailable = ingredient.available ?? Infinity
-                                      const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
-                                      const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
+                                      const maxQuantity = Math.min(maxAvailable, maxQuantityByUnitScaled)
                                       return selectedIng.quantity >= maxQuantity
                                     })()}
-                                    title={`Thêm ${getStepAmount(ingredient.unit)} ${formatUnit(ingredient.unit)}`}
+                                    title={`Thêm ${formatQuantityDisplay(stepAmountScaled)} ${formatUnit(ingredient.unit)}`}
                                   >
                                     <Plus size={14} className="mr-1" />
-                                    <span>{getStepAmount(ingredient.unit)}</span>
+                                    <span>{formatQuantityDisplay(stepAmountScaled)}</span>
                                   </button>
                                 </div>
                                 {/* Hiển thị giá tiền cập nhật */}
@@ -877,9 +889,7 @@ export default function CustomBowlModal({ open, onClose, editingItemId, initialD
                           >
                             <span>{ingredient.name}</span>
                             <span className="bg-orange-300 px-2 rounded-full text-xs">
-                              {Number.isInteger(selected.quantity) 
-                                ? selected.quantity 
-                                : selected.quantity.toFixed(1)}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
+                              {formatQuantityDisplay(selected.quantity)}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
                             </span>
                             <button
                               onClick={() => handleIngredientToggle(ingredient)}
@@ -939,9 +949,7 @@ export default function CustomBowlModal({ open, onClose, editingItemId, initialD
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <span className="text-sm font-semibold text-orange-600 whitespace-nowrap">
-                                {Number.isInteger(selected.quantity) 
-                                  ? selected.quantity 
-                                  : selected.quantity.toFixed(1)}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
+                                {formatQuantityDisplay(selected.quantity)}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
                               </span>
                               <button
                                 onClick={() => handleIngredientToggle(ingredient)}
