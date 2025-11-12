@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Dialog, DialogHeader, DialogTitle, DialogPortal, DialogOverlay } from "@components/ui/dialog"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { cn } from "@/lib/utils"
@@ -292,7 +292,16 @@ export default function CreateOrderModal(props: Props) {
   }
 
   // Parse order item để tạo order request
-  const parseOrderItemToRequest = (item: OrderItem): any => {
+  type OrderItemRequest = {
+    name: string
+    quantity: number
+    dishId?: number
+    basedOnId?: number
+    dishTemplate?: { size: "S" | "M" | "L" }
+    recipe: Array<{ ingredientId: number; quantity: number; sourceType: "REMOVED" | "ADDON" }>
+  }
+  
+  const parseOrderItemToRequest = (item: OrderItem): OrderItemRequest => {
     let parsedData: {
       basedOnId?: number
       dishTemplate?: { size: "S" | "M" | "L" }
@@ -309,9 +318,10 @@ export default function CreateOrderModal(props: Props) {
       }
     }
 
-    const orderItem: any = {
+    const orderItem: OrderItemRequest = {
       name: item.dish.name,
       quantity: item.quantity,
+      recipe: [],
     }
 
     // Nếu có parsedData (từ preset dish customization hoặc custom bowl)
@@ -400,8 +410,8 @@ export default function CreateOrderModal(props: Props) {
               // Parse recipe response
               if (Array.isArray(recipeRes.data)) {
                 recipe = recipeRes.data
-                  .filter((r: any) => r.ingredient?.id && typeof r.quantity === 'number')
-                  .map((r: any) => ({
+                  .filter((r: { ingredient?: { id: number }; quantity?: number }) => r.ingredient?.id && typeof r.quantity === 'number')
+                  .map((r: { ingredient: { id: number }; quantity: number }) => ({
                     ingredientId: r.ingredient.id,
                     quantity: Math.round(r.quantity),
                     sourceType: "ADDON" as const, // Recipe mặc định là ADDON
