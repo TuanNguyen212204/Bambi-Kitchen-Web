@@ -35,11 +35,12 @@ export function IngredientDetailModal({
   }, [open, ingredient?.id]);
 
   // Refresh dữ liệu khi ingredient prop thay đổi (sau khi update)
-  useEffect(() => {
-    if (open && ingredient?.id && !isEditing) {
-      loadIngredientDetails();
-    }
-  }, [ingredient?.quantity, ingredient?.available, ingredient?.stock, ingredient?.imgUrl]);
+  // Loại bỏ dependency để tránh infinite loop - chỉ refresh khi modal đóng rồi mở lại
+  // useEffect(() => {
+  //   if (open && ingredient?.id && !isEditing) {
+  //     loadIngredientDetails();
+  //   }
+  // }, [ingredient?.quantity, ingredient?.available, ingredient?.stock, ingredient?.imgUrl]);
 
   const loadIngredientDetails = async () => {
     if (!ingredient?.id) return;

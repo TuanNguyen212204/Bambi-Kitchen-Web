@@ -27,7 +27,16 @@ export const createIngredientListSlice: StateCreator<IngredientListSlice, [], []
           if (typeof c.id === 'number') categoryId = c.id as number
         }
         const { category: _omit1, ...rest } = i as Ingredient; void _omit1
-        const raw = i as unknown as { pricePerUnit?: number | string; quantity?: number | string; available?: number | string; reserve?: number | string }
+        const raw = i as unknown as { 
+          pricePerUnit?: number | string
+          quantity?: number | string
+          available?: number | string
+          reserve?: number | string
+          imgUrl?: string
+          publicId?: string
+          lastReserveAt?: string
+          active?: boolean
+        }
         const toNum = (v: unknown): number | undefined => {
           if (typeof v === 'number') return v
           if (typeof v === 'string') {
@@ -45,6 +54,10 @@ export const createIngredientListSlice: StateCreator<IngredientListSlice, [], []
           quantity,
           available: toNum(raw.available),
           reserve: toNum(raw.reserve),
+          imgUrl: raw.imgUrl || (rest as any).imgUrl,
+          publicId: raw.publicId,
+          lastReserveAt: raw.lastReserveAt,
+          active: raw.active !== undefined ? raw.active : true,
         }
       })
 
@@ -103,7 +116,16 @@ export const createIngredientListSlice: StateCreator<IngredientListSlice, [], []
         const category = typeof catObj === 'object' && catObj?.name ? String(catObj.name) : String((item as unknown as { category?: string }).category ?? "")
         const categoryId = typeof catObj === 'object' && typeof catObj?.id === 'number' ? Number(catObj.id) : undefined
         const { category: _omit2, ...rest } = item as Ingredient; void _omit2
-        const raw = item as unknown as { pricePerUnit?: number | string; quantity?: number | string; available?: number | string; reserve?: number | string }
+        const raw = item as unknown as { 
+          pricePerUnit?: number | string
+          quantity?: number | string
+          available?: number | string
+          reserve?: number | string
+          imgUrl?: string
+          publicId?: string
+          lastReserveAt?: string
+          active?: boolean
+        }
         const toNum = (v: unknown): number | undefined => {
           if (typeof v === 'number') return v
           if (typeof v === 'string') { const n = Number(v); return Number.isFinite(n) ? n : undefined }
@@ -123,7 +145,21 @@ export const createIngredientListSlice: StateCreator<IngredientListSlice, [], []
         const isOut = safeStock <= 0
         const isLow = !isOut && safeStock <= 5
         const stockStatus: StockStatus = isOut ? "out" : isLow ? "low" : "normal"
-        set({ items: [{ ...(rest as Omit<Ingredient, "category">), category, categoryId, stock: safeStock, stockStatus, quantity: toNum(raw.quantity), available: toNum(raw.available), reserve: toNum(raw.reserve), pricePerUnit: toNum(raw.pricePerUnit) }], loading: false })
+        set({ items: [{ 
+          ...(rest as Omit<Ingredient, "category">), 
+          category, 
+          categoryId, 
+          stock: safeStock, 
+          stockStatus, 
+          quantity: toNum(raw.quantity), 
+          available: toNum(raw.available), 
+          reserve: toNum(raw.reserve), 
+          pricePerUnit: toNum(raw.pricePerUnit),
+          imgUrl: raw.imgUrl || (rest as any).imgUrl,
+          publicId: raw.publicId,
+          lastReserveAt: raw.lastReserveAt,
+          active: raw.active !== undefined ? raw.active : true,
+        }], loading: false })
       } else {
         set({ items: [], loading: false })
       }

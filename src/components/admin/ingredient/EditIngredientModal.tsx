@@ -50,10 +50,17 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
 
   const initializedRef = useRef(false)
   useEffect(() => {
-    if (!open) { initializedRef.current = false; return }
+    if (!open) { 
+      initializedRef.current = false
+      return 
+    }
     if (!initializedRef.current) {
       initializedRef.current = true
-      fetchCategories()
+      // Fetch categories một cách an toàn, không block render modal
+      fetchCategories().catch((error) => {
+        console.error("Error fetching categories:", error)
+        // Không hiển thị toast error vì có thể categories đã được load từ page parent
+      })
       setName(ingredient?.name ?? "")
       setUnit(ingredient?.unit ?? "GRAM")
       setActive(ingredient?.active ?? true)
@@ -71,7 +78,7 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       setDeltaError("")
       setLoading(false)
     }
-  }, [open])
+  }, [open, ingredient?.id]) // Thêm ingredient?.id vào dependency để reset khi ingredient thay đổi
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -222,10 +229,15 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
             className="w-full h-10 border rounded px-3" 
             value={categoryId ?? originalCategoryId ?? ""} 
             onChange={(e)=> setCategoryId(e.target.value ? Number(e.target.value) : undefined)}
+            disabled={categories.length === 0}
           >
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
+            {categories.length === 0 ? (
+              <option value="">Đang tải danh mục...</option>
+            ) : (
+              categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))
+            )}
           </select>
         </div>
         

@@ -17,7 +17,7 @@ export const createIngredientCategorySlice: StateCreator<IngredientCategorySlice
     }
   },
 
-  createCategory: async (payload: { name: string; description?: string }) => {
+  createCategory: async (payload: { name: string; description?: string; priority?: number }) => {
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
       const res = await bambiApi.post<IngredientCategory>(API_ENDPOINTS.API_INGREDIENT_CATEGORIES, payload)
@@ -33,7 +33,7 @@ export const createIngredientCategorySlice: StateCreator<IngredientCategorySlice
     }
   },
 
-  updateCategory: async (payload: { id: number; name: string; description?: string }) => {
+  updateCategory: async (payload: { id: number; name: string; description?: string; priority?: number }) => {
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
       const res = await bambiApi.put<IngredientCategory>(API_ENDPOINTS.API_INGREDIENT_CATEGORIES, payload)
