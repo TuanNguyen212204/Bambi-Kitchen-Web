@@ -62,12 +62,15 @@ const OrderStatusPage = () => {
   // Clear cart khi thanh toán thành công
   useEffect(() => {
     if (isSuccess && !hasClearedRef.current) {
+      // Clear cart ngay lập tức khi thanh toán thành công
       clearCart();
       hasClearedRef.current = true;
-      // Clear payment redirecting flag
+      
+      // Cleanup sessionStorage
       try {
         sessionStorage.removeItem("bambi-payment-redirecting");
         sessionStorage.removeItem("bambi-clear-cart-after-payment");
+        sessionStorage.removeItem("bambi-ordered-item-ids");
       } catch {
         // ignore storage errors
       }

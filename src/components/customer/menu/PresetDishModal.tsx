@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react"
+import { createPortal } from "react-dom"
 import { X, Plus, Minus, ChevronLeft, ChevronRight, Check } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { toast } from "sonner"
@@ -669,11 +670,12 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
     }
     // Nếu không có thay đổi và size là M: không tạo notes (để CheckoutPage xử lý như preset không tùy chỉnh)
     
-    // Nếu đang edit, gọi onSave; nếu không, add mới
-    if (editingItemId && onSave) {
+    // Nếu có onSave (từ CreateOrderModal), luôn gọi onSave
+    // Nếu không có onSave (customer flow), gọi addItem
+    if (onSave) {
       onSave(dishForCart, quantity, notes || "")
     } else {
-      // Add to cart
+      // Add to cart (customer flow)
       addItem(dishForCart, quantity, notes)
       
       toast.success("Đã thêm vào giỏ hàng", {
@@ -718,11 +720,51 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
 
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl w-full max-w-4xl my-4 flex flex-col overflow-hidden shadow-2xl max-h-[90vh]">
+  // Tạo portal container với z-index cao nhất (cùng với Dialog nhưng render sau nên sẽ hiển thị trên)
+  const modalContent = (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 p-4"
+      style={{ 
+        zIndex: 2147483647, 
+        pointerEvents: 'auto', 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'flex-start', 
+        paddingTop: '2rem', 
+        paddingBottom: '2rem',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch'
+      }}
+      onClick={(e) => {
+        // Đóng modal khi click vào overlay
+        if (e.target === e.currentTarget) {
+          e.stopPropagation()
+          onClose()
+        }
+      }}
+      onWheel={(e) => {
+        // Cho phép scroll trong modal con
+        e.stopPropagation()
+      }}
+      onTouchMove={(e) => {
+        // Cho phép touch scroll trong modal con
+        e.stopPropagation()
+      }}
+    >
+      <div 
+        className="bg-white rounded-2xl w-full max-w-4xl flex flex-col shadow-2xl pointer-events-auto"
+        onClick={(e) => e.stopPropagation()}
+        style={{ 
+          maxHeight: '90vh', 
+          margin: 'auto 0', 
+          display: 'flex', 
+          flexDirection: 'column',
+          height: 'fit-content',
+          minHeight: 'min-content'
+        }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 md:p-5 border-b bg-white sticky top-0 z-10 flex-shrink-0">
+        <div className="flex items-center justify-between p-4 md:p-5 border-b bg-white flex-shrink-0">
           <div className="flex-1 min-w-0 pr-4">
             <h2 className="text-lg md:text-xl font-bold text-gray-900 truncate">{dishDetails?.name || dish?.name || "Món ăn"}</h2>
             {dishDetails?.description && (
@@ -730,7 +772,10 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
             )}
           </div>
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation()
+              onClose()
+            }}
             className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-full transition-colors"
             aria-label="Đóng"
           >
@@ -739,7 +784,24 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div 
+          className="overflow-y-auto p-5" 
+          style={{ 
+            flex: '1 1 auto', 
+            minHeight: 0, 
+            maxHeight: 'calc(90vh - 200px)',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch'
+          }}
+          onWheel={(e) => {
+            // Đảm bảo scroll events không bị chặn
+            e.stopPropagation()
+          }}
+          onTouchMove={(e) => {
+            // Đảm bảo touch scroll không bị chặn
+            e.stopPropagation()
+          }}
+        >
           {loading ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mb-4"></div>
@@ -1324,13 +1386,19 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
         <div className="flex items-center justify-between p-4 border-t bg-gray-50 sticky bottom-0 flex-shrink-0">
           <Button
             variant="outline"
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation()
+              onClose()
+            }}
             className="px-4 text-sm"
           >
             Hủy
           </Button>
           <Button
-            onClick={handleAddToCart}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleAddToCart()
+            }}
             disabled={loading || !dishDetails}
             className="px-4 bg-orange-500 hover:bg-orange-600 text-white text-sm"
           >
@@ -1340,4 +1408,7 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
       </div>
     </div>
   )
+
+  // Sử dụng createPortal để render modal ra ngoài Dialog, đảm bảo z-index cao nhất
+  return typeof window !== "undefined" ? createPortal(modalContent, document.body) : null
 }

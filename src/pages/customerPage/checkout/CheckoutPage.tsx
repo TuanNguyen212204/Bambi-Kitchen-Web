@@ -302,9 +302,13 @@ const CheckoutPage: React.FC = () => {
       const response = await bambiApi.post<string>(API_ENDPOINTS.API_ORDERS, orderRequest)
 
       // Nếu response là URL (payment gateway), redirect đến đó
+      // Lưu thông tin để clear cart sau khi thanh toán thành công
       if (typeof response.data === "string" && response.data.startsWith("http")) {
         try {
+          // Lưu danh sách item IDs để clear đúng các sản phẩm đã đặt
+          const itemIds = items.map(item => item.id)
           sessionStorage.setItem("bambi-clear-cart-after-payment", "true")
+          sessionStorage.setItem("bambi-ordered-item-ids", JSON.stringify(itemIds))
           // Đánh dấu đang redirect đến payment gateway để tránh các API calls không cần thiết
           sessionStorage.setItem("bambi-payment-redirecting", "true")
         } catch {
@@ -316,10 +320,11 @@ const CheckoutPage: React.FC = () => {
         return
       }
 
-      // Nếu không phải URL (thanh toán thành công ngay), clear cart và redirect đến success page
-      useCartStore.getState().clearCart()
+      // Nếu không phải URL (thanh toán thành công ngay), redirect đến success page
+      // KHÔNG clear cart ở đây, để SuccessPage xử lý khi thanh toán thành công
       try {
-        sessionStorage.removeItem("bambi-clear-cart-after-payment")
+        sessionStorage.setItem("bambi-clear-cart-after-payment", "true")
+        sessionStorage.removeItem("bambi-payment-redirecting")
       } catch {
         // ignore storage errors
       }

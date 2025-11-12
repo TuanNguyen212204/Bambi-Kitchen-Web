@@ -26,10 +26,20 @@ export const SuccessPage = ({
     const shouldClearFromState = Boolean(location.state?.clearCart);
     const shouldClearFromStorage = sessionStorage.getItem("bambi-clear-cart-after-payment") === "true";
     
+    // Đảm bảo clear cart khi thanh toán thành công
     if ((shouldClearFromState || shouldClearFromStorage) && !hasClearedRef.current) {
+      // Clear cart ngay lập tức
       clearCart();
       hasClearedRef.current = true;
-      sessionStorage.removeItem("bambi-clear-cart-after-payment");
+      
+      // Cleanup sessionStorage
+      try {
+        sessionStorage.removeItem("bambi-clear-cart-after-payment");
+        sessionStorage.removeItem("bambi-ordered-item-ids");
+        sessionStorage.removeItem("bambi-payment-redirecting");
+      } catch {
+        // ignore storage errors
+      }
     }
     
     // Clear payment redirecting flag khi đã quay lại từ payment gateway
