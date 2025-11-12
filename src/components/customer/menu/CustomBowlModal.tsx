@@ -35,24 +35,24 @@ const STEP_LABELS: Record<Step, string> = {
 const STEP_ORDER: Step[] = ["size", "carb", "protein", "vegetable", "side"]
 
 // Giới hạn số lượng tối đa cho mỗi nguyên liệu theo đơn vị (giống các quán ăn/web khác)
-// - PCS (phần): tối đa 5 phần
+// - PCS (phần): tối đa 3 phần
 // - GRAM: tối đa 500 gram (0.5kg) 
-// - KILOGRAM: tối đa 1 kg
-// - LITER: tối đa 1 liter
+// - KILOGRAM: tối đa 0.5 kg
+// - LITER: tối đa 0.5 liter
 const getMaxQuantityForUnit = (unit?: string): number => {
-  if (!unit) return 5
+  if (!unit) return 500
   const unitUpper = unit.toUpperCase()
   switch (unitUpper) {
     case "PCS":
-      return 5 // Tối đa 5 phần
+      return 3 // Tối đa 3 phần
     case "GRAM":
       return 500 // Tối đa 500 gram
     case "KILOGRAM":
-      return 1 // Tối đa 1 kg
+      return 0.5 // Tối đa 0.5 kg
     case "LITER":
-      return 1 // Tối đa 1 liter
+      return 0.5 // Tối đa 0.5 liter
     default:
-      return 5 // Mặc định 5
+      return 500 // Mặc định 500
   }
 }
 
@@ -270,9 +270,24 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
         return
       }
       
+      // Kiểm tra số lượng có sẵn trong kho (available) và giới hạn tối đa theo đơn vị
+      const defaultQuantity = getStepAmount(ingredient.unit)
+      const maxAvailable = ingredient.available ?? Infinity
+      const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
+      const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
+      
+      // Kiểm tra số lượng mặc định không vượt quá giới hạn
+      if (defaultQuantity > maxQuantity) {
+        if (defaultQuantity > maxAvailable) {
+          toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
+        } else {
+          toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
+        }
+        return
+      }
+      
       // Add ingredient với số lượng mặc định (dùng getStepAmount để nhất quán)
       const category = ingredientCategories.find(cat => cat.id === ingredient.categoryId)
-      const defaultQuantity = getStepAmount(ingredient.unit)
       
       setSelectedIngredients(prev => [...prev, {
         ingredientId: ingredient.id,
@@ -298,15 +313,37 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     const maxAvailable = ingredient.available ?? Infinity
     const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
     const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
-    const finalQuantity = Math.max(0.1, Math.min(newQty, maxQuantity))
+    const minQuantity = getStepAmount(ingredient.unit) // Minimum quantity là stepAmount
     
-    if (finalQuantity > 0) {
+    // Nếu đang tăng số lượng (delta > 0), kiểm tra số lượng có sẵn trong kho và giới hạn tối đa theo đơn vị
+    if (delta > 0 && newQty > maxQuantity) {
+      if (newQty > maxAvailable) {
+        toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
+      } else {
+        toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
+      }
+      return
+    }
+    
+    const finalQuantity = Math.max(minQuantity, Math.min(newQty, maxQuantity))
+    
+    // Nếu finalQuantity >= minQuantity, cập nhật quantity
+    // Nếu finalQuantity < minQuantity, xóa ingredient (không giữ lại với số lượng quá nhỏ)
+    if (finalQuantity >= minQuantity) {
       setSelectedIngredients(prev => prev.map(ing =>
         ing.ingredientId === ingredientId
           ? { ...ing, quantity: finalQuantity }
           : ing
       ))
       setInputValues(prev => ({ ...prev, [ingredientId]: finalQuantity.toString() }))
+    } else {
+      // Nếu giảm xuống dưới minQuantity, xóa ingredient
+      setSelectedIngredients(prev => prev.filter(ing => ing.ingredientId !== ingredientId))
+      setInputValues(prev => {
+        const newValues = { ...prev }
+        delete newValues[ingredientId]
+        return newValues
+      })
     }
   }
 
@@ -351,11 +388,12 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     
     // Nếu vượt quá giới hạn, giới hạn về max và hiển thị thông báo
     if (numValue > maxQuantity) {
-      const unitDisplay = formatUnit(ingredient.unit) || "đơn vị"
-      const maxQuantityDisplay = Number.isInteger(maxQuantity) 
-        ? maxQuantity.toString() 
-        : maxQuantity.toFixed(1)
-      toast.warning(`Số lượng tối đa cho mỗi nguyên liệu là ${maxQuantityDisplay} ${unitDisplay}`)
+      // Phân biệt giữa vượt quá available và vượt quá maxQuantityByUnit
+      if (numValue > maxAvailable) {
+        toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
+      } else {
+        toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
+      }
       
       // Set về giá trị tối đa
       const finalQuantity = maxQuantity
@@ -825,7 +863,12 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
                                       handleAdjustQuantity(ingredient.id, 1)
                                     }}
                                     className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
-                                    disabled={(ingredient.available ?? 0) <= selectedIng.quantity}
+                                    disabled={(() => {
+                                      const maxAvailable = ingredient.available ?? Infinity
+                                      const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
+                                      const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
+                                      return selectedIng.quantity >= maxQuantity
+                                    })()}
                                     title={`Thêm ${getStepAmount(ingredient.unit)} ${formatUnit(ingredient.unit)}`}
                                   >
                                     <Plus size={14} className="mr-1" />
