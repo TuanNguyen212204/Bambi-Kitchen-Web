@@ -70,6 +70,8 @@ const TopProductCard: React.FC<{ product: Product; idx: number }> = ({ product, 
     return stars;
   };
 
+  const servings = product.usedQuantity ?? 0;
+
   return (
     <div className="bg-white rounded-full shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 p-6">
       <div className="flex flex-col items-center text-center">
@@ -84,10 +86,6 @@ const TopProductCard: React.FC<{ product: Product; idx: number }> = ({ product, 
               alt={product.name}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-          </div>
-          <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold z-10 capitalize">
-            {product.category || "Healthy"}
           </div>
           {!product.isAvailable && (
             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full">
@@ -116,7 +114,11 @@ const TopProductCard: React.FC<{ product: Product; idx: number }> = ({ product, 
           
           <div className="flex flex-col items-center gap-3">
             <span className="text-xl font-bold text-[#FC8A06]">{formatPrice(product.price)}</span>
-            <span className="text-xs text-gray-500">Đã phục vụ {product.usedQuantity.toLocaleString("vi-VN")} lần</span>
+            <span className="text-xs text-gray-500">
+              {servings > 0
+                ? `Đã phục vụ ${servings.toLocaleString("vi-VN")} lần`
+                : "Chưa có dữ liệu phục vụ"}
+            </span>
             <Link
               to={detailPath}
               state={{ from: location.pathname }}

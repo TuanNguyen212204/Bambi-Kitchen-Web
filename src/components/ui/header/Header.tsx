@@ -163,6 +163,18 @@ const Header = () => {
                     <UserIcon size={16} />
                     Thông tin người dùng
                   </button>
+                  {user?.role_id === ROLES.CUSTOMER && (
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
+                      onClick={() => {
+                        closeAllDropdowns();
+                        navigate(PATHS.ORDERS);
+                      }}
+                    >
+                      <UserIcon size={16} />
+                      Lịch sử đơn hàng
+                    </button>
+                  )}
                   <button 
                     className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2" 
                     onClick={handleLogout}

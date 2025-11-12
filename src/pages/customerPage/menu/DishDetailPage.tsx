@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, BookmarkCheck, ChefHat, Flame, Loader2, ShoppingCart, Sparkles, Users } from "lucide-react"
+import { BookmarkCheck, ChefHat, Flame, Loader2, ShoppingCart, Sparkles } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { PATHS } from "@config/path"
 import { bambiApi, bambiPublicApi, API_ENDPOINTS } from "@/utils/api"
 import { extractErrorMessage } from "@/utils/errors"
 import { useAuthStore } from "@zustand/stores/auth"
+import { useIngredientStore } from "@zustand/stores/ingredients"
+import type { StoreIngredient } from "@/zustand/types/ingredient"
 import { toast } from "sonner"
 import PresetDishModal from "@components/customer/menu/PresetDishModal"
 import type { DishItem } from "@/zustand/slices/dish/list.slice"
@@ -62,12 +64,24 @@ const DishDetailPage: React.FC = () => {
   const dishId = Number(id)
 
   const { isAuthenticated, token } = useAuthStore()
+  const ingredientItems = useIngredientStore((state) => state.items)
+  const fetchIngredients = useIngredientStore((state) => state.fetchAll)
 
   const [dish, setDish] = useState<DishResponse | null>(null)
-  const [ingredients, setIngredients] = useState<IngredientSummary[]>([])
+  const [rawIngredientsData, setRawIngredientsData] = useState<unknown>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [presetModalOpen, setPresetModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (ingredientItems.length === 0) {
+      fetchIngredients().catch(() => undefined)
+    }
+  }, [fetchIngredients, ingredientItems.length])
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" })
+  }, [dishId])
 
   useEffect(() => {
     if (!dishId || Number.isNaN(dishId)) {
@@ -96,7 +110,7 @@ const DishDetailPage: React.FC = () => {
         if (!mounted) return
 
         setDish(dishRes.data)
-        setIngredients(normalizeRecipeResponse(recipeRes.data))
+        setRawIngredientsData(recipeRes.data)
       } catch (err) {
         if (!mounted) return
         const status = (err as { response?: { status?: number } })?.response?.status
@@ -120,6 +134,11 @@ const DishDetailPage: React.FC = () => {
       controller.abort()
     }
   }, [dishId, token])
+
+  const ingredients = useMemo(
+    () => normalizeRecipeResponse(rawIngredientsData, ingredientItems),
+    [rawIngredientsData, ingredientItems],
+  )
 
   const dishForModal: DishItem | null = useMemo(() => {
     if (!dish) return null
@@ -261,6 +280,11 @@ const DishDetailPage: React.FC = () => {
                       Xem thêm món khác
                     </Button>
                   </div>
+                  {!isAuthenticated && (
+                    <p className="text-sm text-orange-500">
+                      Vui lòng đăng nhập để thêm món vào giỏ hàng và theo dõi trạng thái đơn hàng của bạn.
+                    </p>
+                  )}
                 </div>
               </div>
             </section>
@@ -315,12 +339,6 @@ const DishDetailPage: React.FC = () => {
                             {ingredient.unit ? ` ${ingredient.unit}` : ""}
                           </span>
                         </p>
-                        {typeof ingredient.storedQuantity === "number" ? (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Tồn kho: {ingredient.storedQuantity.toLocaleString("vi-VN")}
-                            {ingredient.unit ? ` ${ingredient.unit}` : ""}
-                          </p>
-                        ) : null}
                       </div>
                     </div>
                   ))}
@@ -328,23 +346,6 @@ const DishDetailPage: React.FC = () => {
               )}
             </section>
 
-            <section className="mt-12">
-              <div className="flex items-center gap-3 mb-4">
-                <Users className="text-orange-500" size={24} />
-                <h3 className="text-xl font-semibold text-gray-900">Vì sao bạn sẽ thích món này?</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                <div className="p-4 rounded-2xl border border-orange-100 bg-orange-50">
-                  <p>🌱 Nguyên liệu tươi mới, chuẩn bị ngay trong ngày.</p>
-                </div>
-                <div className="p-4 rounded-2xl border border-orange-100 bg-orange-50">
-                  <p>🔥 Định lượng cân đối, phù hợp cho chế độ ăn healthy.</p>
-                </div>
-                <div className="p-4 rounded-2xl border border-orange-100 bg-orange-50">
-                  <p>🍽️ Có thể tuỳ chỉnh thêm nguyên liệu theo khẩu vị riêng.</p>
-                </div>
-              </div>
-            </section>
           </>
         ) : null}
       </main>
@@ -358,8 +359,30 @@ const DishDetailPage: React.FC = () => {
   )
 }
 
-function normalizeRecipeResponse(data: unknown): IngredientSummary[] {
+function normalizeRecipeResponse(data: unknown, ingredientSource: StoreIngredient[]): IngredientSummary[] {
   if (!data) return []
+
+  const enrich = (ingredient: IngredientSummary): IngredientSummary => {
+    const fromStore = ingredientSource.find((ing) => ing.id === ingredient.id)
+    if (!fromStore) {
+      return ingredient
+    }
+    return {
+      ...ingredient,
+      unit: ingredient.unit || fromStore.unit,
+      storedQuantity:
+        typeof ingredient.storedQuantity === "number"
+          ? ingredient.storedQuantity
+          : fromStore.available ?? fromStore.quantity,
+      category:
+        ingredient.category && ingredient.category.name
+          ? ingredient.category
+          : fromStore.category
+          ? { id: fromStore.categoryId, name: fromStore.category }
+          : ingredient.category,
+      imageUrl: ingredient.imageUrl || fromStore.imgUrl,
+    }
+  }
 
   if (Array.isArray(data)) {
     const mapped = data
@@ -391,7 +414,7 @@ function normalizeRecipeResponse(data: unknown): IngredientSummary[] {
       })
       .filter((ing): ing is IngredientSummary => Boolean(ing))
 
-    return mapped
+    return mapped.map(enrich)
   }
 
   if (typeof data === "object" && "ingredients" in data) {
@@ -406,8 +429,8 @@ function normalizeRecipeResponse(data: unknown): IngredientSummary[] {
         imageUrl?: string
       }>
     }
-    const ingredients = recipeObj.ingredients ?? []
-    return ingredients
+    const ingredientList = recipeObj.ingredients ?? []
+    const normalized = ingredientList
       .map((ing) => {
         if (!ing?.id || typeof ing.neededQuantity !== "number") return null
         return {
@@ -421,6 +444,8 @@ function normalizeRecipeResponse(data: unknown): IngredientSummary[] {
         } satisfies IngredientSummary
       })
       .filter((ing): ing is IngredientSummary => Boolean(ing))
+
+    return normalized.map(enrich)
   }
 
   return []
