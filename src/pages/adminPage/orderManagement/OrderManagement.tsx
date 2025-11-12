@@ -476,6 +476,7 @@ const OrderManagement = () => {
       {/* Create Order Modal (componentized) */}
       <CreateOrderModal
         open={openCreate}
+        onOpenChange={setOpenCreate}
         onClose={() => setOpenCreate(false)}
         onCreated={async () => {
           setOpenCreate(false)

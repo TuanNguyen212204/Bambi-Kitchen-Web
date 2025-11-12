@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react"
+import { createPortal } from "react-dom"
 import { X, ChevronLeft, ChevronRight, Check, Plus, Minus } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { toast } from "sonner"
@@ -481,11 +482,12 @@ const getStepAmount = (unit?: string): number => {
       used: 0,
     }
     
-    // Nếu đang edit, gọi onSave; nếu không, add mới
-    if (editingItemId && onSave) {
+    // Nếu có onSave (từ CreateOrderModal), luôn gọi onSave
+    // Nếu không có onSave (customer flow), gọi addItem
+    if (onSave) {
       onSave(customDish, 1, JSON.stringify(customBowlData))
     } else {
-      // Store custom bowl data in notes as JSON
+      // Store custom bowl data in notes as JSON (customer flow)
       addItem(customDish, 1, JSON.stringify(customBowlData))
       
       // Show success toast
@@ -551,14 +553,57 @@ const getStepAmount = (unit?: string): number => {
 
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+  // Tạo portal container với z-index cao nhất (cùng với Dialog nhưng render sau nên sẽ hiển thị trên)
+  const modalContent = (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 p-4"
+      style={{ 
+        zIndex: 2147483647, 
+        pointerEvents: 'auto', 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'flex-start', 
+        paddingTop: '2rem', 
+        paddingBottom: '2rem',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch'
+      }}
+      onClick={(e) => {
+        // Đóng modal khi click vào overlay
+        if (e.target === e.currentTarget) {
+          e.stopPropagation()
+          onClose()
+        }
+      }}
+      onWheel={(e) => {
+        // Cho phép scroll trong modal con
+        e.stopPropagation()
+      }}
+      onTouchMove={(e) => {
+        // Cho phép touch scroll trong modal con
+        e.stopPropagation()
+      }}
+    >
+      <div 
+        className="bg-white rounded-2xl w-full max-w-6xl flex flex-col pointer-events-auto"
+        onClick={(e) => e.stopPropagation()}
+        style={{ 
+          maxHeight: '90vh', 
+          margin: 'auto 0', 
+          display: 'flex', 
+          flexDirection: 'column',
+          height: 'fit-content',
+          minHeight: 'min-content'
+        }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
           <h2 className="text-2xl font-bold text-gray-900">Tạo tô của bạn</h2>
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation()
+              onClose()
+            }}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <X size={24} />
@@ -566,7 +611,7 @@ const getStepAmount = (unit?: string): number => {
         </div>
 
         {/* Progress Steps */}
-        <div className="px-6 py-4 border-b bg-gray-50">
+        <div className="px-6 py-4 border-b bg-gray-50 flex-shrink-0">
           <div className="flex items-center justify-between">
             {STEP_ORDER.map((step, index) => {
               const stepIndex = STEP_ORDER.indexOf(currentStep)
@@ -605,7 +650,24 @@ const getStepAmount = (unit?: string): number => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div 
+          className="overflow-y-auto p-6" 
+          style={{ 
+            flex: '1 1 auto', 
+            minHeight: 0, 
+            maxHeight: 'calc(90vh - 250px)',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch'
+          }}
+          onWheel={(e) => {
+            // Đảm bảo scroll events không bị chặn
+            e.stopPropagation()
+          }}
+          onTouchMove={(e) => {
+            // Đảm bảo touch scroll không bị chặn
+            e.stopPropagation()
+          }}
+        >
           {loading ? (
             <div className="text-center py-12">Đang tải...</div>
           ) : currentStep === "size" ? (
@@ -999,11 +1061,14 @@ const getStepAmount = (unit?: string): number => {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t bg-gray-50">
+        <div className="flex items-center justify-between p-6 border-t bg-gray-50 flex-shrink-0">
           <div className="flex items-center gap-4">
             {currentStep !== "size" && (
               <Button
-                onClick={handlePrevious}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handlePrevious()
+                }}
                 variant="outline"
                 className="flex items-center gap-2"
               >
@@ -1025,7 +1090,10 @@ const getStepAmount = (unit?: string): number => {
             </div>
             {currentStep === "side" ? (
               <Button
-                onClick={handleAddToCart}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleAddToCart()
+                }}
                 className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2"
                 disabled={!hasRequiredSelections}
               >
@@ -1033,7 +1101,10 @@ const getStepAmount = (unit?: string): number => {
               </Button>
             ) : (
               <Button
-                onClick={handleNext}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleNext()
+                }}
                 className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 flex items-center gap-2"
                 disabled={!canProceed()}
               >
@@ -1051,5 +1122,8 @@ const getStepAmount = (unit?: string): number => {
       </div>
     </div>
   )
+
+  // Sử dụng createPortal để render modal ra ngoài Dialog, đảm bảo z-index cao nhất
+  return typeof window !== "undefined" ? createPortal(modalContent, document.body) : null
 }
 
