@@ -126,6 +126,26 @@ export default function AddDishModal({ open, onClose }: Props) {
       // refresh danh sách với filter hiện tại để giữ nguyên view
       const currentFilter = useDishStore.getState().statusFilter || "all"
       await useDishStore.getState().fetchAll(currentFilter).catch(() => undefined)
+      
+      // Refresh notifications sau khi tạo dish thành công (backend sẽ gửi notification cho user)
+      try {
+        const { useNotificationStore } = await import("@zustand/stores/notification")
+        const { useAuthStore } = await import("@zustand/stores/auth")
+        const authStore = useAuthStore.getState()
+        const notificationStore = useNotificationStore.getState()
+        
+        // Nếu là admin, refresh tất cả notifications
+        if (authStore.user?.role_id === 1) {
+          await notificationStore.fetchAll().catch(() => undefined)
+        } else if (authStore.user?.id) {
+          // Nếu là user thường, không cần refresh vì NotificationIcon sẽ tự refresh
+          // Backend đã tự động gửi notification cho user tạo dish
+        }
+      } catch (error) {
+        // Ignore errors khi refresh notifications
+        console.error("Error refreshing notifications:", error)
+      }
+      
       onClose()
     } finally {
       setLoading(false)

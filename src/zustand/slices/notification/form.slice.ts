@@ -78,15 +78,28 @@ export const createNotificationFormSlice: StateCreator<
 
   markAsRead: async (id) => {
     try {
-      await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(id), {
-        // PATCH, không cần body
-      })
+      // PATCH không cần body theo API v3 docs
+      await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(id))
       toast.success("Đã đánh dấu là đã đọc!")
       await get().fetchAll()
     } catch (error: any) {
       console.error("Error marking as read:", error)
       const { extractErrorMessage, shouldToast } = await import("@utils/errors")
-      const message = extractErrorMessage(error) || "Không thể đánh dấu đã đọc"
+      
+      // Kiểm tra lỗi CORS hoặc 403
+      const status = error?.response?.status
+      let message = extractErrorMessage(error) || "Không thể đánh dấu đã đọc"
+      
+      if (status === 403) {
+        // Lỗi 403 có thể là do:
+        // 1. CORS preflight bị block (OPTIONS request)
+        // 2. User không có quyền truy cập endpoint này
+        message = "Không có quyền đánh dấu đã đọc. Vui lòng kiểm tra lại hoặc liên hệ admin."
+      } else if (status === 0 || error?.code === 'ERR_NETWORK') {
+        // Lỗi network có thể là do CORS
+        message = "Không thể kết nối đến server. Vui lòng kiểm tra lại kết nối."
+      }
+      
       if (shouldToast(`notification_mark_read_${message}`)) {
         toast.error(message)
       }
@@ -96,7 +109,7 @@ export const createNotificationFormSlice: StateCreator<
 
   sendToAll: async (payload: { title: string; message: string; deviceToken?: string; userId?: number }) => {
     try {
-      await bambiApi.post("/api/notification/send-to-all", payload)
+      await bambiApi.post(API_ENDPOINTS.API_NOTIFICATION_SEND_TO_ALL, payload)
       toast.success("Đã gửi thông báo đến tất cả user!")
     } catch (error: any) {
       console.error("Error sending notification to all:", error)
@@ -110,7 +123,7 @@ export const createNotificationFormSlice: StateCreator<
   },
   sendToExact: async (payload: { title: string; message: string; deviceToken?: string; userId?: number }) => {
     try {
-      await bambiApi.post("/api/notification/send-to-exact", payload)
+      await bambiApi.post(API_ENDPOINTS.API_NOTIFICATION_SEND_TO_EXACT, payload)
       toast.success("Đã gửi thông báo đến đúng thiết bị!")
     } catch (error: any) {
       console.error("Error sending notification to exact device:", error)
@@ -124,7 +137,7 @@ export const createNotificationFormSlice: StateCreator<
   },
   sendToDevice: async (payload: { title: string; message: string; deviceToken?: string; userId?: number }) => {
     try {
-      await bambiApi.post("/api/notification/send", payload)
+      await bambiApi.post(API_ENDPOINTS.API_NOTIFICATION_SEND, payload)
       toast.success("Đã gửi thông báo đến user!")
     } catch (error: any) {
       console.error("Error sending notification to device:", error)

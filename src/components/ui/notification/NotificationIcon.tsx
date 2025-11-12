@@ -31,14 +31,26 @@ export default function NotificationIcon({ className = "", onClick }: Notificati
     setIsLoading(true)
     try {
       if (user.role_id === 1) {
+        // Admin: fetch tất cả notifications từ store
         await fetchAll()
+        // Unread count sẽ được cập nhật trong useEffect dưới
       } else {
+        // User thường: fetch notifications của user đó
         const response = await bambiApi.get(API_ENDPOINTS.API_NOTIFICATION_BY_ACCOUNT(user.id), {
           signal,
         })
         if (response.data && Array.isArray(response.data)) {
-          const unreadNotifications = response.data.filter((notification: any) => !notification.read)
+          // Chuẩn hóa và đếm unread notifications
+          const unreadNotifications = response.data.filter((notification: any) => {
+            // Hỗ trợ cả read và is_read field
+            const isRead = typeof notification.read !== 'undefined' 
+              ? notification.read 
+              : notification.is_read
+            return !isRead
+          })
           setUnreadCount(unreadNotifications.length)
+        } else {
+          setUnreadCount(0)
         }
       }
     } catch (error) {
