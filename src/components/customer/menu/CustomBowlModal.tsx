@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react"
-import { X, ChevronLeft, ChevronRight, Check } from "lucide-react"
+import { X, ChevronLeft, ChevronRight, Check, Plus, Minus } from "lucide-react"
 import { Button } from "@components/ui/button"
-import { Input } from "@components/ui/input"
 import { toast } from "sonner"
 import { useDishStore } from "@/zustand/stores/dish"
 import { useIngredientStore } from "@/zustand/stores/ingredients"
@@ -35,24 +34,24 @@ const STEP_LABELS: Record<Step, string> = {
 const STEP_ORDER: Step[] = ["size", "carb", "protein", "vegetable", "side"]
 
 // Giới hạn số lượng tối đa cho mỗi nguyên liệu theo đơn vị (giống các quán ăn/web khác)
-// - PCS (phần): tối đa 5 phần
+// - PCS (phần): tối đa 3 phần
 // - GRAM: tối đa 500 gram (0.5kg) 
-// - KILOGRAM: tối đa 1 kg
-// - LITER: tối đa 1 liter
+// - KILOGRAM: tối đa 0.5 kg
+// - LITER: tối đa 0.5 liter
 const getMaxQuantityForUnit = (unit?: string): number => {
-  if (!unit) return 5
+  if (!unit) return 500
   const unitUpper = unit.toUpperCase()
   switch (unitUpper) {
     case "PCS":
-      return 5 // Tối đa 5 phần
+      return 3 // Tối đa 3 phần
     case "GRAM":
       return 500 // Tối đa 500 gram
     case "KILOGRAM":
-      return 1 // Tối đa 1 kg
+      return 0.5 // Tối đa 0.5 kg
     case "LITER":
-      return 1 // Tối đa 1 liter
+      return 0.5 // Tối đa 0.5 liter
     default:
-      return 5 // Mặc định 5
+      return 500 // Mặc định 500
   }
 }
 
@@ -84,8 +83,6 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
   const [showCatRightArrow, setShowCatRightArrow] = useState(false)
   const [showIngLeftArrow, setShowIngLeftArrow] = useState(false)
   const [showIngRightArrow, setShowIngRightArrow] = useState(false)
-  // Lưu giá trị input tạm thời để cho phép rỗng khi đang gõ
-  const [inputValues, setInputValues] = useState<Record<number, string>>({})
 
   // Fetch data
   useEffect(() => {
@@ -110,7 +107,6 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
       setSelectedTemplate(null)
       setSelectedIngredients([])
       setSelectedCategoryId(null)
-      setInputValues({}) // Reset input values
     }
   }, [open])
 
@@ -224,6 +220,24 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     return getSelectedCountByPriority(currentPriority)
   }
 
+  // Get step amount for ingredient based on unit
+  const getStepAmount = (unit?: string): number => {
+    if (!unit) return 200
+    const unitUpper = unit.toUpperCase()
+    switch (unitUpper) {
+      case "PCS":
+        return 1
+      case "GRAM":
+        return 200
+      case "KILOGRAM":
+        return 0.2
+      case "LITER":
+        return 0.2
+      default:
+        return 200
+    }
+  }
+
   // Handle ingredient selection với validation chặt chẽ
   const handleIngredientToggle = (ingredient: StoreIngredient) => {
     // Hết hàng thì không cho chọn
@@ -236,12 +250,6 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     if (existing) {
       // Remove ingredient - luôn cho phép remove
       setSelectedIngredients(prev => prev.filter(ing => ing.ingredientId !== ingredient.id))
-      // Clear input value
-      setInputValues(prev => {
-        const newValues = { ...prev }
-        delete newValues[ingredient.id]
-        return newValues
-      })
     } else {
       // Kiểm tra xem có thể thêm mới không (validate số lượng items, không phải quantity)
       const currentCount = getSelectedCountByPriority(currentPriority)
@@ -252,21 +260,32 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
         return
       }
       
-      // Add ingredient với số lượng mặc định theo đơn vị
-      // - PCS: 1 phần
-      // - GRAM: 100 gram (mặc định hợp lý cho một phần)
-      // - KILOGRAM: 0.1 kg
-      // - LITER: 0.1 L
+      // Lấy quantityRatio từ template (nếu có), mặc định là 1
+      const quantityRatio = selectedTemplate?.quantityRatio || 1
+      
+      // Kiểm tra số lượng có sẵn trong kho (available) và giới hạn tối đa theo đơn vị
+      const baseDefaultQuantity = getStepAmount(ingredient.unit)
+      // Áp dụng quantityRatio vào số lượng mặc định
+      const defaultQuantity = Math.round(baseDefaultQuantity * quantityRatio)
+      
+      const maxAvailable = ingredient.available ?? Infinity
+      const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
+      // Max quantity sau khi scale theo quantityRatio (nhưng không được vượt quá available)
+      const maxQuantityScaled = Math.min(maxAvailable, Math.round(maxQuantityByUnit * quantityRatio))
+      const maxQuantity = Math.min(maxAvailable, maxQuantityScaled)
+      
+      // Kiểm tra số lượng mặc định không vượt quá giới hạn
+      if (defaultQuantity > maxQuantity) {
+        if (defaultQuantity > maxAvailable) {
+          toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
+        } else {
+          toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
+        }
+        return
+      }
+      
+      // Add ingredient với số lượng đã scale theo quantityRatio
       const category = ingredientCategories.find(cat => cat.id === ingredient.categoryId)
-      const defaultQuantity = ingredient.unit?.toUpperCase() === "PCS" 
-        ? 1 
-        : ingredient.unit?.toUpperCase() === "GRAM" 
-        ? 100 
-        : ingredient.unit?.toUpperCase() === "KILOGRAM"
-        ? 0.1
-        : ingredient.unit?.toUpperCase() === "LITER"
-        ? 0.1
-        : 1
       
       setSelectedIngredients(prev => [...prev, {
         ingredientId: ingredient.id,
@@ -274,126 +293,55 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
         categoryId: ingredient.categoryId || 0,
         priority: category?.priority || 0,
       }])
-      
-      // Set input value mặc định
-      setInputValues(prev => ({ ...prev, [ingredient.id]: defaultQuantity.toString() }))
     }
   }
 
-  // Handle quantity change từ input - cho phép rỗng khi đang gõ
-  const handleQuantityInputChange = (ingredientId: number, value: string) => {
-    // Lưu giá trị input (có thể rỗng) vào state tạm thời
-    setInputValues(prev => ({ ...prev, [ingredientId]: value }))
-    
-    // Nếu rỗng, chỉ cập nhật input value, không cập nhật quantity
-    if (value === "" || value === "-" || value === ".") {
-      return
-    }
-    
-    // Parse số thập phân
-    const numValue = parseFloat(value)
-    
-    // Nếu không phải số hợp lệ, giữ nguyên input value
-    if (isNaN(numValue)) {
-      return
-    }
-    
+  // Handle add/subtract quantity for selected ingredient
+  const handleAdjustQuantity = (ingredientId: number, delta: number) => {
+    const selectedIng = selectedIngredients.find(ing => ing.ingredientId === ingredientId)
     const ingredient = ingredients.find(ing => ing.id === ingredientId)
-    if (!ingredient) return
+    if (!ingredient || !selectedIng) return
     
-    // Giới hạn số lượng:
-    // 1. Không vượt quá available
-    // 2. Không vượt quá giới hạn tối đa theo đơn vị
+    // Lấy quantityRatio từ template (nếu có), mặc định là 1
+    const quantityRatio = selectedTemplate?.quantityRatio || 1
+    
+    const currentQty = selectedIng.quantity
+    const baseStepAmount = getStepAmount(ingredient.unit)
+    // Áp dụng quantityRatio vào step amount
+    const stepAmount = Math.round(baseStepAmount * quantityRatio)
+    const newQty = currentQty + (delta * stepAmount)
     const maxAvailable = ingredient.available ?? Infinity
     const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
-    const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
+    // Max quantity sau khi scale theo quantityRatio (nhưng không được vượt quá available)
+    const maxQuantityScaled = Math.min(maxAvailable, Math.round(maxQuantityByUnit * quantityRatio))
+    const maxQuantity = Math.min(maxAvailable, maxQuantityScaled)
+    // Minimum quantity sau khi scale theo quantityRatio
+    const minQuantity = Math.round(getStepAmount(ingredient.unit) * quantityRatio)
     
-    // Cho phép giá trị 0 hoặc số dương
-    if (numValue < 0) {
-      setInputValues(prev => ({ ...prev, [ingredientId]: "0" }))
-      setSelectedIngredients(prev => prev.map(ing =>
-        ing.ingredientId === ingredientId
-          ? { ...ing, quantity: 0 }
-          : ing
-      ))
+    // Nếu đang tăng số lượng (delta > 0), kiểm tra số lượng có sẵn trong kho và giới hạn tối đa theo đơn vị
+    if (delta > 0 && newQty > maxQuantity) {
+      if (newQty > maxAvailable) {
+        toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
+      } else {
+        toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
+      }
       return
     }
     
-    // Nếu vượt quá giới hạn, giới hạn về max và hiển thị thông báo
-    if (numValue > maxQuantity) {
-      const unitDisplay = formatUnit(ingredient.unit) || "đơn vị"
-      const maxQuantityDisplay = Number.isInteger(maxQuantity) 
-        ? maxQuantity.toString() 
-        : maxQuantity.toFixed(1)
-      toast.warning(`Số lượng tối đa cho mỗi nguyên liệu là ${maxQuantityDisplay} ${unitDisplay}`)
-      
-      // Set về giá trị tối đa
-      const finalQuantity = maxQuantity
-      setInputValues(prev => ({ ...prev, [ingredientId]: finalQuantity.toString() }))
+    const finalQuantity = Math.max(minQuantity, Math.min(newQty, maxQuantity))
+    
+    // Nếu finalQuantity >= minQuantity, cập nhật quantity
+    // Nếu finalQuantity < minQuantity, xóa ingredient (không giữ lại với số lượng quá nhỏ)
+    if (finalQuantity >= minQuantity) {
       setSelectedIngredients(prev => prev.map(ing =>
         ing.ingredientId === ingredientId
           ? { ...ing, quantity: finalQuantity }
           : ing
       ))
-      return
-    }
-    
-    // Cập nhật quantity với giá trị hợp lệ
-    setSelectedIngredients(prev => prev.map(ing =>
-      ing.ingredientId === ingredientId
-        ? { ...ing, quantity: numValue }
-        : ing
-    ))
-  }
-
-  // Handle blur - validate và xử lý giá trị rỗng hoặc 0
-  const handleQuantityBlur = (ingredientId: number) => {
-    const inputValue = inputValues[ingredientId]
-    const selectedIng = selectedIngredients.find(ing => ing.ingredientId === ingredientId)
-    const ingredient = ingredients.find(ing => ing.id === ingredientId)
-    
-    if (!ingredient || !selectedIng) return
-    
-    // Nếu input rỗng hoặc giá trị = 0, remove ingredient
-    if (!inputValue || inputValue === "" || inputValue === "0" || parseFloat(inputValue || "0") === 0) {
-      // Remove ingredient trực tiếp
+    } else {
+      // Nếu giảm xuống dưới minQuantity, xóa ingredient
       setSelectedIngredients(prev => prev.filter(ing => ing.ingredientId !== ingredientId))
-      // Clear input value
-      setInputValues(prev => {
-        const newValues = { ...prev }
-        delete newValues[ingredientId]
-        return newValues
-      })
-      return
     }
-    
-    // Validate và format giá trị
-    const numValue = parseFloat(inputValue)
-    if (isNaN(numValue) || numValue <= 0) {
-      // Nếu không hợp lệ, remove ingredient
-      setSelectedIngredients(prev => prev.filter(ing => ing.ingredientId !== ingredientId))
-      setInputValues(prev => {
-        const newValues = { ...prev }
-        delete newValues[ingredientId]
-        return newValues
-      })
-      return
-    }
-    
-    // Đảm bảo giá trị hợp lệ và cập nhật
-    const maxAvailable = ingredient.available ?? Infinity
-    const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
-    const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
-    const finalQuantity = Math.max(0.1, Math.min(numValue, maxQuantity))
-    
-    setSelectedIngredients(prev => prev.map(ing =>
-      ing.ingredientId === ingredientId
-        ? { ...ing, quantity: finalQuantity }
-        : ing
-    ))
-    
-    // Cập nhật input value với giá trị đã được format
-    setInputValues(prev => ({ ...prev, [ingredientId]: finalQuantity.toString() }))
   }
 
   // Base price constant (có thể lấy từ config sau)
@@ -407,8 +355,8 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     let price = BASE_BOWL_PRICE * selectedTemplate.priceRatio
     
     // Add ingredient prices: pricePerUnit * quantity
-    // quantityRatio có thể được dùng để tính số lượng nguyên liệu cần thiết,
-    // nhưng giá thì tính trực tiếp từ pricePerUnit * quantity
+    // Lưu ý: quantity đã được scale theo quantityRatio trong handleIngredientToggle và handleAdjustQuantity
+    // nên giá tính trực tiếp từ pricePerUnit * quantity (đã scale)
     selectedIngredients.forEach(selected => {
       const ingredient = ingredients.find(ing => ing.id === selected.ingredientId)
       if (ingredient && ingredient.pricePerUnit) {
@@ -443,11 +391,13 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     
     // Create custom dish object for cart
     // Store custom bowl data in notes as JSON string for later retrieval
+    // Lưu ý: quantity đã được scale theo quantityRatio trong handleIngredientToggle và handleAdjustQuantity
+    // nên khi gửi lên API, quantity đã là giá trị cuối cùng (đã nhân với quantityRatio)
     const customBowlData = {
       template: selectedTemplate,
       recipe: selectedIngredients.map(ing => ({
         ingredientId: ing.ingredientId,
-        quantity: ing.quantity,
+        quantity: Math.round(ing.quantity), // Đảm bảo số nguyên (API có thể yêu cầu)
         sourceType: "ADDON" as const,
       })),
     }
@@ -764,44 +714,57 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
                               </div>
                             )}
                             <h4 className="font-semibold text-gray-900 mb-1 text-sm">{ingredient.name}</h4>
-                            {ingredient.pricePerUnit !== undefined && (
-                              <p className="text-xs text-gray-600 mb-1">
-                                {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(ingredient.pricePerUnit)}
+                            {/* Chỉ hiển thị giá đơn vị khi chưa chọn */}
+                            {!isSelected && ingredient.pricePerUnit !== undefined && (
+                              <p className="text-xs text-gray-600 mb-2">
+                                {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(ingredient.pricePerUnit)}/{formatUnit(ingredient.unit)}
                               </p>
                             )}
-                            <p className="text-[11px] text-gray-500 mb-2">
-                              Khả dụng: {ingredient.available ?? 0}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
-                            </p>
-                            {isSelected && (
-                              <div className="flex items-center gap-1.5 mt-2 w-full">
-                                <label className="text-xs text-gray-600 whitespace-nowrap flex-shrink-0">Số lượng:</label>
-                                <Input
-                                  type="number"
-                                  step={ingredient.unit?.toUpperCase() === "PCS" ? "1" : "0.1"}
-                                  min={0}
-                                  max={Math.min(ingredient.available ?? Infinity, getMaxQuantityForUnit(ingredient.unit))}
-                                  value={inputValues[ingredient.id] !== undefined 
-                                    ? inputValues[ingredient.id] 
-                                    : selectedIng?.quantity?.toString() || ""}
-                                  onChange={(e) => {
-                                    e.stopPropagation()
-                                    handleQuantityInputChange(ingredient.id, e.target.value)
-                                  }}
-                                  onBlur={(e) => {
-                                    e.stopPropagation()
-                                    handleQuantityBlur(ingredient.id)
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onFocus={(e) => {
-                                    e.stopPropagation()
-                                    // Khi focus, select all text để dễ xóa
-                                    e.target.select()
-                                  }}
-                                  className="w-14 h-7 text-xs text-center p-1 flex-shrink-0"
-                                  placeholder="Nhập số"
-                                />
-                                <span className="text-xs text-gray-600 flex-shrink-0">{formatUnit(ingredient.unit)}</span>
-                                <div className="text-orange-500 flex-shrink-0 ml-auto pr-1">
+                            {isSelected && selectedIng && (
+                              <div className="space-y-2 mt-2">
+                                {/* Nút điều chỉnh số lượng */}
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleAdjustQuantity(ingredient.id, -1)
+                                    }}
+                                    className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
+                                    disabled={selectedIng.quantity <= getStepAmount(ingredient.unit)}
+                                    title={`Giảm ${getStepAmount(ingredient.unit)} ${formatUnit(ingredient.unit)}`}
+                                  >
+                                    <Minus size={14} className="mr-1" />
+                                    <span>{getStepAmount(ingredient.unit)}</span>
+                                  </button>
+                                  <span className="flex-1 text-center text-xs text-gray-700 font-medium">
+                                    {selectedIng.quantity} {formatUnit(ingredient.unit)}
+                                  </span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleAdjustQuantity(ingredient.id, 1)
+                                    }}
+                                    className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
+                                    disabled={(() => {
+                                      const maxAvailable = ingredient.available ?? Infinity
+                                      const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
+                                      const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
+                                      return selectedIng.quantity >= maxQuantity
+                                    })()}
+                                    title={`Thêm ${getStepAmount(ingredient.unit)} ${formatUnit(ingredient.unit)}`}
+                                  >
+                                    <Plus size={14} className="mr-1" />
+                                    <span>{getStepAmount(ingredient.unit)}</span>
+                                  </button>
+                                </div>
+                                {/* Hiển thị giá tiền cập nhật */}
+                                {ingredient.pricePerUnit && (
+                                  <p className="text-xs font-semibold text-orange-600 text-center">
+                                    +{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Math.round(ingredient.pricePerUnit * selectedIng.quantity))}
+                                  </p>
+                                )}
+                                {/* Hiển thị icon check để báo đã chọn */}
+                                <div className="text-orange-500 flex justify-center">
                                   <Check size={14} />
                                 </div>
                               </div>
