@@ -17,6 +17,9 @@ export const API_ENDPOINTS = {
   // API v3: lấy đơn hàng theo userId: /api/order/user/{userId}
   API_ORDERS_BY_USER: (userId: number) => `/api/order/user/${userId}`,
   API_ORDER_BY_ID: (id: number) => `/api/order/${id}`,
+  // Order status updates
+  API_ORDER_PREPARE: (id: number) => `/api/order/${id}/prepare`,
+  API_ORDER_COMPLETE: (id: number) => `/api/order/${id}/complete`,
   // Order feedbacks & update feedback
   API_ORDER_FEEDBACKS: "/api/order/getFeedbacks",
   API_ORDER_FEEDBACK_UPDATE: "/api/order/feedback",

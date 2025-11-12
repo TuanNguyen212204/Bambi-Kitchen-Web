@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select"
-import { Bell, CheckCircle, Mail, Calendar, Plus, Eye, MoreVertical, Trash2 as TrashIcon } from "lucide-react"
+import { Bell, Plus, Eye, MoreVertical, Trash2 as TrashIcon } from "lucide-react"
 import { useEffect, useState, useMemo } from "react"
 import { useNotificationStore } from "@zustand/stores/notification"
 import { useAccountStore } from "@zustand/stores/account"
@@ -42,12 +42,8 @@ export default function NotificationManagement() {
   } = useNotificationStore()
 
   const { fetchAll: fetchAccounts } = useAccountStore()
-  const store = useNotificationStore()
   
-  const notifications = useMemo(() => getFilteredItems(), [store])
-  const totalNotifications = useMemo(() => store.items.length, [store.items])
-  const unreadNotifications = useMemo(() => store.items.filter(n => !n.read).length, [store.items])
-  const readNotifications = useMemo(() => store.items.filter(n => n.read).length, [store.items])
+  const notifications = useMemo(() => getFilteredItems(), [getFilteredItems])
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -59,45 +55,6 @@ export default function NotificationManagement() {
     fetchAll()
     fetchAccounts()
   }, [])
-
-  const statsData = [
-    {
-      title: "Tổng thông báo",
-      value: totalNotifications.toString(),
-      subtitle: `${Math.floor(totalNotifications * 0.1)} thông báo mới tuần này`,
-      icon: Bell,
-      bgColor: "bg-blue-100",
-      iconColor: "text-blue-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Chưa đọc",
-      value: unreadNotifications.toString(),
-      subtitle: `${totalNotifications > 0 ? Math.round((unreadNotifications / totalNotifications) * 100) : 0}% tổng thông báo`,
-      icon: Mail,
-      bgColor: "bg-amber-100",
-      iconColor: "text-amber-600",
-      subtitleColor: "text-amber-600",
-    },
-    {
-      title: "Đã đọc",
-      value: readNotifications.toString(),
-      subtitle: `${totalNotifications > 0 ? Math.round((readNotifications / totalNotifications) * 100) : 0}% tổng thông báo`,
-      icon: CheckCircle,
-      bgColor: "bg-green-100",
-      iconColor: "text-green-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Trong tháng",
-      value: totalNotifications.toString(),
-      subtitle: "Tăng 15% so với tháng trước",
-      icon: Calendar,
-      bgColor: "bg-pink-100",
-      iconColor: "text-pink-500",
-      subtitleColor: "text-green-600",
-    },
-  ]
 
   const handleViewDetail = (notification: any) => {
     setSelectedNotification(notification)
@@ -161,31 +118,6 @@ export default function NotificationManagement() {
           <div className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-sm leading-[21px]">
             Hôm nay: {currentDate}
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statsData.map((stat, index) => (
-            <Card key={index} className="border border-solid shadow-[0px_1px_3px_#0000001a]">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-500 text-sm leading-[21px] mb-4">
-                      {stat.title}
-                    </div>
-                    <div className="[font-family:'Inter-Bold',Helvetica] font-bold text-gray-800 text-[32px] leading-[48px] mb-2">
-                      {stat.value}
-                    </div>
-                    <div className={`[font-family:'Inter-Medium',Helvetica] font-medium text-sm leading-[21px] ${stat.subtitleColor}`}>
-                      {stat.subtitle}
-                    </div>
-                  </div>
-                  <div className={`w-10 h-10 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                    <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
         </div>
       </section>
 

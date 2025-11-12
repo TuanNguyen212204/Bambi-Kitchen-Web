@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from "react"
-import { Card, CardContent } from "@components/ui/card/card"
 import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
@@ -8,7 +7,7 @@ import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/mod
 import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal"
 import { useIngredientStore } from "@zustand/stores/ingredients"
 import { toast } from "sonner"
-import { Box, Package, Plus, MoreVertical, Eye, Trash2, Search, TrendingUp, CheckCircle } from "lucide-react"
+import { Box, Package, Plus, MoreVertical, Eye, Trash2, Search } from "lucide-react"
 import type { IngredientCategory } from "@models/category/category"
 import type { StoreIngredient } from "@/zustand/types"
 
@@ -89,60 +88,6 @@ export default function AdminIngredientCategoryPage() {
 
     return filtered
   }, [allIngredients, selectedCategory, ingredientSearchQuery])
-
-  // Stats calculations
-  const totalCategories = useMemo(() => categories.length, [categories])
-  const totalIngredients = useMemo(() => allIngredients.length, [allIngredients])
-  const activeIngredients = useMemo(() => allIngredients.filter(ing => ing.active !== false).length, [allIngredients])
-  const categoriesWithIngredients = useMemo(() => {
-    return categories.filter(cat => {
-      const hasIngredients = allIngredients.some((ing) => {
-        const catId = (ing as unknown as { categoryId?: number; ingredient_category_id?: number }).categoryId
-          ?? (ing as unknown as { ingredient_category_id?: number }).ingredient_category_id
-        return catId === cat.id
-      })
-      return hasIngredients
-    }).length
-  }, [categories, allIngredients])
-
-  const statsData = [
-    {
-      title: "Tổng danh mục",
-      value: totalCategories.toString(),
-      subtitle: `${categoriesWithIngredients} danh mục có nguyên liệu`,
-      icon: Box,
-      bgColor: "bg-blue-100",
-      iconColor: "text-blue-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Tổng nguyên liệu",
-      value: totalIngredients.toString(),
-      subtitle: `${activeIngredients} nguyên liệu đang hoạt động`,
-      icon: Package,
-      bgColor: "bg-green-100",
-      iconColor: "text-green-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Nguyên liệu hoạt động",
-      value: activeIngredients.toString(),
-      subtitle: `${totalIngredients > 0 ? Math.round((activeIngredients / totalIngredients) * 100) : 0}% tổng nguyên liệu`,
-      icon: CheckCircle,
-      bgColor: "bg-amber-100",
-      iconColor: "text-amber-600",
-      subtitleColor: "text-gray-600",
-    },
-    {
-      title: "Danh mục đã dùng",
-      value: categoriesWithIngredients.toString(),
-      subtitle: `${totalCategories > 0 ? Math.round((categoriesWithIngredients / totalCategories) * 100) : 0}% tổng danh mục`,
-      icon: TrendingUp,
-      bgColor: "bg-pink-100",
-      iconColor: "text-pink-500",
-      subtitleColor: "text-green-600",
-    },
-  ];
 
   const submit = async () => {
     if (!name.trim()) {
@@ -267,33 +212,6 @@ export default function AdminIngredientCategoryPage() {
         </div>
       </section>
 
-      {/* Stats Cards */}
-      <section>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statsData.map((stat, index) => (
-            <Card key={index} className="border border-solid shadow-[0px_1px_3px_#0000001a]">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-500 text-sm leading-[21px] mb-4">
-                      {stat.title}
-                    </div>
-                    <div className="[font-family:'Inter-Bold',Helvetica] font-bold text-gray-800 text-[32px] leading-[48px] mb-2">
-                      {stat.value}
-                    </div>
-                    <div className={`[font-family:'Inter-Medium',Helvetica] font-medium text-sm leading-[21px] ${stat.subtitleColor}`}>
-                      {stat.subtitle}
-                    </div>
-                  </div>
-                  <div className={`w-10 h-10 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                    <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
 
       {/* Main Management Section with Two Columns */}
       <section className="w-full bg-white rounded-xl border border-solid border-gray-200 shadow-[0px_1px_3px_#0000001a] overflow-hidden">
