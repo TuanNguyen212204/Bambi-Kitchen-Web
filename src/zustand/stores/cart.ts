@@ -158,6 +158,21 @@ export const useCartStore = create<CartState>()(
             syncCartToStorage()
           },
 
+          updateItem: (itemId: number, dish: Dish, quantity: number, notes?: string) => {
+            const userId = getCurrentUserId()
+            if (!userId) {
+              return
+            }
+
+            const state = get()
+            const updatedItems = state.items.map(item =>
+              item.id === itemId ? { ...item, dish, quantity, notes } : item
+            )
+            const { totalPrice, totalItems } = calculateTotals(updatedItems)
+            set({ items: updatedItems, totalPrice, totalItems })
+            syncCartToStorage()
+          },
+
           clearCart: () => {
             set({ items: [], totalPrice: 0, totalItems: 0 })
             syncCartToStorage()

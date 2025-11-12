@@ -15,6 +15,13 @@ interface PresetDishModalProps {
   open: boolean
   onClose: () => void
   dish: DishItem | null
+  editingItemId?: number | null
+  initialData?: {
+    size: "S" | "M" | "L"
+    recipeModifications: Array<{ ingredientId: number; quantity: number; sourceType: "REMOVED" | "ADDON" }>
+    quantity: number
+  } | null
+  onSave?: (dish: Dish, quantity: number, notes: string) => void
 }
 
 interface IngredientDetail {
@@ -56,7 +63,7 @@ const formatUnit = (unit?: string): string => {
   return unitMap[unit.toUpperCase()] || unit
 }
 
-export default function PresetDishModal({ open, onClose, dish }: PresetDishModalProps) {
+export default function PresetDishModal({ open, onClose, dish, editingItemId, initialData, onSave }: PresetDishModalProps) {
   const { items: allIngredients, fetchAll: fetchIngredients, categories: ingredientCategories, fetchCategories } = useIngredientStore()
   const { templates, fetchTemplates } = useDishStore()
   const { addItem } = useCartStore()
@@ -220,7 +227,7 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
     }
   }, [open, dish?.id, fetchIngredients, fetchCategories, fetchTemplates])
 
-  // Reset when modal closes
+  // Reset when modal closes or restore initialData when opening
   useEffect(() => {
     if (!open) {
       setSelectedSize("M")
@@ -229,8 +236,13 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
       setSelectedCategoryId(null)
       setQuantity(1)
       setDishDetails(null)
+    } else if (open && initialData) {
+      // Khôi phục state từ initialData
+      setSelectedSize(initialData.size)
+      setRecipeModifications(initialData.recipeModifications)
+      setQuantity(initialData.quantity)
     }
-  }, [open])
+  }, [open, initialData])
 
   // Update selected template when size changes or templates are loaded
   useEffect(() => {
@@ -634,12 +646,17 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
       used: dish.usedQuantity || 0,
     }
     
-    // Add to cart with modification data in notes
-    addItem(dishForCart, quantity, JSON.stringify(modificationData))
-    
-    toast.success("Đã thêm vào giỏ hàng", {
-      description: `${dishName} (Size: ${selectedSize}, SL: ${quantity})${recipeModifications.length > 0 ? ` với ${recipeModifications.length} thay đổi` : ""}`,
-    })
+    // Nếu đang edit, gọi onSave; nếu không, add mới
+    if (editingItemId && onSave) {
+      onSave(dishForCart, quantity, JSON.stringify(modificationData))
+    } else {
+      // Add to cart with modification data in notes
+      addItem(dishForCart, quantity, JSON.stringify(modificationData))
+      
+      toast.success("Đã thêm vào giỏ hàng", {
+        description: `${dishName} (Size: ${selectedSize}, SL: ${quantity})${recipeModifications.length > 0 ? ` với ${recipeModifications.length} thay đổi` : ""}`,
+      })
+    }
     
     onClose()
   }
@@ -1288,7 +1305,7 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
             disabled={loading || !dishDetails}
             className="px-4 bg-orange-500 hover:bg-orange-600 text-white text-sm"
           >
-            Thêm vào giỏ ({new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(totalPrice)})
+            {editingItemId ? "Cập nhật" : "Thêm vào giỏ"} ({new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(totalPrice)})
           </Button>
         </div>
       </div>

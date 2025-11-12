@@ -10,6 +10,11 @@ import { bambiApi, API_ENDPOINTS } from "@/utils/api"
 import { CheckoutCartItemsSection } from "@/components/customer/checkout/CheckoutCartItemsSection"
 import { CheckoutPaymentSection } from "@/components/customer/checkout/CheckoutPaymentSection"
 import { CheckoutOrderNoteSection } from "@/components/customer/checkout/CheckoutOrderNoteSection"
+import PresetDishModal from "@/components/customer/menu/PresetDishModal"
+import CustomBowlModal from "@/components/customer/menu/CustomBowlModal"
+import type { DishItem } from "@/zustand/slices/dish/list.slice"
+import type { Dish } from "@models/dish/dish"
+import type { DishTemplateItem } from "@/zustand/slices/dish/template.slice"
 
 type PaymentMethod = "MOMO" | "VNPAY" | "COD"
 
@@ -37,13 +42,28 @@ interface MakeOrderRequest {
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate()
-  const { items, updateQuantity, removeItem, totalPrice: cartTotalPrice } = useCartStore()
+  const { items, updateQuantity, removeItem, updateItem, totalPrice: cartTotalPrice } = useCartStore()
   const { user, isAuthenticated } = useAuthStore()
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("COD")
   const [note, setNote] = useState("")
   const [discount] = useState(0) // TODO: Implement discount feature
   const [submitting, setSubmitting] = useState(false)
+  
+  // State để quản lý modal chỉnh sửa
+  const [editingItemId, setEditingItemId] = useState<number | null>(null)
+  const [presetModalOpen, setPresetModalOpen] = useState(false)
+  const [customModalOpen, setCustomModalOpen] = useState(false)
+  const [editingDish, setEditingDish] = useState<DishItem | null>(null)
+  const [presetInitialData, setPresetInitialData] = useState<{
+    size: "S" | "M" | "L"
+    recipeModifications: Array<{ ingredientId: number; quantity: number; sourceType: "REMOVED" | "ADDON" }>
+    quantity: number
+  } | null>(null)
+  const [customInitialData, setCustomInitialData] = useState<{
+    template: DishTemplateItem
+    selectedIngredients: Array<{ ingredientId: number; quantity: number; categoryId: number; priority: number }>
+  } | null>(null)
 
   // Redirect nếu chưa đăng nhập
   useEffect(() => {
@@ -68,6 +88,124 @@ const CheckoutPage: React.FC = () => {
   const total = useMemo(() => {
     return subtotal - discount
   }, [subtotal, discount])
+
+  // Hàm để convert Dish thành DishItem
+  const convertDishToDishItem = (dish: Dish): DishItem => {
+    return {
+      id: dish.id,
+      name: dish.name,
+      price: dish.price,
+      imageUrl: dish.imgUrl || dish.img_url,
+      description: dish.description,
+      public: dish.is_public,
+      active: true, // Assume active if in cart
+      usedQuantity: dish.used,
+      categoryId: dish.dish_category_id,
+    }
+  }
+
+  // Hàm xử lý khi click nút chỉnh sửa
+  const handleEditItem = (itemId: number) => {
+    const item = items.find(i => i.id === itemId)
+    if (!item) return
+
+    // Parse notes để xác định loại món
+    let parsedData: {
+      basedOnId?: number
+      dishTemplate?: { size: "S" | "M" | "L" }
+      template?: DishTemplateItem & { size: "S" | "M" | "L" }
+      recipe?: Array<{ ingredientId: number; quantity: number; sourceType: "REMOVED" | "ADDON" }>
+      quantity?: number
+    } | null = null
+
+    if (item.notes) {
+      try {
+        parsedData = JSON.parse(item.notes)
+      } catch {
+        // Nếu không parse được, coi như preset không tùy chỉnh
+      }
+    }
+
+    setEditingItemId(itemId)
+
+    // Custom Bowl: có template, không có basedOnId
+    if (parsedData?.template && !parsedData.basedOnId) {
+      // Fetch template để có đầy đủ thông tin
+      bambiApi.get<DishTemplateItem[]>(API_ENDPOINTS.API_DISH_TEMPLATES)
+        .then(res => {
+          const templates = res.data
+          const template = templates.find(t => t.size === parsedData!.template!.size)
+          if (template) {
+            // Convert recipe thành selectedIngredients format
+            const selectedIngredients = (parsedData.recipe || []).map(rec => {
+              // Cần fetch ingredients để lấy categoryId và priority
+              // Tạm thời dùng structure đơn giản, sẽ được update trong CustomBowlModal
+              return {
+                ingredientId: rec.ingredientId,
+                quantity: rec.quantity,
+                categoryId: 0, // Will be set in modal
+                priority: 0, // Will be set in modal
+              }
+            })
+            setCustomInitialData({
+              template,
+              selectedIngredients,
+            })
+            setCustomModalOpen(true)
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching templates:", err)
+          toast.error("Không thể tải thông tin món ăn")
+        })
+    }
+    // Preset Dish: có basedOnId hoặc không có parsedData
+    else {
+      // Convert Dish thành DishItem
+      const dishItem = convertDishToDishItem(item.dish)
+      setEditingDish(dishItem)
+
+      // Nếu có parsedData, khôi phục state
+      if (parsedData) {
+        setPresetInitialData({
+          size: parsedData.dishTemplate?.size || "M",
+          recipeModifications: parsedData.recipe || [],
+          quantity: parsedData.quantity || item.quantity,
+        })
+      } else {
+        // Preset không tùy chỉnh
+        setPresetInitialData({
+          size: "M",
+          recipeModifications: [],
+          quantity: item.quantity,
+        })
+      }
+      setPresetModalOpen(true)
+    }
+  }
+
+  // Hàm xử lý khi save preset dish
+  const handleSavePresetDish = (dish: Dish, quantity: number, notes: string) => {
+    if (editingItemId === null) return
+
+    updateItem(editingItemId, dish, quantity, notes)
+    setPresetModalOpen(false)
+    setEditingItemId(null)
+    setEditingDish(null)
+    setPresetInitialData(null)
+    toast.success("Đã cập nhật món ăn")
+  }
+
+  // Hàm xử lý khi save custom bowl
+  const handleSaveCustomBowl = (dish: Dish, quantity: number, notes: string) => {
+    if (editingItemId === null) return
+
+    updateItem(editingItemId, dish, quantity, notes)
+    setCustomModalOpen(false)
+    setEditingItemId(null)
+    setCustomInitialData(null)
+    toast.success("Đã cập nhật món ăn")
+  }
 
   // Parse cart item để tạo order request
   // Phân biệt 3 loại dish:
@@ -216,6 +354,7 @@ const CheckoutPage: React.FC = () => {
                 onUpdateQuantity={updateQuantity}
                 onRemoveItem={removeItem}
                 onAddMoreItems={() => navigate(PATHS.MENU)}
+                onEditItem={handleEditItem}
               />
 
               {/* Order Summary in Cart */}
@@ -292,6 +431,34 @@ const CheckoutPage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Preset Dish Modal */}
+      <PresetDishModal
+        open={presetModalOpen}
+        onClose={() => {
+          setPresetModalOpen(false)
+          setEditingItemId(null)
+          setEditingDish(null)
+          setPresetInitialData(null)
+        }}
+        dish={editingDish}
+        editingItemId={editingItemId}
+        initialData={presetInitialData}
+        onSave={handleSavePresetDish}
+      />
+
+      {/* Custom Bowl Modal */}
+      <CustomBowlModal
+        open={customModalOpen}
+        onClose={() => {
+          setCustomModalOpen(false)
+          setEditingItemId(null)
+          setCustomInitialData(null)
+        }}
+        editingItemId={editingItemId}
+        initialData={customInitialData}
+        onSave={handleSaveCustomBowl}
+      />
     </div>
   )
 }
