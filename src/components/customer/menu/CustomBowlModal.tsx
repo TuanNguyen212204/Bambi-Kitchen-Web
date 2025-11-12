@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react"
 import { X, ChevronLeft, ChevronRight, Check, Plus, Minus } from "lucide-react"
 import { Button } from "@components/ui/button"
-import { Input } from "@components/ui/input"
 import { toast } from "sonner"
 import { useDishStore } from "@/zustand/stores/dish"
 import { useIngredientStore } from "@/zustand/stores/ingredients"
@@ -84,8 +83,6 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
   const [showCatRightArrow, setShowCatRightArrow] = useState(false)
   const [showIngLeftArrow, setShowIngLeftArrow] = useState(false)
   const [showIngRightArrow, setShowIngRightArrow] = useState(false)
-  // Lưu giá trị input tạm thời để cho phép rỗng khi đang gõ
-  const [inputValues, setInputValues] = useState<Record<number, string>>({})
 
   // Fetch data
   useEffect(() => {
@@ -110,7 +107,6 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
       setSelectedTemplate(null)
       setSelectedIngredients([])
       setSelectedCategoryId(null)
-      setInputValues({}) // Reset input values
     }
   }, [open])
 
@@ -254,12 +250,6 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     if (existing) {
       // Remove ingredient - luôn cho phép remove
       setSelectedIngredients(prev => prev.filter(ing => ing.ingredientId !== ingredient.id))
-      // Clear input value
-      setInputValues(prev => {
-        const newValues = { ...prev }
-        delete newValues[ingredient.id]
-        return newValues
-      })
     } else {
       // Kiểm tra xem có thể thêm mới không (validate số lượng items, không phải quantity)
       const currentCount = getSelectedCountByPriority(currentPriority)
@@ -270,11 +260,19 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
         return
       }
       
+      // Lấy quantityRatio từ template (nếu có), mặc định là 1
+      const quantityRatio = selectedTemplate?.quantityRatio || 1
+      
       // Kiểm tra số lượng có sẵn trong kho (available) và giới hạn tối đa theo đơn vị
-      const defaultQuantity = getStepAmount(ingredient.unit)
+      const baseDefaultQuantity = getStepAmount(ingredient.unit)
+      // Áp dụng quantityRatio vào số lượng mặc định
+      const defaultQuantity = Math.round(baseDefaultQuantity * quantityRatio)
+      
       const maxAvailable = ingredient.available ?? Infinity
       const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
-      const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
+      // Max quantity sau khi scale theo quantityRatio (nhưng không được vượt quá available)
+      const maxQuantityScaled = Math.min(maxAvailable, Math.round(maxQuantityByUnit * quantityRatio))
+      const maxQuantity = Math.min(maxAvailable, maxQuantityScaled)
       
       // Kiểm tra số lượng mặc định không vượt quá giới hạn
       if (defaultQuantity > maxQuantity) {
@@ -286,7 +284,7 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
         return
       }
       
-      // Add ingredient với số lượng mặc định (dùng getStepAmount để nhất quán)
+      // Add ingredient với số lượng đã scale theo quantityRatio
       const category = ingredientCategories.find(cat => cat.id === ingredient.categoryId)
       
       setSelectedIngredients(prev => [...prev, {
@@ -295,9 +293,6 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
         categoryId: ingredient.categoryId || 0,
         priority: category?.priority || 0,
       }])
-      
-      // Set input value mặc định
-      setInputValues(prev => ({ ...prev, [ingredient.id]: defaultQuantity.toString() }))
     }
   }
 
@@ -307,13 +302,21 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     const ingredient = ingredients.find(ing => ing.id === ingredientId)
     if (!ingredient || !selectedIng) return
     
+    // Lấy quantityRatio từ template (nếu có), mặc định là 1
+    const quantityRatio = selectedTemplate?.quantityRatio || 1
+    
     const currentQty = selectedIng.quantity
-    const stepAmount = getStepAmount(ingredient.unit)
+    const baseStepAmount = getStepAmount(ingredient.unit)
+    // Áp dụng quantityRatio vào step amount
+    const stepAmount = Math.round(baseStepAmount * quantityRatio)
     const newQty = currentQty + (delta * stepAmount)
     const maxAvailable = ingredient.available ?? Infinity
     const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
-    const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
-    const minQuantity = getStepAmount(ingredient.unit) // Minimum quantity là stepAmount
+    // Max quantity sau khi scale theo quantityRatio (nhưng không được vượt quá available)
+    const maxQuantityScaled = Math.min(maxAvailable, Math.round(maxQuantityByUnit * quantityRatio))
+    const maxQuantity = Math.min(maxAvailable, maxQuantityScaled)
+    // Minimum quantity sau khi scale theo quantityRatio
+    const minQuantity = Math.round(getStepAmount(ingredient.unit) * quantityRatio)
     
     // Nếu đang tăng số lượng (delta > 0), kiểm tra số lượng có sẵn trong kho và giới hạn tối đa theo đơn vị
     if (delta > 0 && newQty > maxQuantity) {
@@ -335,133 +338,10 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
           ? { ...ing, quantity: finalQuantity }
           : ing
       ))
-      setInputValues(prev => ({ ...prev, [ingredientId]: finalQuantity.toString() }))
     } else {
       // Nếu giảm xuống dưới minQuantity, xóa ingredient
       setSelectedIngredients(prev => prev.filter(ing => ing.ingredientId !== ingredientId))
-      setInputValues(prev => {
-        const newValues = { ...prev }
-        delete newValues[ingredientId]
-        return newValues
-      })
     }
-  }
-
-  // Handle quantity change từ input - cho phép rỗng khi đang gõ
-  const handleQuantityInputChange = (ingredientId: number, value: string) => {
-    // Lưu giá trị input (có thể rỗng) vào state tạm thời
-    setInputValues(prev => ({ ...prev, [ingredientId]: value }))
-    
-    // Nếu rỗng, chỉ cập nhật input value, không cập nhật quantity
-    if (value === "" || value === "-" || value === ".") {
-      return
-    }
-    
-    // Parse số thập phân
-    const numValue = parseFloat(value)
-    
-    // Nếu không phải số hợp lệ, giữ nguyên input value
-    if (isNaN(numValue)) {
-      return
-    }
-    
-    const ingredient = ingredients.find(ing => ing.id === ingredientId)
-    if (!ingredient) return
-    
-    // Giới hạn số lượng:
-    // 1. Không vượt quá available
-    // 2. Không vượt quá giới hạn tối đa theo đơn vị
-    const maxAvailable = ingredient.available ?? Infinity
-    const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
-    const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
-    
-    // Cho phép giá trị 0 hoặc số dương
-    if (numValue < 0) {
-      setInputValues(prev => ({ ...prev, [ingredientId]: "0" }))
-      setSelectedIngredients(prev => prev.map(ing =>
-        ing.ingredientId === ingredientId
-          ? { ...ing, quantity: 0 }
-          : ing
-      ))
-      return
-    }
-    
-    // Nếu vượt quá giới hạn, giới hạn về max và hiển thị thông báo
-    if (numValue > maxQuantity) {
-      // Phân biệt giữa vượt quá available và vượt quá maxQuantityByUnit
-      if (numValue > maxAvailable) {
-        toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
-      } else {
-        toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
-      }
-      
-      // Set về giá trị tối đa
-      const finalQuantity = maxQuantity
-      setInputValues(prev => ({ ...prev, [ingredientId]: finalQuantity.toString() }))
-      setSelectedIngredients(prev => prev.map(ing =>
-        ing.ingredientId === ingredientId
-          ? { ...ing, quantity: finalQuantity }
-          : ing
-      ))
-      return
-    }
-    
-    // Cập nhật quantity với giá trị hợp lệ
-    setSelectedIngredients(prev => prev.map(ing =>
-      ing.ingredientId === ingredientId
-        ? { ...ing, quantity: numValue }
-        : ing
-    ))
-  }
-
-  // Handle blur - validate và xử lý giá trị rỗng hoặc 0
-  const handleQuantityBlur = (ingredientId: number) => {
-    const inputValue = inputValues[ingredientId]
-    const selectedIng = selectedIngredients.find(ing => ing.ingredientId === ingredientId)
-    const ingredient = ingredients.find(ing => ing.id === ingredientId)
-    
-    if (!ingredient || !selectedIng) return
-    
-    // Nếu input rỗng hoặc giá trị = 0, remove ingredient
-    if (!inputValue || inputValue === "" || inputValue === "0" || parseFloat(inputValue || "0") === 0) {
-      // Remove ingredient trực tiếp
-      setSelectedIngredients(prev => prev.filter(ing => ing.ingredientId !== ingredientId))
-      // Clear input value
-      setInputValues(prev => {
-        const newValues = { ...prev }
-        delete newValues[ingredientId]
-        return newValues
-      })
-      return
-    }
-    
-    // Validate và format giá trị
-    const numValue = parseFloat(inputValue)
-    if (isNaN(numValue) || numValue <= 0) {
-      // Nếu không hợp lệ, remove ingredient
-      setSelectedIngredients(prev => prev.filter(ing => ing.ingredientId !== ingredientId))
-      setInputValues(prev => {
-        const newValues = { ...prev }
-        delete newValues[ingredientId]
-        return newValues
-      })
-      return
-    }
-    
-    // Đảm bảo giá trị hợp lệ và cập nhật
-    const maxAvailable = ingredient.available ?? Infinity
-    const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
-    const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
-    const finalQuantity = Math.max(0.1, Math.min(numValue, maxQuantity))
-    
-    setSelectedIngredients(prev => prev.map(ing =>
-      ing.ingredientId === ingredientId
-        ? { ...ing, quantity: finalQuantity }
-        : ing
-    ))
-    
-    // Cập nhật input value với giá trị đã được format
-    setInputValues(prev => ({ ...prev, [ingredientId]: finalQuantity.toString() }))
   }
 
   // Base price constant (có thể lấy từ config sau)
@@ -475,8 +355,8 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     let price = BASE_BOWL_PRICE * selectedTemplate.priceRatio
     
     // Add ingredient prices: pricePerUnit * quantity
-    // quantityRatio có thể được dùng để tính số lượng nguyên liệu cần thiết,
-    // nhưng giá thì tính trực tiếp từ pricePerUnit * quantity
+    // Lưu ý: quantity đã được scale theo quantityRatio trong handleIngredientToggle và handleAdjustQuantity
+    // nên giá tính trực tiếp từ pricePerUnit * quantity (đã scale)
     selectedIngredients.forEach(selected => {
       const ingredient = ingredients.find(ing => ing.id === selected.ingredientId)
       if (ingredient && ingredient.pricePerUnit) {
@@ -511,11 +391,13 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     
     // Create custom dish object for cart
     // Store custom bowl data in notes as JSON string for later retrieval
+    // Lưu ý: quantity đã được scale theo quantityRatio trong handleIngredientToggle và handleAdjustQuantity
+    // nên khi gửi lên API, quantity đã là giá trị cuối cùng (đã nhân với quantityRatio)
     const customBowlData = {
       template: selectedTemplate,
       recipe: selectedIngredients.map(ing => ({
         ingredientId: ing.ingredientId,
-        quantity: ing.quantity,
+        quantity: Math.round(ing.quantity), // Đảm bảo số nguyên (API có thể yêu cầu)
         sourceType: "ADDON" as const,
       })),
     }
