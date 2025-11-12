@@ -7,7 +7,7 @@ import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/mod
 import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal"
 import { useIngredientStore } from "@zustand/stores/ingredients"
 import { toast } from "sonner"
-import { Box, Package, Plus, MoreVertical, Eye, Trash2, Search, TrendingUp, CheckCircle } from "lucide-react"
+import { Box, Package, Plus, MoreVertical, Eye, Trash2, Search } from "lucide-react"
 import type { IngredientCategory } from "@models/category/category"
 import type { StoreIngredient } from "@/zustand/types"
 
@@ -88,21 +88,6 @@ export default function AdminIngredientCategoryPage() {
 
     return filtered
   }, [allIngredients, selectedCategory, ingredientSearchQuery])
-
-  // Stats calculations
-  const totalCategories = useMemo(() => categories.length, [categories])
-  const totalIngredients = useMemo(() => allIngredients.length, [allIngredients])
-  const activeIngredients = useMemo(() => allIngredients.filter(ing => ing.active !== false).length, [allIngredients])
-  const categoriesWithIngredients = useMemo(() => {
-    return categories.filter(cat => {
-      const hasIngredients = allIngredients.some((ing) => {
-        const catId = (ing as unknown as { categoryId?: number; ingredient_category_id?: number }).categoryId
-          ?? (ing as unknown as { ingredient_category_id?: number }).ingredient_category_id
-        return catId === cat.id
-      })
-      return hasIngredients
-    }).length
-  }, [categories, allIngredients])
 
   const submit = async () => {
     if (!name.trim()) {

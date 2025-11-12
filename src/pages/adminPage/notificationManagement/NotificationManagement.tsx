@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select"
-import { Bell, CheckCircle, Mail, Calendar, Plus, Eye, MoreVertical, Trash2 as TrashIcon } from "lucide-react"
+import { Bell, Plus, Eye, MoreVertical, Trash2 as TrashIcon } from "lucide-react"
 import { useEffect, useState, useMemo } from "react"
 import { useNotificationStore } from "@zustand/stores/notification"
 import { useAccountStore } from "@zustand/stores/account"
@@ -42,12 +42,8 @@ export default function NotificationManagement() {
   } = useNotificationStore()
 
   const { fetchAll: fetchAccounts } = useAccountStore()
-  const store = useNotificationStore()
   
-  const notifications = useMemo(() => getFilteredItems(), [store])
-  const totalNotifications = useMemo(() => store.items.length, [store.items])
-  const unreadNotifications = useMemo(() => store.items.filter(n => !n.read).length, [store.items])
-  const readNotifications = useMemo(() => store.items.filter(n => n.read).length, [store.items])
+  const notifications = useMemo(() => getFilteredItems(), [getFilteredItems])
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)

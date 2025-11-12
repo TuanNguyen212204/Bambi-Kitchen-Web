@@ -21,8 +21,7 @@ export function AccountDetailModal({
   open, 
   onClose, 
   account, 
-  onSave, 
-  onDelete 
+  onSave
 }: AccountDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({

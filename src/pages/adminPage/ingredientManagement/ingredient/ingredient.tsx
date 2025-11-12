@@ -90,29 +90,6 @@ export const AdminIngredientsPage = () => {
     return (ingredient: { id: number; imgUrl?: string }) => `${ingredient.id}-${ingredient.imgUrl}-${refreshKey}`
   }, [refreshKey])
 
-  const total = items.length
-  const now = new Date()
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const parseCreatedDate = (value?: unknown): Date | undefined => {
-    if (!value) return undefined
-    const s = String(value)
-    const d1 = new Date(s)
-    if (!isNaN(d1.getTime())) return d1
-    const d2 = new Date(s.replace(' ', 'T'))
-    if (!isNaN(d2.getTime())) return d2
-    return undefined
-  }
-  const sessionCreatedIds = (store as unknown as { sessionCreatedIds?: number[] }).sessionCreatedIds || []
-  const newThisWeek = items.filter((i: { id: number; created_at?: unknown; createdAt?: unknown; createAt?: unknown; updated_at?: unknown; updatedAt?: unknown }) => {
-    const createdRaw = i?.created_at ?? i?.createdAt ?? (i as { createAt?: unknown }).createAt ?? i?.updated_at ?? i?.updatedAt
-    const d = parseCreatedDate(createdRaw)
-    if (d) return d >= sevenDaysAgo && d <= now
-    return sessionCreatedIds.includes(i.id)
-  }).length
-  const activeCount = items.filter((i: { active?: boolean }) => i.active ?? true).length
-  const lowCount = items.filter((i: { stockStatus?: string }) => i.stockStatus === 'low').length
-  const outCount = items.filter((i: { stockStatus?: string }) => i.stockStatus === 'out').length
-
   return (
     <div className="space-y-6">
       <section>

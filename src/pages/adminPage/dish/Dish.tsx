@@ -54,10 +54,6 @@ const AdminDishPage = () => {
 
   const filtered = useMemo(() => store.getFilteredItems(), [store])
 
-  const total = items.length
-  const publicCount = items.filter((i: { public?: boolean }) => i.public === true).length
-  const activeCount = items.filter((i: { active?: boolean }) => i.active !== false).length
-
   return (
     <div className="space-y-6">
       <section>
