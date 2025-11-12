@@ -516,17 +516,24 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
 
   // Handle add/subtract quantity for added ingredient
   const handleAdjustQuantity = (ingredientId: number, delta: number) => {
-    const addedMod = recipeModifications.find(mod => mod.ingredientId === ingredientId && mod.sourceType === "ADDON")
     const ingredient = allIngredients.find(ing => ing.id === ingredientId)
-    if (!ingredient || !addedMod) return
-    
+    if (!ingredient) return
+
+    const addedMod = recipeModifications.find(mod => mod.ingredientId === ingredientId && mod.sourceType === "ADDON")
+
+    if (!addedMod) {
+      if (delta > 0) {
+        handleAddIngredient(ingredient)
+      }
+      return
+    }
+
     const currentQty = addedMod.quantity
     const stepAmount = getStepAmount(ingredient.unit)
     const newQty = currentQty + (delta * stepAmount)
     const maxAvailable = ingredient.available ?? Infinity
     const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
     const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
-    const minQuantity = getStepAmount(ingredient.unit) // Minimum quantity là stepAmount
     
     // Nếu đang tăng số lượng (delta > 0), kiểm tra số lượng có sẵn trong kho và giới hạn tối đa theo đơn vị
     if (delta > 0 && newQty > maxQuantity) {
@@ -538,20 +545,18 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
       return
     }
     
-    const finalQuantity = Math.max(minQuantity, Math.min(newQty, maxQuantity))
-    
-    // Nếu finalQuantity >= minQuantity, cập nhật quantity
-    // Nếu finalQuantity < minQuantity, xóa ingredient (không giữ lại với số lượng quá nhỏ)
-    if (finalQuantity >= minQuantity) {
-      setRecipeModifications(prev => prev.map(mod => 
-        mod.ingredientId === ingredientId && mod.sourceType === "ADDON"
-          ? { ...mod, quantity: finalQuantity }
-          : mod
-      ))
-    } else {
-      // Nếu giảm xuống dưới minQuantity, xóa ingredient
+    const boundedQuantity = Math.min(newQty, maxQuantity)
+
+    if (boundedQuantity <= 0 || boundedQuantity < stepAmount) {
       setRecipeModifications(prev => prev.filter(mod => !(mod.ingredientId === ingredientId && mod.sourceType === "ADDON")))
+      return
     }
+
+    setRecipeModifications(prev => prev.map(mod => 
+      mod.ingredientId === ingredientId && mod.sourceType === "ADDON"
+        ? { ...mod, quantity: boundedQuantity }
+        : mod
+    ))
   }
 
   // Calculate total price based on size ratio and added ingredients
@@ -1067,6 +1072,15 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
                                   const canAddByCount = isAdded || currentAddonCount < MAX_TOTAL_ADDON_INGREDIENTS
                                   const canAdd = canAddByCategory && canAddByCount
                                   
+                                  const stepAmount = getStepAmount(ingredient.unit)
+                                  const maxAvailable = ingredient.available ?? Infinity
+                                  const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
+                                  const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
+                                  const canIncrease = isAdded
+                                    ? (addedIng ? addedIng.quantity < maxQuantity : false)
+                                    : canAdd && (ingredient.available ?? 0) > 0
+                                  const displayQuantity = addedIng ? addedIng.quantity : 0
+
                                   return (
                                     <div
                                       key={ingredient.id}
@@ -1121,58 +1135,55 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
                                           {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(ingredient.pricePerUnit)}/{formatUnit(ingredient.unit)}
                                         </p>
                                       )}
-                                      {isAdded && addedIng && (
-                                        <div className="space-y-2 mt-2">
-                                          {/* Nút điều chỉnh số lượng và nút bỏ */}
-                                          <div className="flex items-center gap-2">
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation()
-                                                handleAdjustQuantity(ingredient.id, -1)
-                                              }}
-                                              className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
-                                              disabled={addedIng.quantity <= getStepAmount(ingredient.unit)}
-                                              title={`Giảm ${getStepAmount(ingredient.unit)} ${formatUnit(ingredient.unit)}`}
-                                            >
-                                              <Minus size={14} className="mr-1" />
-                                              <span>{getStepAmount(ingredient.unit)}</span>
-                                            </button>
-                                            <span className="flex-1 text-center text-xs text-gray-700 font-medium">
-                                              {addedIng.quantity} {formatUnit(ingredient.unit)}
-                                            </span>
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation()
-                                                handleAdjustQuantity(ingredient.id, 1)
-                                              }}
-                                              className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
-                                              disabled={(() => {
-                                                const maxAvailable = ingredient.available ?? Infinity
-                                                const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
-                                                const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
-                                                return addedIng.quantity >= maxQuantity
-                                              })()}
-                                              title={`Thêm ${getStepAmount(ingredient.unit)} ${formatUnit(ingredient.unit)}`}
-                                            >
-                                              <Plus size={14} className="mr-1" />
-                                              <span>{getStepAmount(ingredient.unit)}</span>
-                                            </button>
-                                          </div>
-                                          {/* Hiển thị giá tiền cập nhật */}
-                                          {ingredient.pricePerUnit && (
-                                            <p className="text-xs font-semibold text-orange-600 text-center">
-                                              +{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Math.round(ingredient.pricePerUnit * addedIng.quantity))}
-                                            </p>
-                                          )}
-                                          {/* Hiển thị icon check để báo đã thêm */}
+                                      <div className="space-y-2 mt-2">
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleAdjustQuantity(ingredient.id, -1)
+                                            }}
+                                            className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs disabled:opacity-50"
+                                            disabled={!isAdded}
+                                            title={`Giảm ${stepAmount} ${formatUnit(ingredient.unit)}`}
+                                          >
+                                            <Minus size={14} className="mr-1" />
+                                            <span>{stepAmount}</span>
+                                          </button>
+                                          <span className="flex-1 text-center text-xs text-gray-700 font-medium">
+                                            {displayQuantity} {formatUnit(ingredient.unit)}
+                                          </span>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleAdjustQuantity(ingredient.id, 1)
+                                            }}
+                                            className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs disabled:opacity-50"
+                                            disabled={!canIncrease}
+                                            title={`Thêm ${stepAmount} ${formatUnit(ingredient.unit)}`}
+                                          >
+                                            <Plus size={14} className="mr-1" />
+                                            <span>{stepAmount}</span>
+                                          </button>
+                                        </div>
+                                        {isAdded && addedIng && ingredient.pricePerUnit && (
+                                          <p className="text-xs font-semibold text-orange-600 text-center">
+                                            +{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Math.round(ingredient.pricePerUnit * addedIng.quantity))}
+                                          </p>
+                                        )}
+                                        {isAdded && (
                                           <div className="text-orange-500 flex justify-center">
                                             <Check size={14} />
                                           </div>
+                                        )}
+                                      </div>
+                                      {!isAdded && !canAdd && (ingredient.available ?? 0) > 0 && (
+                                        <div className="w-full mt-2 px-3 py-1 text-xs font-medium text-yellow-600 border border-yellow-500 rounded-lg text-center bg-yellow-50">
+                                          Đã đạt giới hạn
                                         </div>
                                       )}
-                                      {!isAdded && (
-                                        <div className="w-full mt-2 px-3 py-1 text-xs font-medium text-orange-600 border border-orange-500 rounded-lg text-center">
-                                          Nhấn để thêm
+                                      {!isAdded && (ingredient.available ?? 0) <= 0 && (
+                                        <div className="w-full mt-2 px-3 py-1 text-xs font-medium text-gray-500 border border-gray-300 rounded-lg text-center">
+                                          Hết hàng
                                         </div>
                                       )}
                                     </div>

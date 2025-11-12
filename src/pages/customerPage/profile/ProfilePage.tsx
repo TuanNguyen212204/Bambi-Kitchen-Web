@@ -9,7 +9,6 @@ import {
   Edit3, 
   Lock, 
   Utensils,
-  Heart,
   Clock,
   Gift,
   Settings
@@ -190,16 +189,6 @@ export default function ProfilePage() {
                       </div>
                       <p className="text-gray-900">Bây giờ</p>
                     </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <Heart className="w-5 h-5 mr-2 text-red-500" />
-                    Món ăn yêu thích
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="text-gray-500">Chưa có món ăn yêu thích</div>
                   </div>
                 </div>
 

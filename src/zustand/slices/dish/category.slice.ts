@@ -25,7 +25,9 @@ export const createDishCategorySlice: StateCreator<
   categories: [],
   fetchCategories: async () => {
     try {
-      const { data } = await bambiApi.get<DishCategory[]>(API_ENDPOINTS.API_DISH_CATEGORIES)
+      const { data } = await bambiApi.get<DishCategory[]>(API_ENDPOINTS.API_DISH_CATEGORIES, {
+        headers: { "x-silent-error": "1" },
+      })
       set({ categories: data })
     } catch {
       // Im lặng khi lỗi để tránh spam toast khi phiên hết hạn hoặc backend tạm thời lỗi

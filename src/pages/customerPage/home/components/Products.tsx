@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 // Import local images
 import TunaImg from "@assets/Menu/tuna.png";
 import PorkImg from "@assets/Menu/pork.png";
@@ -7,7 +7,9 @@ import BeefImg from "@assets/Menu/beef.png";
 import ShrimpsImg from "@assets/Menu/shrimps.png";
 import VibrantImg from "@assets/Menu/vibrant.png";
 import { useDishStore } from "@/zustand/stores/dish";
+import { useAuthStore } from "@zustand/stores/auth";
 import type { DishListSlice } from "@/zustand/slices/dish/list.slice";
+import { PATHS } from "@config/path";
 
 type HomeDish = DishListSlice["items"][number]
 
@@ -16,6 +18,7 @@ const fallbackImages = [TunaImg, PorkImg, BeefImg, ShrimpsImg]
 const getFallbackImage = (idx: number) => fallbackImages[idx % fallbackImages.length]
 
 const ProductCard: React.FC<{ product: HomeDish; idx: number }> = ({ product, idx }) => {
+  const location = useLocation();
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -23,9 +26,15 @@ const ProductCard: React.FC<{ product: HomeDish; idx: number }> = ({ product, id
     }).format(price);
   };
 
+  const detailPath = PATHS.DISH_DETAIL.replace(":id", String(product.id));
+
   return (
     <div className="bg-white rounded-full p-6 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center text-center relative">
-      <div className="relative mb-4">
+      <Link
+        to={detailPath}
+        state={{ from: location.pathname }}
+        className="relative mb-4 block focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500 rounded-full"
+      >
         <div className="w-48 h-48 rounded-full overflow-hidden bg-gray-100">
           <img
             src={product.imageUrl || getFallbackImage(idx)}
@@ -36,13 +45,16 @@ const ProductCard: React.FC<{ product: HomeDish; idx: number }> = ({ product, id
         <div className="absolute top-2 right-2 bg-gray-800 text-white px-3 py-2 rounded-full text-sm font-bold shadow-lg">
           {formatPrice(product.price || 0)}
         </div>
-      </div>
-      
+      </Link>
+
       <div className="px-4">
-        <h3 className="text-xl font-bold text-gray-900 mb-3">{product.name}</h3>
-        {product.description ? (
-          <p className="text-gray-500 text-sm leading-relaxed">{product.description}</p>
-        ) : null}
+        <Link
+          to={detailPath}
+          state={{ from: location.pathname }}
+          className="text-xl font-bold text-gray-900 mb-3 block hover:text-orange-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500 rounded"
+        >
+          {product.name}
+        </Link>
       </div>
     </div>
   );
@@ -50,12 +62,13 @@ const ProductCard: React.FC<{ product: HomeDish; idx: number }> = ({ product, id
 
 const Products: React.FC = () => {
   const { fetchAll, items, loading } = useDishStore()
+  const token = useAuthStore((state) => state.token)
   const [showAll, setShowAll] = useState(false)
   const INITIAL_VISIBLE_PRODUCTS = 8
 
   useEffect(() => {
     fetchAll("menu")
-  }, [fetchAll])
+  }, [fetchAll, token])
 
   const visible = useMemo(() => items.filter((d) => (d.public === true) && (d.active ?? true)), [items])
   const displayedProducts = useMemo(
