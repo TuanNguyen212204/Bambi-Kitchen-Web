@@ -585,9 +585,12 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
   const handleAddToCart = () => {
     if (!dishDetails || !dish) return
     
-    // Generate name với thông tin chỉnh sửa
+    // Kiểm tra xem có thay đổi nguyên liệu không
+    const hasModifications = recipeModifications.length > 0
+    
+    // Generate name với thông tin chỉnh sửa (chỉ khi có thay đổi)
     let dishName = dishDetails.name
-    if (recipeModifications.length > 0) {
+    if (hasModifications) {
       const removals = recipeModifications.filter(mod => mod.sourceType === "REMOVED")
       const additions = recipeModifications.filter(mod => mod.sourceType === "ADDON")
       
@@ -611,19 +614,6 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
         }
         dishName = `${dishDetails.name} ${modifications.join(" ")}`
       }
-    }
-    
-    // Create modification data theo API structure
-    const modificationData = {
-      basedOnId: dish.id,
-      name: dishName,
-      quantity: quantity,
-      dishTemplate: { size: selectedSize },
-      recipe: recipeModifications.map(mod => ({
-        ingredientId: mod.ingredientId,
-        quantity: Math.round(mod.quantity), // API expects integer
-        sourceType: mod.sourceType,
-      })),
     }
     
     // Calculate price with size ratio for cart
@@ -651,15 +641,43 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
       used: dish.usedQuantity || 0,
     }
     
+    // Chỉ tạo modificationData khi có thay đổi nguyên liệu
+    // Nếu không có thay đổi, để CheckoutPage xử lý như preset không tùy chỉnh (dùng dishId)
+    let notes: string | undefined = undefined
+    if (hasModifications) {
+      // Có thay đổi: tạo modificationData với basedOnId
+      const modificationData = {
+        basedOnId: dish.id,
+        name: dishName,
+        quantity: quantity,
+        dishTemplate: { size: selectedSize },
+        recipe: recipeModifications.map(mod => ({
+          ingredientId: mod.ingredientId,
+          quantity: Math.round(mod.quantity), // API expects integer
+          sourceType: mod.sourceType,
+        })),
+      }
+      notes = JSON.stringify(modificationData)
+    } else if (selectedSize !== "M") {
+      // Không có thay đổi nhưng size khác M: vẫn cần lưu size để CheckoutPage xử lý
+      // Tạo modificationData nhưng không có basedOnId (để CheckoutPage dùng dishId)
+      const modificationData = {
+        dishTemplate: { size: selectedSize },
+        recipe: [],
+      }
+      notes = JSON.stringify(modificationData)
+    }
+    // Nếu không có thay đổi và size là M: không tạo notes (để CheckoutPage xử lý như preset không tùy chỉnh)
+    
     // Nếu đang edit, gọi onSave; nếu không, add mới
     if (editingItemId && onSave) {
-      onSave(dishForCart, quantity, JSON.stringify(modificationData))
+      onSave(dishForCart, quantity, notes || "")
     } else {
-      // Add to cart with modification data in notes
-      addItem(dishForCart, quantity, JSON.stringify(modificationData))
+      // Add to cart
+      addItem(dishForCart, quantity, notes)
       
       toast.success("Đã thêm vào giỏ hàng", {
-        description: `${dishName} (Size: ${selectedSize}, SL: ${quantity})${recipeModifications.length > 0 ? ` với ${recipeModifications.length} thay đổi` : ""}`,
+        description: `${dishName} (Size: ${selectedSize}, SL: ${quantity})${hasModifications ? ` với ${recipeModifications.length} thay đổi` : ""}`,
       })
     }
     

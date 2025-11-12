@@ -39,19 +39,48 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
     account: n.account,
   });
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (signal?: AbortSignal) => {
     if (!user?.id) return;
+    
+    // Không gọi API nếu đang redirect đến payment gateway
+    try {
+      if (sessionStorage.getItem("bambi-payment-redirecting") === "true") {
+        return;
+      }
+    } catch {
+      // ignore storage errors
+    }
+    
     setIsLoading(true);
     try {
       if (user.role_id === 1) {
         setNotifications(adminNotifications.map(normalizeField));
       } else {
-        const response = await bambiApi.get(API_ENDPOINTS.API_NOTIFICATION_BY_ACCOUNT(user.id));
+        const response = await bambiApi.get(API_ENDPOINTS.API_NOTIFICATION_BY_ACCOUNT(user.id), {
+          signal,
+        });
         if (response.data && Array.isArray(response.data)) {
           setNotifications(response.data.map(normalizeField));
         }
       }
     } catch (error) {
+      // Ignore abort/canceled errors - không cần log vì đây là behavior bình thường
+      if (error && typeof error === 'object') {
+        // Check nhiều cách để detect canceled/aborted request
+        const errorName = 'name' in error ? error.name : undefined
+        const errorCode = 'code' in error ? error.code : undefined
+        const errorMessage = 'message' in error ? String(error.message) : ''
+        
+        if (
+          errorName === 'AbortError' || 
+          errorName === 'CanceledError' ||
+          errorCode === 'ERR_CANCELED' ||
+          errorMessage.toLowerCase().includes('canceled') ||
+          errorMessage.toLowerCase().includes('aborted')
+        ) {
+          return // Ignore canceled errors silently
+        }
+      }
       console.error("Error fetching notifications:", error);
     } finally {
       setIsLoading(false);
@@ -59,9 +88,14 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   };
 
   useEffect(() => {
-    if (isOpen) {
-      fetchNotifications()
-    }
+    if (!isOpen || !user?.id) return;
+    
+    const controller = new AbortController();
+    fetchNotifications(controller.signal);
+    
+    return () => {
+      controller.abort();
+    };
   }, [isOpen, user?.id])
 
   useEffect(() => {
