@@ -40,7 +40,7 @@ const groups: Group[] = [
     items: [
       { to: PATHS.ADMIN, label: "Dashboard", icon: LayoutDashboard },
       { to: PATHS.ADMIN_ORDERS, label: "Đơn hàng", icon: Package },
-      { to: PATHS.ADMIN_FEATURES, label: "Quản lý tính năng", icon: Settings },
+      { to: PATHS.ADMIN_FEATURES, label: "Chuẩn bị đơn hàng", icon: Settings },
     ],
   },
   {
@@ -116,7 +116,7 @@ const SidebarAdmin = () => {
     return cloneGroups
       .map((g) => {
         if (g.key === "overview") {
-          // giữ Đơn hàng và Quản lý tính năng
+          // giữ Đơn hàng và Chuẩn bị đơn hàng
           return { ...g, items: g.items.filter(it => it.to === PATHS.ADMIN_ORDERS || it.to === PATHS.ADMIN_FEATURES) }
         }
         if (g.key === "user") {

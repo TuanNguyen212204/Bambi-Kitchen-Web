@@ -208,7 +208,7 @@ const FeaturesManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">
-        <h1 className="font-bold text-gray-800 text-[28px] leading-[42px]">Quản lý tính năng</h1>
+        <h1 className="font-bold text-gray-800 text-[28px] leading-[42px]">Chuẩn bị đơn hàng</h1>
       </div>
 
       <div className="w-full bg-white rounded-xl border border-solid border-gray-200 shadow-[0px_1px_3px_#0000001a] overflow-hidden">

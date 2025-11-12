@@ -7,6 +7,7 @@ const ConfirmationPage = lazy(() => import("@pages/Auth/ConfirmationPage/Confirm
 const ResetPassword = lazy(() => import("@pages/Auth/ResetPassword"))
 const OAuthCallback = lazy(() => import("@pages/Auth/OAuthCallback"))
 const Success = lazy(() => import("@pages/success"))
+const OrderStatusPage = lazy(() => import("@pages/customerPage/checkout/OrderStatusPage"))
 const ErrorPage = lazy(() => import("@pages/error/ErrorPage"))
 const OrdersPage = lazy(() => import("@pages/customerPage/orders/OrdersPage"))
 const ProfilePage = lazy(() => import("@pages/customerPage/profile/ProfilePage"))
@@ -119,6 +120,13 @@ export const AUTH_PUBLIC_ROUTES: RouteConfig[] = [
     path: PATHS.SUCCESS,
     component: Success,
     label: "Thành công",
+    protected: false,
+    role: [],
+  },
+  {
+    path: PATHS.ORDER_STATUS,
+    component: OrderStatusPage,
+    label: "Kết quả thanh toán",
     protected: false,
     role: [],
   },
@@ -238,7 +246,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
   {
     path: "features",
     component: AdminFeatures,
-    label: "Quản lý tính năng",
+    label: "Chuẩn bị đơn hàng",
     protected: true,
     role: [ROLES.STAFF],
     layout: "admin",
