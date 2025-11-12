@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Plus, Minus, Trash2 } from "lucide-react"
+import { Plus, Minus, Trash2, Edit } from "lucide-react"
 import { useIngredientStore } from "@/zustand/stores/ingredients"
 import React from "react"
 import type { CartItem } from "@/zustand/types/cart"
@@ -10,6 +10,7 @@ interface CheckoutCartItemsSectionProps {
   onUpdateQuantity: (itemId: number, quantity: number) => void
   onRemoveItem: (itemId: number) => void
   onAddMoreItems: () => void
+  onEditItem?: (itemId: number) => void
 }
 
 export const CheckoutCartItemsSection: React.FC<CheckoutCartItemsSectionProps> = ({
@@ -17,6 +18,7 @@ export const CheckoutCartItemsSection: React.FC<CheckoutCartItemsSectionProps> =
   onUpdateQuantity,
   onRemoveItem,
   onAddMoreItems,
+  onEditItem,
 }) => {
   const { items: allIngredients } = useIngredientStore()
 
@@ -181,11 +183,23 @@ export const CheckoutCartItemsSection: React.FC<CheckoutCartItemsSectionProps> =
                   <span className="font-semibold text-gray-900 text-sm">
                     {formatPrice(itemPrice)}
                   </span>
+                  {onEditItem && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      onClick={() => onEditItem(item.id)}
+                      title="Chỉnh sửa"
+                    >
+                      <Edit size={16} />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50 ml-auto"
                     onClick={() => onRemoveItem(item.id)}
+                    title="Xóa"
                   >
                     <Trash2 size={16} />
                   </Button>

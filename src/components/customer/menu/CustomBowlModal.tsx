@@ -12,6 +12,12 @@ import type { Dish } from "@models/dish/dish"
 interface CustomBowlModalProps {
   open: boolean
   onClose: () => void
+  editingItemId?: number | null
+  initialData?: {
+    template: DishTemplateItem
+    selectedIngredients: Array<{ ingredientId: number; quantity: number; categoryId: number; priority: number }>
+  } | null
+  onSave?: (dish: Dish, quantity: number, notes: string) => void
 }
 
 interface SelectedIngredient {
@@ -67,7 +73,7 @@ const formatUnit = (unit?: string): string => {
   return unitMap[unit.toUpperCase()] || unit
 }
 
-export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps) {
+export default function CustomBowlModal({ open, onClose, editingItemId, initialData, onSave }: CustomBowlModalProps) {
   const { templates, fetchTemplates } = useDishStore()
   const { items: ingredients, fetchAll: fetchIngredients, categories: ingredientCategories, fetchCategories } = useIngredientStore()
   const { addItem } = useCartStore()
@@ -100,15 +106,51 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     }
   }, [open, fetchTemplates, fetchIngredients, fetchCategories])
 
-  // Reset when modal closes
+  // Reset when modal closes or restore initialData when opening
   useEffect(() => {
     if (!open) {
       setCurrentStep("size")
       setSelectedTemplate(null)
       setSelectedIngredients([])
       setSelectedCategoryId(null)
+    } else if (open && initialData) {
+      // Khôi phục state từ initialData
+      setSelectedTemplate(initialData.template)
+      // Khôi phục selectedIngredients với đầy đủ thông tin từ ingredients
+      const restoredIngredients: SelectedIngredient[] = initialData.selectedIngredients.map(selIng => {
+        const ingredient = ingredients.find(ing => ing.id === selIng.ingredientId)
+        const category = ingredientCategories.find(cat => 
+          cat.id === selIng.categoryId || 
+          (ingredient && ingredient.categoryId === cat.id)
+        )
+        return {
+          ingredientId: selIng.ingredientId,
+          quantity: selIng.quantity,
+          categoryId: category?.id || selIng.categoryId || 0,
+          priority: category?.priority || selIng.priority || 0,
+        }
+      })
+      setSelectedIngredients(restoredIngredients)
+      // Xác định step hiện tại dựa trên selectedIngredients
+      if (restoredIngredients.length > 0) {
+        // Tìm step cao nhất đã có ingredients
+        const maxPriority = Math.max(...restoredIngredients.map(ing => ing.priority))
+        if (maxPriority >= 4) {
+          setCurrentStep("side")
+        } else if (maxPriority >= 3) {
+          setCurrentStep("vegetable")
+        } else if (maxPriority >= 2) {
+          setCurrentStep("protein")
+        } else if (maxPriority >= 1) {
+          setCurrentStep("carb")
+        } else {
+          setCurrentStep("size")
+        }
+      } else {
+        setCurrentStep("size")
+      }
     }
-  }, [open])
+  }, [open, initialData, ingredients, ingredientCategories])
 
   // Get ingredients for current step based on priority
   const stepPriority: Record<Step, number> = {
@@ -415,14 +457,18 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
       used: 0,
     }
     
-    // Store custom bowl data in notes as JSON
-    addItem(customDish, 1, JSON.stringify(customBowlData))
-    
-    // Show success toast
-    const { toast } = await import("sonner")
-    toast.success("Đã thêm vào giỏ hàng", {
-      description: `Custom Bowl ${selectedTemplate.size} với ${selectedIngredients.length} nguyên liệu`,
-    })
+    // Nếu đang edit, gọi onSave; nếu không, add mới
+    if (editingItemId && onSave) {
+      onSave(customDish, 1, JSON.stringify(customBowlData))
+    } else {
+      // Store custom bowl data in notes as JSON
+      addItem(customDish, 1, JSON.stringify(customBowlData))
+      
+      // Show success toast
+      toast.success("Đã thêm vào giỏ hàng", {
+        description: `Custom Bowl ${selectedTemplate.size} với ${selectedIngredients.length} nguyên liệu`,
+      })
+    }
     
     onClose()
   }
@@ -964,7 +1010,7 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
                 className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2"
                 disabled={!selectedTemplate}
               >
-                Thêm vào giỏ
+                {editingItemId ? "Cập nhật" : "Thêm vào giỏ"}
               </Button>
             ) : (
               <Button
