@@ -31,8 +31,10 @@ export const AdminIngredientsPage = () => {
   const [imageRefreshKey, setImageRefreshKey] = useState(0)
   const [optimisticActive, setOptimisticActive] = useState<Record<number, { value: boolean; originalValue: boolean }>>({})
 
-  useEffect(() => { fetchAll() }, [fetchAll])
-  useEffect(() => { fetchCategories() }, [fetchCategories])
+  useEffect(() => { 
+    fetchAll() 
+    fetchCategories()
+  }, []) // Chỉ fetch một lần khi component mount
   
   useEffect(() => {
     setRefreshKey(prev => prev + 1)

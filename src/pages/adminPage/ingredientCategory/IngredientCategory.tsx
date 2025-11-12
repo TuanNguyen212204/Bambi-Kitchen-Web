@@ -40,6 +40,8 @@ export default function AdminIngredientCategoryPage() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [priority, setPriority] = useState<number | undefined>(undefined)
+  const [priorityInput, setPriorityInput] = useState<string>("")
   const [editingId, setEditingId] = useState<number | null>(null)
   const [confirm, setConfirm] = useState<{ id: number; name: string } | null>(null)
 
@@ -157,17 +159,25 @@ export default function AdminIngredientCategoryPage() {
       return
     }
     
+    // Validate priority: phải trong khoảng 1-4 hoặc undefined
+    if (priority !== undefined && (priority < 1 || priority > 4)) {
+      toast.error("Độ ưu tiên phải trong khoảng 1-4")
+      return
+    }
+    
     setLoading(true)
     try {
       if (editingId) {
-        await updateCategory({ id: editingId, name: name.trim(), description: description.trim() || undefined })
+        await updateCategory({ id: editingId, name: name.trim(), description: description.trim() || undefined, priority: priority })
       } else {
-        await createCategory({ name: name.trim(), description: description.trim() || undefined })
+        await createCategory({ name: name.trim(), description: description.trim() || undefined, priority: priority })
       }
       setOpen(false)
       setEditingId(null)
       setName("")
       setDescription("")
+      setPriority(undefined)
+      setPriorityInput("")
       await fetchCategories()
     } finally {
       setLoading(false)
@@ -178,6 +188,8 @@ export default function AdminIngredientCategoryPage() {
     setEditingId(category.id)
     setName(category.name)
     setDescription(category.description || "")
+    setPriority(category.priority)
+    setPriorityInput(category.priority !== undefined ? category.priority.toString() : "")
     setOpen(true)
   }
 
@@ -292,7 +304,7 @@ export default function AdminIngredientCategoryPage() {
             </h2>
             <Button 
               className="bg-orange-600 hover:bg-orange-700 h-auto px-3 py-2"
-              onClick={() => { setOpen(true); setEditingId(null); setName(""); setDescription("") }}
+              onClick={() => { setOpen(true); setEditingId(null); setName(""); setDescription(""); setPriority(undefined); setPriorityInput("") }}
               disabled={loading}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -531,7 +543,7 @@ export default function AdminIngredientCategoryPage() {
 
       <ReusableModal 
         open={open} 
-        onClose={() => { setOpen(false); setEditingId(null); setName(""); setDescription("") }} 
+        onClose={() => { setOpen(false); setEditingId(null); setName(""); setDescription(""); setPriority(undefined); setPriorityInput("") }} 
         title={editingId ? "Sửa danh mục" : "Thêm danh mục"}
         size="xl"
         contentClassName="sm:max-w-[480px] md:max-w-[640px] lg:max-w-[800px] max-h-[80vh] overflow-y-auto"
@@ -567,10 +579,67 @@ export default function AdminIngredientCategoryPage() {
               />
               <p className="text-xs text-gray-500 mt-1">{description.length}/500 ký tự</p>
             </div>
+            <div>
+              <Label className="mb-2 block text-sm font-medium text-gray-700">
+                Độ ưu tiên (Priority)
+              </Label>
+              <Input 
+                type="number"
+                value={priorityInput} 
+                onChange={(e) => {
+                  const value = e.target.value.trim()
+                  setPriorityInput(value)
+                  
+                  if (value === "") {
+                    setPriority(undefined)
+                    return
+                  }
+                  
+                  const numValue = parseInt(value, 10)
+                  // Chỉ cập nhật priority state nếu giá trị hợp lệ (1-4)
+                  if (!isNaN(numValue) && numValue >= 1 && numValue <= 4) {
+                    setPriority(numValue)
+                  } else if (!isNaN(numValue)) {
+                    // Nếu nhập số ngoài 1-4, không cập nhật priority state
+                    // Nhưng vẫn cho phép nhập trong input để người dùng có thể sửa
+                    setPriority(undefined)
+                  }
+                }}
+                onBlur={(e) => {
+                  // Khi blur, validate và reset input nếu không hợp lệ
+                  const value = e.target.value.trim()
+                  if (value === "") {
+                    setPriority(undefined)
+                    setPriorityInput("")
+                    return
+                  }
+                  
+                  const numValue = parseInt(value, 10)
+                  if (isNaN(numValue) || numValue < 1 || numValue > 4) {
+                    // Reset về giá trị priority hợp lệ (nếu có) hoặc rỗng
+                    setPriorityInput(priority !== undefined ? priority.toString() : "")
+                    setPriority(undefined)
+                    toast.error("Độ ưu tiên phải trong khoảng 1-4 (1: Tinh Bột, 2: Protein, 3: Rau, 4: Món Kèm)")
+                  } else {
+                    // Đảm bảo input hiển thị đúng giá trị hợp lệ
+                    setPriorityInput(numValue.toString())
+                    setPriority(numValue)
+                  }
+                }}
+                placeholder="Nhập độ ưu tiên (1-4)..."
+                disabled={loading}
+                className="w-full"
+                min={1}
+                max={4}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                1: Tinh Bột, 2: Protein, 3: Rau, 4: Món Kèm
+              </p>
+            </div>
           </div>
         </ModalForm>
         <ModalActions 
-          onCancel={() => { setOpen(false); setEditingId(null); setName(""); setDescription("") }} 
+          onCancel={() => { setOpen(false); setEditingId(null); setName(""); setDescription(""); setPriority(undefined); setPriorityInput("") }} 
           onConfirm={submit}
           confirmText={editingId ? "Lưu thay đổi" : "Tạo danh mục"}
           cancelText="Hủy"

@@ -12,7 +12,14 @@ interface Props { open: boolean; onClose: () => void; dish: { id: number; name: 
 
 export default function EditDishModal({ open, onClose, dish }: Props) {
   const { createOrUpdate, toggleActive, togglePublic } = useDishStore()
-  const ingStore = useIngredientStore()
+  const fetchIngredients = useIngredientStore((state) => state.fetchAll)
+  const fetchIngredientCategories = useIngredientStore((state) =>
+    "fetchCategories" in state ? (state as typeof state & { fetchCategories?: () => Promise<void> }).fetchCategories : undefined
+  )
+  const ingredientListState = useIngredientStore((state) => state.items)
+  const ingredientCategoriesState = useIngredientStore((state) =>
+    "categories" in state ? (state as typeof state & { categories?: Array<{ id: number; name: string }> }).categories : undefined
+  )
 
   const [name, setName] = useState(dish?.name ?? "")
   const [description, setDescription] = useState(dish?.description ?? "")
@@ -32,16 +39,17 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
   const fetchIngredientsOnce = useCallback(() => {
     if (!fetchedOnceRef.current) {
       fetchedOnceRef.current = true
-      ingStore.fetchAll()
-      if (typeof ingStore.fetchCategories === 'function') ingStore.fetchCategories()
+      void fetchIngredients()
+      if (typeof fetchIngredientCategories === "function") {
+        void fetchIngredientCategories()
+      }
     }
-  }, [ingStore])
+  }, [fetchIngredients, fetchIngredientCategories])
   useEffect(() => { if (open) fetchIngredientsOnce() }, [open, fetchIngredientsOnce])
   useEffect(() => {
     if (open) {
       // Reset flag khi mở modal
       justSubmittedRef.current = false
-      fetchedOnceRef.current = false
       setName(dish?.name ?? "")
       setDescription(dish?.description ?? "")
       setPrice(dish?.price != null ? String(dish.price) : "")
@@ -54,6 +62,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
       setExistingImageUrl(undefined)
       setLoading(false)
       setError("")
+    } else {
+      fetchedOnceRef.current = false
     }
   }, [open, dish])
 
@@ -137,7 +147,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, dish?.id])
 
-  const ingredientList = useMemo(() => ingStore.items, [ingStore.items])
+  const ingredientList = useMemo(() => ingredientListState, [ingredientListState])
   const ingredientById = useMemo(() => {
     const m = new Map<number, (typeof ingredientList)[number]>()
     ingredientList.forEach(i => m.set(i.id, i))
@@ -147,7 +157,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
   const [catFilter, setCatFilter] = useState<string>("all")
   const categories = useMemo(() => {
     const options: { key: string; id?: number; name: string; count: number }[] = []
-    const rawCats = (ingStore as unknown as { categories?: Array<{ id: number; name: string }> }).categories
+    const rawCats = Array.isArray(ingredientCategoriesState) ? ingredientCategoriesState : []
     const catList: Array<{ id: number; name: string }> = Array.isArray(rawCats) ? rawCats : []
     catList.forEach((cat) => {
       const count = ingredientList.filter(i => i.categoryId === cat.id).length
@@ -156,7 +166,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
     const uncategorizedCount = ingredientList.filter(i => i.categoryId == null).length
     if (uncategorizedCount > 0) options.push({ key: "__uncat__", name: "Khác", count: uncategorizedCount })
     return options.sort((a,b) => b.count - a.count || a.name.localeCompare(b.name, "vi"))
-  }, [ingStore, ingredientList])
+  }, [ingredientCategoriesState, ingredientList])
   useEffect(() => {
     if (catFilter !== "all" && !categories.some(c => c.key === catFilter)) setCatFilter("all")
   }, [categories, catFilter])

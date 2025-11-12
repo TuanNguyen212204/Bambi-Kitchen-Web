@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
+import * as React from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
 import { Image as ImageIcon, Edit3, Utensils, DollarSign } from "lucide-react";
@@ -27,34 +28,48 @@ export function DishDetailModal({
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { items: ingredientList, fetchAll } = useIngredientStore();
+  const dishIdRef = React.useRef<number | undefined>(dish?.id);
+  const isLoadingRef = React.useRef(false);
 
+  // Update ref when dish.id changes
+  React.useEffect(() => {
+    dishIdRef.current = dish?.id;
+  }, [dish?.id]);
+
+  // Fetch ingredients một lần khi modal mở (nếu chưa có)
   useEffect(() => {
-    if (open && dish?.id) {
-      // Fetch ingredients nếu chưa có (để lấy unit)
-      if (ingredientList.length === 0) {
-        fetchAll().catch(() => {});
-      }
-      loadDishDetails();
-    } else {
-      setDishDetails(null);
-      setRecipe([]);
-      setIsEditing(false);
+    if (open && ingredientList.length === 0) {
+      fetchAll().catch(() => {});
     }
-  }, [open, dish?.id]);
+  }, [open]); // Chỉ chạy khi modal mở, không phụ thuộc vào ingredientList để tránh infinite loop
 
-  const loadDishDetails = async () => {
+  // Load dish details function - sử dụng useCallback để tránh recreate không cần thiết
+  const loadDishDetails = React.useCallback(async () => {
     if (!dish?.id) return;
+    
+    // Tránh gọi nhiều lần nếu đang loading
+    if (isLoadingRef.current) return;
+    
+    const currentDishId = dish.id;
+    if (dishIdRef.current !== currentDishId) {
+      dishIdRef.current = currentDishId;
+    }
+    
+    isLoadingRef.current = true;
     setIsLoading(true);
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@/utils/api");
       
       // Load dish details
-      const dishRes = await bambiApi.get(API_ENDPOINTS.API_DISH_BY_ID(dish.id));
+      const dishRes = await bambiApi.get(API_ENDPOINTS.API_DISH_BY_ID(currentDishId));
+      if (dishIdRef.current !== currentDishId) return; // Check lại sau khi async
       setDishDetails(dishRes.data);
       
       // Load recipe - API trả về IngredientsGetByDishResponse (API v3)
       try {
-        const recipeRes = await bambiApi.get(API_ENDPOINTS.API_RECIPE_BY_DISH(dish.id));
+        const recipeRes = await bambiApi.get(API_ENDPOINTS.API_RECIPE_BY_DISH(currentDishId));
+        if (dishIdRef.current !== currentDishId) return; // Check lại sau khi async
+        
         let recipeData: Array<{ 
           ingredient: { id: number; name: string; unit?: string }; 
           quantity: number;
@@ -104,9 +119,14 @@ export function DishDetailModal({
             }>
           }
           
+          // Get current ingredientList tại thời điểm này (có thể đã được fetch)
+          // Sử dụng getState() để lấy giá trị mới nhất từ store (không trigger re-render)
+          const storeState = useIngredientStore.getState();
+          const currentIngredientList = storeState.items || [];
+          
           recipeData = (responseData.ingredients || []).map((ing: any) => {
             // Lấy unit từ allIngredients nếu có (IngredientDetail không có unit field)
-            const ingredientFromStore = ingredientList.find(i => i.id === ing.id)
+            const ingredientFromStore = currentIngredientList.find(i => i.id === ing.id)
             return {
               ingredient: {
                 id: ing.id,
@@ -120,17 +140,38 @@ export function DishDetailModal({
           });
         }
         
-        setRecipe(recipeData);
+        if (dishIdRef.current === currentDishId) {
+          setRecipe(recipeData);
+        }
       } catch (error) {
         console.error("Error loading recipe:", error);
-        setRecipe([]);
+        if (dishIdRef.current === currentDishId) {
+          setRecipe([]);
+        }
       }
     } catch (error) {
       console.error("Error loading dish details:", error);
     } finally {
-      setIsLoading(false);
+      if (dishIdRef.current === currentDishId) {
+        setIsLoading(false);
+        isLoadingRef.current = false;
+      }
     }
-  };
+  }, [dish?.id]); // Chỉ recreate khi dish.id thay đổi
+
+  // Load dish details khi modal mở
+  useEffect(() => {
+    if (!open || !dish?.id) {
+      setDishDetails(null);
+      setRecipe([]);
+      setIsEditing(false);
+      isLoadingRef.current = false;
+      return;
+    }
+
+    loadDishDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, dish?.id]); // Chỉ chạy khi open hoặc dish.id thay đổi, không include loadDishDetails để tránh loop
 
 
   const getPublicBadge = (isPublic: boolean) => {
@@ -148,7 +189,14 @@ export function DishDetailModal({
 
   return (
     <>
-      <Dialog open={open && !isEditing} onOpenChange={onClose}>
+      <Dialog
+        open={open && !isEditing}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !isEditing) {
+            onClose();
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
@@ -182,6 +230,9 @@ export function DishDetailModal({
                 </div>
               </div>
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Chi tiết món ăn {displayDetails.name}
+            </DialogDescription>
           </DialogHeader>
 
           {isLoading ? (

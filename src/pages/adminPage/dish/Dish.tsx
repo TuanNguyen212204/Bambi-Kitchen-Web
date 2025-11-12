@@ -28,7 +28,7 @@ const AdminDishPage = () => {
   // Fetch dữ liệu dựa trên statusFilter
   useEffect(() => { 
     fetchAll(statusFilter || "all")
-  }, [fetchAll, statusFilter])
+  }, [statusFilter]) // Chỉ phụ thuộc vào statusFilter, không phụ thuộc vào fetchAll để tránh infinite loop
 
   // Đồng bộ optimistic state với store - xóa optimistic state khi store đã update đúng giá trị
   useEffect(() => {
