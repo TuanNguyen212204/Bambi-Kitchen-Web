@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react"
 import { X, Plus, Minus, ChevronLeft, ChevronRight, Check } from "lucide-react"
 import { Button } from "@components/ui/button"
-import { Input } from "@components/ui/input"
 import { toast } from "sonner"
 import { useIngredientStore } from "@/zustand/stores/ingredients"
 import { useCartStore } from "@/zustand/stores/cart"
@@ -75,14 +74,15 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
   const [showCatRightArrow, setShowCatRightArrow] = useState(false)
   const [showIngLeftArrow, setShowIngLeftArrow] = useState(false)
   const [showIngRightArrow, setShowIngRightArrow] = useState(false)
-  const [inputValues, setInputValues] = useState<Record<number, string>>({})
-  const [removedQuantities, setRemovedQuantities] = useState<Record<number, string>>({})
 
   // Fetch dish details, ingredients, and templates
   useEffect(() => {
     if (open && dish?.id) {
       setLoading(true)
       let isMounted = true // Flag để tránh update state nếu component đã unmount
+      
+      // Reset dishDetails khi mở modal mới
+      setDishDetails(null)
       
       // Fetch tất cả data song song
       Promise.all([
@@ -96,6 +96,7 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
           
           const dishRes = results[3]
           const dishDataFromApi = dishRes.data
+          
           // Fetch recipe separately sau khi đã có dish data
           return bambiApi.get(API_ENDPOINTS.API_RECIPE_BY_DISH(dish.id))
             .then(recipeRes => {
@@ -200,7 +201,7 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
         })
         .catch(err => {
           if (!isMounted) return
-          console.error("Error fetching dish details:", err)
+          console.error("PresetDishModal: Error fetching dish details:", err)
           toast.error("Không thể tải thông tin món ăn")
         })
         .finally(() => {
@@ -213,6 +214,9 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
       return () => {
         isMounted = false
       }
+    } else if (open && !dish?.id) {
+      setLoading(false)
+      setDishDetails(null)
     }
   }, [open, dish?.id, fetchIngredients, fetchCategories, fetchTemplates])
 
@@ -224,8 +228,6 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
       setRecipeModifications([])
       setSelectedCategoryId(null)
       setQuantity(1)
-      setInputValues({})
-      setRemovedQuantities({})
       setDishDetails(null)
     }
   }, [open])
@@ -281,6 +283,15 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
     )
   }, [allIngredients, originalIngredients])
 
+  // Get original ingredients count by category priority (từ món ăn gốc)
+  const getOriginalCountByPriority = (priority: number) => {
+    return originalIngredients.filter(ing => {
+      const fullIngredient = allIngredients.find(aIng => aIng.id === ing.id)
+      const category = ingredientCategories.find(cat => cat.id === fullIngredient?.categoryId)
+      return category?.priority === priority
+    }).length
+  }
+
   // Get added ingredients count by category priority
   const getAddedCountByPriority = (priority: number) => {
     return addedIngredients.filter(added => {
@@ -290,42 +301,40 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
     }).length
   }
 
+  // Get total count by priority (original + added)
+  const getTotalCountByPriority = (priority: number) => {
+    return getOriginalCountByPriority(priority) + getAddedCountByPriority(priority)
+  }
+
   // Check if can add more ingredients for a category priority
   const canAddMoreForPriority = (priority: number) => {
     if (!selectedTemplate) return true
     
-    const count = getAddedCountByPriority(priority)
+    const totalCount = getTotalCountByPriority(priority)
     // priority 1 = carb, 2 = protein, 3 = vegetable
     if (priority === 1) {
-      return !selectedTemplate.max_Carb || count < selectedTemplate.max_Carb
+      return !selectedTemplate.max_Carb || totalCount < selectedTemplate.max_Carb
     }
     if (priority === 2) {
-      return !selectedTemplate.max_Protein || count < selectedTemplate.max_Protein
+      return !selectedTemplate.max_Protein || totalCount < selectedTemplate.max_Protein
     }
     if (priority === 3) {
-      return !selectedTemplate.max_Vegetable || count < selectedTemplate.max_Vegetable
+      return !selectedTemplate.max_Vegetable || totalCount < selectedTemplate.max_Vegetable
     }
     return true // Other priorities (side dishes) không có limit
   }
 
-  // Filter available ingredients that are not already added
-  const availableIngredientsNotAdded = useMemo(() => {
-    return availableIngredients.filter(ing =>
-      !recipeModifications.some(mod => mod.ingredientId === ing.id && mod.sourceType === "ADDON")
-    )
-  }, [availableIngredients, recipeModifications])
-
-  // Get ingredient categories for available ingredients
+  // Get ingredient categories for available ingredients (bao gồm cả đã thêm để hiển thị)
   const availableCategories = useMemo(() => {
-    const categoryIds = new Set(availableIngredientsNotAdded.map(ing => ing.categoryId).filter(Boolean))
+    const categoryIds = new Set(availableIngredients.map(ing => ing.categoryId).filter(Boolean))
     return ingredientCategories.filter(cat => categoryIds.has(cat.id))
-  }, [availableIngredientsNotAdded, ingredientCategories])
+  }, [availableIngredients, ingredientCategories])
 
-  // Get ingredients for selected category
+  // Get ingredients for selected category (bao gồm cả đã thêm - giống CustomBowlModal)
   const ingredientsForCategory = useMemo(() => {
-    if (!selectedCategoryId) return availableIngredientsNotAdded
-    return availableIngredientsNotAdded.filter(ing => ing.categoryId === selectedCategoryId)
-  }, [availableIngredientsNotAdded, selectedCategoryId])
+    if (!selectedCategoryId) return availableIngredients
+    return availableIngredients.filter(ing => ing.categoryId === selectedCategoryId)
+  }, [availableIngredients, selectedCategoryId])
 
   // Auto-select first category
   useEffect(() => {
@@ -334,36 +343,15 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
     }
   }, [availableCategories, selectedCategoryId])
 
-  // Handle remove ingredient quantity change - giống CustomBowlModal
-  const handleRemovedQuantityChange = (ingredientId: number, value: string) => {
-    // Lưu giá trị input (có thể rỗng) vào state tạm thời
-    setRemovedQuantities(prev => ({ ...prev, [ingredientId]: value }))
-    
-    // Nếu rỗng, chỉ cập nhật input value, không cập nhật modification
-    if (value === "" || value === "-" || value === ".") {
-      return
-    }
-    
-    const numValue = parseFloat(value)
+  // Handle remove ingredient by percentage or fixed amount
+  const handleRemoveByPercentage = (ingredientId: number, percentage: number) => {
     const originalIng = originalIngredients.find(ing => ing.id === ingredientId)
     if (!originalIng) return
-
-    // Nếu không phải số hợp lệ, giữ nguyên input value
-    if (isNaN(numValue)) {
-      return
-    }
-
-    // Giới hạn số lượng bỏ bớt không vượt quá số lượng gốc
-    if (numValue < 0) {
-      setRemovedQuantities(prev => ({ ...prev, [ingredientId]: "0" }))
-      setRecipeModifications(prev => prev.filter(mod => !(mod.ingredientId === ingredientId && mod.sourceType === "REMOVED")))
-      return
-    }
     
-    if (numValue > originalIng.neededQuantity) {
-      // Nếu vượt quá, set về giá trị tối đa
-      const finalQuantity = originalIng.neededQuantity
-      setRemovedQuantities(prev => ({ ...prev, [ingredientId]: finalQuantity.toString() }))
+    const removeAmount = Math.round((originalIng.neededQuantity * percentage) / 100)
+    const finalQuantity = Math.min(removeAmount, originalIng.neededQuantity)
+    
+    if (finalQuantity > 0) {
       setRecipeModifications(prev => {
         const filtered = prev.filter(mod => !(mod.ingredientId === ingredientId && mod.sourceType === "REMOVED"))
         return [
@@ -375,45 +363,116 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
           }
         ]
       })
-      return
     }
+  }
 
-    // Cập nhật modification với giá trị hợp lệ
-    if (numValue > 0 && numValue <= originalIng.neededQuantity) {
+  // Handle remove ingredient by fixed amount
+  const handleRemoveByAmount = (ingredientId: number, amount: number) => {
+    const originalIng = originalIngredients.find(ing => ing.id === ingredientId)
+    if (!originalIng) return
+    
+    const removedMod = recipeModifications.find(mod => mod.ingredientId === ingredientId && mod.sourceType === "REMOVED")
+    const currentRemoved = removedMod?.quantity || 0
+    const newRemoved = Math.min(currentRemoved + amount, originalIng.neededQuantity)
+    const finalQuantity = Math.max(0, newRemoved)
+    
+    if (finalQuantity > 0) {
       setRecipeModifications(prev => {
         const filtered = prev.filter(mod => !(mod.ingredientId === ingredientId && mod.sourceType === "REMOVED"))
         return [
           ...filtered.filter(mod => !(mod.ingredientId === ingredientId && mod.sourceType === "ADDON")),
           {
             ingredientId,
-            quantity: numValue,
+            quantity: finalQuantity,
             sourceType: "REMOVED" as const,
           }
         ]
       })
-    } else if (numValue === 0) {
+    } else {
       // Nếu = 0, xóa modification
       setRecipeModifications(prev => prev.filter(mod => !(mod.ingredientId === ingredientId && mod.sourceType === "REMOVED")))
-      setRemovedQuantities(prev => {
-        const next = { ...prev }
-        delete next[ingredientId]
-        return next
-      })
     }
   }
 
-  // Handle add ingredient with category limit check
+  // Get step amount for ingredient based on unit
+  const getStepAmount = (unit?: string): number => {
+    if (!unit) return 200
+    const unitUpper = unit.toUpperCase()
+    switch (unitUpper) {
+      case "PCS":
+        return 1
+      case "GRAM":
+        return 200
+      case "KILOGRAM":
+        return 0.2
+      case "LITER":
+        return 0.2
+      default:
+        return 200
+    }
+  }
+
+  // Giới hạn tổng số lượng nguyên liệu có thể thêm (giống các web food ordering)
+  const MAX_TOTAL_ADDON_INGREDIENTS = 10 // Tối đa 10 nguyên liệu
+
+  // Giới hạn số lượng tối đa cho mỗi nguyên liệu theo đơn vị (giống các quán ăn/web khác)
+  // - PCS (phần): tối đa 3 phần
+  // - GRAM: tối đa 500 gram (0.5kg) 
+  // - KILOGRAM: tối đa 0.5 kg
+  // - LITER: tối đa 0.5 liter
+  const getMaxQuantityForUnit = (unit?: string): number => {
+    if (!unit) return 500
+    const unitUpper = unit.toUpperCase()
+    switch (unitUpper) {
+      case "PCS":
+        return 3 // Tối đa 3 phần
+      case "GRAM":
+        return 500 // Tối đa 500 gram
+      case "KILOGRAM":
+        return 0.5 // Tối đa 0.5 kg
+      case "LITER":
+        return 0.5 // Tối đa 0.5 liter
+      default:
+        return 500 // Mặc định 500
+    }
+  }
+
+  // Handle add ingredient with category limit check - Giống CustomBowlModal
   const handleAddIngredient = (ingredient: StoreIngredient) => {
+    // Hết hàng thì không cho chọn
+    if ((ingredient.available ?? 0) <= 0) {
+      toast.error("Nguyên liệu này đã hết hàng")
+      return
+    }
+
     const existing = recipeModifications.find(mod => mod.ingredientId === ingredient.id && mod.sourceType === "ADDON")
     if (existing) {
-      // Remove the add modification
+      // Remove the add modification - luôn cho phép remove
       setRecipeModifications(prev => prev.filter(mod => !(mod.ingredientId === ingredient.id && mod.sourceType === "ADDON")))
-      setInputValues(prev => {
-        const next = { ...prev }
-        delete next[ingredient.id]
-        return next
-      })
     } else {
+      // Kiểm tra giới hạn tổng số lượng nguyên liệu có thể thêm (tính từ recipeModifications)
+      const currentAddonCount = recipeModifications.filter(mod => mod.sourceType === "ADDON").length
+      if (currentAddonCount >= MAX_TOTAL_ADDON_INGREDIENTS) {
+        toast.warning(`Bạn chỉ có thể thêm tối đa ${MAX_TOTAL_ADDON_INGREDIENTS} nguyên liệu`)
+        return
+      }
+
+      // Kiểm tra số lượng có sẵn trong kho (available) và giới hạn tối đa theo đơn vị
+      const defaultQuantity = getStepAmount(ingredient.unit)
+      const maxAvailable = ingredient.available ?? Infinity
+      const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
+      const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
+      
+      // Kiểm tra số lượng mặc định không vượt quá giới hạn
+      if (defaultQuantity > maxQuantity) {
+        if (defaultQuantity > maxAvailable) {
+          toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
+        } else {
+          toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
+        }
+        return
+      }
+
       // Check category limit before adding
       const category = ingredientCategories.find(cat => cat.id === ingredient.categoryId)
       const priority = category?.priority || 0
@@ -431,8 +490,7 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
         }
       }
       
-      // Add the ingredient with default quantity
-      const defaultQuantity = ingredient.unit?.toUpperCase() === "PCS" ? 1 : 100
+      // Add the ingredient with default quantity (dùng getStepAmount để nhất quán)
       setRecipeModifications(prev => [
         ...prev.filter(mod => !(mod.ingredientId === ingredient.id && mod.sourceType === "REMOVED")),
         {
@@ -441,20 +499,46 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
           sourceType: "ADDON" as const,
         }
       ])
-      setInputValues(prev => ({ ...prev, [ingredient.id]: defaultQuantity.toString() }))
     }
   }
 
-  // Handle quantity change for added ingredient
-  const handleQuantityChange = (ingredientId: number, value: string) => {
-    setInputValues(prev => ({ ...prev, [ingredientId]: value }))
-    const numValue = parseFloat(value)
-    if (!isNaN(numValue) && numValue > 0) {
+  // Handle add/subtract quantity for added ingredient
+  const handleAdjustQuantity = (ingredientId: number, delta: number) => {
+    const addedMod = recipeModifications.find(mod => mod.ingredientId === ingredientId && mod.sourceType === "ADDON")
+    const ingredient = allIngredients.find(ing => ing.id === ingredientId)
+    if (!ingredient || !addedMod) return
+    
+    const currentQty = addedMod.quantity
+    const stepAmount = getStepAmount(ingredient.unit)
+    const newQty = currentQty + (delta * stepAmount)
+    const maxAvailable = ingredient.available ?? Infinity
+    const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
+    const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
+    const minQuantity = getStepAmount(ingredient.unit) // Minimum quantity là stepAmount
+    
+    // Nếu đang tăng số lượng (delta > 0), kiểm tra số lượng có sẵn trong kho và giới hạn tối đa theo đơn vị
+    if (delta > 0 && newQty > maxQuantity) {
+      if (newQty > maxAvailable) {
+        toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
+      } else {
+        toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
+      }
+      return
+    }
+    
+    const finalQuantity = Math.max(minQuantity, Math.min(newQty, maxQuantity))
+    
+    // Nếu finalQuantity >= minQuantity, cập nhật quantity
+    // Nếu finalQuantity < minQuantity, xóa ingredient (không giữ lại với số lượng quá nhỏ)
+    if (finalQuantity >= minQuantity) {
       setRecipeModifications(prev => prev.map(mod => 
         mod.ingredientId === ingredientId && mod.sourceType === "ADDON"
-          ? { ...mod, quantity: numValue }
+          ? { ...mod, quantity: finalQuantity }
           : mod
       ))
+    } else {
+      // Nếu giảm xuống dưới minQuantity, xóa ingredient
+      setRecipeModifications(prev => prev.filter(mod => !(mod.ingredientId === ingredientId && mod.sourceType === "ADDON")))
     }
   }
 
@@ -617,9 +701,19 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5">
           {loading ? (
-            <div className="text-center py-12">Đang tải...</div>
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mb-4"></div>
+              <p className="text-gray-600">Đang tải thông tin món ăn...</p>
+            </div>
+          ) : !dish?.id ? (
+            <div className="text-center py-12 text-gray-500">
+              <p>Không có thông tin món ăn</p>
+            </div>
           ) : !dishDetails ? (
-            <div className="text-center py-12 text-gray-500">Không thể tải thông tin món ăn</div>
+            <div className="text-center py-12 text-gray-500">
+              <p className="mb-2">Không thể tải thông tin món ăn</p>
+              {dish?.id && <p className="text-sm text-gray-400">Dish ID: {dish.id}</p>}
+            </div>
           ) : (
             <div className="space-y-5">
               {/* Size Selection - Card Style với giá và thông tin template */}
@@ -701,369 +795,393 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
                 </div>
               </div>
 
-              {/* Original Ingredients - Giống CustomBowlModal style */}
-              {originalIngredients.length > 0 && (
-                <div>
-                  <h3 className="text-base font-semibold text-gray-900 mb-3">Nguyên liệu có sẵn</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {originalIngredients.map((ing) => {
-                      const isRemoved = removedIngredientIds.includes(ing.id)
-                      const removedMod = recipeModifications.find(mod => mod.ingredientId === ing.id && mod.sourceType === "REMOVED")
-                      const removedQty = removedMod?.quantity || 0
-                      const remainingQty = Math.max(0, ing.neededQuantity - removedQty)
-                      const currentInputValue = removedQuantities[ing.id] !== undefined 
-                        ? removedQuantities[ing.id] 
-                        : (isRemoved ? removedQty.toString() : "")
-                      
-                      return (
-                        <div
-                          key={ing.id}
-                          className={`p-3 rounded-xl border-2 transition-all ${
-                            isRemoved
-                              ? "border-red-300 bg-red-50"
-                              : "border-gray-200 bg-white hover:border-gray-300"
-                          }`}
-                        >
-                          {ing.imageUrl ? (
-                            <img
-                              src={ing.imageUrl}
-                              alt={ing.name}
-                              className="w-full h-24 object-cover rounded-lg mb-2"
-                              onError={(e) => {
-                                const img = e.target as HTMLImageElement
-                                img.style.display = 'none'
-                                const parent = img.parentElement
-                                if (parent && !parent.querySelector('.no-image-placeholder')) {
-                                  const placeholder = document.createElement('div')
-                                  placeholder.className = 'no-image-placeholder w-full h-24 bg-gray-100 rounded-lg mb-2 flex items-center justify-center'
-                                  placeholder.innerHTML = '<span class="text-gray-400 text-xs">Không có ảnh</span>'
-                                  parent.insertBefore(placeholder, img)
-                                }
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-24 bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
-                              <span className="text-gray-400 text-xs">Không có ảnh</span>
-                            </div>
-                          )}
-                          <h4 className="font-semibold text-sm mb-1 line-clamp-2 min-h-[2.5rem]">{ing.name}</h4>
+                  {/* Original Ingredients - Giống CustomBowlModal style */}
+                  {originalIngredients.length > 0 ? (
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-900 mb-3">Nguyên liệu có sẵn ({originalIngredients.length})</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {originalIngredients.map((ing) => {
+                          const isRemoved = removedIngredientIds.includes(ing.id)
+                          const removedMod = recipeModifications.find(mod => mod.ingredientId === ing.id && mod.sourceType === "REMOVED")
+                          const removedQty = removedMod?.quantity || 0
+                          const remainingQty = Math.max(0, ing.neededQuantity - removedQty)
                           
-                          {/* Hiển thị khẩu phần với đơn vị - luôn hiển thị */}
-                          <p className="text-xs text-gray-600 mb-2 font-medium">
-                            Khẩu phần: {ing.neededQuantity} {ing.unit ? formatUnit(ing.unit) : ""}
-                          </p>
-                          
-                          {/* Input để bỏ bớt - giống CustomBowlModal */}
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-1.5">
-                              <label className="text-xs text-gray-600 whitespace-nowrap flex-shrink-0">Bỏ bớt:</label>
-                              <Input
-                                type="number"
-                                step={ing.unit?.toUpperCase() === "PCS" ? "1" : "0.1"}
-                                min={0}
-                                max={ing.neededQuantity}
-                                value={currentInputValue}
-                                onChange={(e) => {
-                                  const val = e.target.value
-                                  if (val === "" || val === "-" || val === ".") {
-                                    setRemovedQuantities(prev => ({ ...prev, [ing.id]: val }))
-                                    return
-                                  }
-                                  handleRemovedQuantityChange(ing.id, val)
-                                }}
-                                onBlur={(e) => {
-                                  const val = parseFloat(e.target.value)
-                                  if (isNaN(val) || val <= 0) {
-                                    // Nếu rỗng hoặc 0, xóa modification
-                                    setRecipeModifications(prev => prev.filter(mod => !(mod.ingredientId === ing.id && mod.sourceType === "REMOVED")))
-                                    setRemovedQuantities(prev => {
-                                      const next = { ...prev }
-                                      delete next[ing.id]
-                                      return next
-                                    })
-                                  }
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                onFocus={(e) => {
-                                  e.stopPropagation()
-                                  e.target.select()
-                                }}
-                                className="h-7 text-xs text-center p-1 flex-1"
-                                placeholder="0"
-                              />
-                              <span className="text-xs text-gray-600 flex-shrink-0">
-                                {ing.unit ? formatUnit(ing.unit) : ""}
-                              </span>
-                            </div>
-                            
-                            {/* Hiển thị đã bỏ và còn lại */}
-                            {isRemoved && removedQty > 0 && (
-                              <div className="space-y-0.5 pt-1 border-t border-gray-200">
-                                <p className="text-xs text-red-600 font-medium">
-                                  Đã bỏ: {removedQty} {ing.unit ? formatUnit(ing.unit) : ""}
-                                </p>
-                                <p className="text-xs text-gray-600">
-                                  Còn lại: {remainingQty} {ing.unit ? formatUnit(ing.unit) : ""}
-                                </p>
-                              </div>
-                            )}
-                            {!isRemoved && removedQty === 0 && (
-                              <p className="text-xs text-gray-500">
-                                Còn nguyên: {ing.neededQuantity} {ing.unit ? formatUnit(ing.unit) : ""}
-                              </p>
-                            )}
-                            {!isRemoved && removedQty === 0 && currentInputValue === "" && (
-                              <p className="text-xs text-gray-400 italic">
-                                Nhập số lượng để bỏ bớt
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Add Ingredients */}
-              {availableIngredientsNotAdded.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-base font-semibold text-gray-900">Thêm nguyên liệu (Tính phí)</h3>
-                    {selectedTemplate && (
-                      <div className="text-xs text-gray-600 space-x-3">
-                        {selectedTemplate.max_Carb !== undefined && (
-                          <span>
-                            Tinh Bột: {getAddedCountByPriority(1)}/{selectedTemplate.max_Carb}
-                          </span>
-                        )}
-                        {selectedTemplate.max_Protein !== undefined && (
-                          <span>
-                            Protein: {getAddedCountByPriority(2)}/{selectedTemplate.max_Protein}
-                          </span>
-                        )}
-                        {selectedTemplate.max_Vegetable !== undefined && (
-                          <span>
-                            Rau: {getAddedCountByPriority(3)}/{selectedTemplate.max_Vegetable}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Category selector */}
-                  {availableCategories.length > 1 && (
-                    <div className="relative mb-4">
-                      <div className="flex items-center gap-2">
-                        {showCatLeftArrow && (
-                          <button
-                            onClick={() => {
-                              catScrollRef.current?.scrollBy({ left: -300, behavior: "smooth" })
-                              setTimeout(handleCategoryScroll, 300)
-                            }}
-                            className="flex-shrink-0 z-10 bg-white border-2 border-gray-300 rounded-full p-2 shadow-md hover:bg-gray-50"
-                            aria-label="Scroll left"
-                          >
-                            <ChevronLeft size={20} />
-                          </button>
-                        )}
-                        <div
-                          ref={catScrollRef}
-                          onScroll={handleCategoryScroll}
-                          className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide flex-1"
-                        >
-                          {availableCategories.map((category) => (
-                            <button
-                              key={category.id}
-                              onClick={() => setSelectedCategoryId(category.id)}
-                              className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors flex-shrink-0 ${
-                                selectedCategoryId === category.id
-                                  ? "bg-orange-500 text-white"
-                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          return (
+                            <div
+                              key={ing.id}
+                              className={`p-3 rounded-xl border-2 transition-all ${
+                                isRemoved
+                                  ? "border-red-300 bg-red-50"
+                                  : "border-gray-200 bg-white hover:border-gray-300"
                               }`}
                             >
-                              {category.name}
-                            </button>
-                          ))}
-                        </div>
-                        {showCatRightArrow && (
-                          <button
-                            onClick={() => {
-                              catScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" })
-                              setTimeout(handleCategoryScroll, 300)
-                            }}
-                            className="flex-shrink-0 z-10 bg-white border-2 border-gray-300 rounded-full p-2 shadow-md hover:bg-gray-50"
-                            aria-label="Scroll right"
-                          >
-                            <ChevronRight size={20} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Ingredients grid - Card style like CustomBowlModal */}
-                  {ingredientsForCategory.length > 0 ? (
-                    <div className="relative">
-                      <div className="flex items-center gap-2">
-                        {showIngLeftArrow && (
-                          <button
-                            onClick={() => {
-                              ingScrollRef.current?.scrollBy({ left: -360, behavior: "smooth" })
-                              setTimeout(handleIngredientScroll, 300)
-                            }}
-                            className="flex-shrink-0 z-10 bg-white border-2 border-gray-300 rounded-full p-2 shadow-md hover:bg-gray-50 hover:border-orange-500 transition-colors"
-                            aria-label="Scroll left"
-                          >
-                            <ChevronLeft size={20} className="text-gray-700" />
-                          </button>
-                        )}
-                        <div
-                          ref={ingScrollRef}
-                          onScroll={handleIngredientScroll}
-                          className="overflow-x-auto pb-4 scrollbar-hide flex-1"
-                        >
-                          <div className="flex gap-4" style={{ width: 'max-content' }}>
-                            {ingredientsForCategory.map((ingredient) => {
-                              const isAdded = addedIngredients.some(added => added.id === ingredient.id)
-                              const addedIng = addedIngredients.find(added => added.id === ingredient.id)
-                              
-                              // Check if can add this ingredient based on category limit
-                              const ingredientCategory = ingredientCategories.find(cat => cat.id === ingredient.categoryId)
-                              const ingredientPriority = ingredientCategory?.priority || 0
-                              const canAdd = ingredientPriority === 0 || ingredientPriority > 3 || canAddMoreForPriority(ingredientPriority) || isAdded
-                              
-                              return (
-                                <div
-                                  key={ingredient.id}
-                                  className={`flex-shrink-0 w-48 p-4 rounded-xl border-2 cursor-pointer transition-all overflow-hidden ${
-                                    isAdded
-                                      ? "border-orange-500 bg-orange-50"
-                                      : canAdd
-                                      ? "border-gray-200 hover:border-orange-300"
-                                      : "border-gray-200 opacity-50 cursor-not-allowed"
-                                  }`}
-                                  onClick={() => {
-                                    if (!isAdded && canAdd) {
-                                      handleAddIngredient(ingredient)
-                                    } else if (!canAdd && !isAdded) {
-                                      let limitMsg = ""
-                                      if (ingredientPriority === 1) limitMsg = `Tinh Bột (tối đa ${selectedTemplate?.max_Carb || 0})`
-                                      else if (ingredientPriority === 2) limitMsg = `Protein (tối đa ${selectedTemplate?.max_Protein || 0})`
-                                      else if (ingredientPriority === 3) limitMsg = `Rau (tối đa ${selectedTemplate?.max_Vegetable || 0})`
-                                      toast.warning(`Đã đạt giới hạn tối đa cho ${limitMsg}`)
+                              {ing.imageUrl ? (
+                                <img
+                                  src={ing.imageUrl}
+                                  alt={ing.name}
+                                  className="w-full h-24 object-cover rounded-lg mb-2"
+                                  onError={(e) => {
+                                    const img = e.target as HTMLImageElement
+                                    img.style.display = 'none'
+                                    const parent = img.parentElement
+                                    if (parent && !parent.querySelector('.no-image-placeholder')) {
+                                      const placeholder = document.createElement('div')
+                                      placeholder.className = 'no-image-placeholder w-full h-24 bg-gray-100 rounded-lg mb-2 flex items-center justify-center'
+                                      placeholder.innerHTML = '<span class="text-gray-400 text-xs">Không có ảnh</span>'
+                                      parent.insertBefore(placeholder, img)
                                     }
                                   }}
-                                >
-                                  {ingredient.imgUrl ? (
-                                    <img
-                                      src={ingredient.imgUrl}
-                                      alt={ingredient.name}
-                                      className="w-full h-32 object-cover rounded-lg mb-3"
-                                      onError={(e) => {
-                                        const img = e.target as HTMLImageElement
-                                        img.style.display = 'none'
-                                        const parent = img.parentElement
-                                        if (parent && !parent.querySelector('.no-image-placeholder')) {
-                                          const placeholder = document.createElement('div')
-                                          placeholder.className = 'no-image-placeholder w-full h-32 bg-gray-100 rounded-lg mb-3 flex items-center justify-center'
-                                          placeholder.innerHTML = '<span class="text-gray-400 text-xs">Không có ảnh</span>'
-                                          parent.insertBefore(placeholder, img)
-                                        }
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-32 bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
-                                      <span className="text-gray-400 text-xs">Không có ảnh</span>
-                                    </div>
-                                  )}
-                                  <h4 className="font-semibold text-gray-900 mb-1 text-sm">{ingredient.name}</h4>
-                                  {ingredient.pricePerUnit !== undefined && (
-                                    <p className="text-xs text-gray-600 mb-1">
-                                      {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(ingredient.pricePerUnit)}/{formatUnit(ingredient.unit)}
-                                    </p>
-                                  )}
-                                  <p className="text-[11px] text-gray-500 mb-2">
-                                    Khả dụng: {ingredient.available ?? 0}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
-                                  </p>
-                                  {isAdded && addedIng && (
-                                    <div className="flex items-center gap-1.5 mt-2 w-full">
-                                      <label className="text-xs text-gray-600 whitespace-nowrap flex-shrink-0">Số lượng:</label>
-                                      <Input
-                                        type="number"
-                                        step={ingredient.unit?.toUpperCase() === "PCS" ? "1" : "0.1"}
-                                        min={0.1}
-                                        max={ingredient.available ?? Infinity}
-                                        value={inputValues[ingredient.id] !== undefined 
-                                          ? inputValues[ingredient.id] 
-                                          : addedIng.quantity.toString()}
-                                        onChange={(e) => {
-                                          e.stopPropagation()
-                                          handleQuantityChange(ingredient.id, e.target.value)
-                                        }}
-                                        onBlur={(e) => {
-                                          e.stopPropagation()
-                                          const val = parseFloat(e.target.value)
-                                          if (isNaN(val) || val <= 0) {
-                                            handleAddIngredient(ingredient)
-                                          }
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onFocus={(e) => {
-                                          e.stopPropagation()
-                                          e.target.select()
-                                        }}
-                                        className="w-14 h-7 text-xs text-center p-1 flex-shrink-0"
-                                        placeholder="Nhập số"
-                                      />
-                                      <span className="text-xs text-gray-600 flex-shrink-0">{formatUnit(ingredient.unit)}</span>
-                                      <div className="text-orange-500 flex-shrink-0 ml-auto pr-1">
-                                        <Check size={14} />
-                                      </div>
-                                    </div>
-                                  )}
-                                  {!isAdded && (
-                                    <div className="w-full mt-2 px-3 py-1 text-xs font-medium text-orange-600 border border-orange-500 rounded-lg text-center">
-                                      Nhấn để thêm
-                                    </div>
-                                  )}
-                                  {isAdded && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleAddIngredient(ingredient)
-                                      }}
-                                      className="w-full mt-2 text-xs border-red-500 text-red-500 hover:bg-red-50"
-                                    >
-                                      Bỏ
-                                    </Button>
-                                  )}
+                                />
+                              ) : (
+                                <div className="w-full h-24 bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
+                                  <span className="text-gray-400 text-xs">Không có ảnh</span>
                                 </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                        {showIngRightArrow && (
-                          <button
-                            onClick={() => {
-                              ingScrollRef.current?.scrollBy({ left: 360, behavior: "smooth" })
-                              setTimeout(handleIngredientScroll, 300)
-                            }}
-                            className="flex-shrink-0 z-10 bg-white border-2 border-gray-300 rounded-full p-2 shadow-md hover:bg-gray-50 hover:border-orange-500 transition-colors"
-                            aria-label="Scroll right"
-                          >
-                            <ChevronRight size={20} className="text-gray-700" />
-                          </button>
-                        )}
+                              )}
+                              <h4 className="font-semibold text-sm mb-1 line-clamp-2 min-h-[2.5rem]">{ing.name}</h4>
+                              
+                              {/* Hiển thị khẩu phần với đơn vị - luôn hiển thị */}
+                              <p className="text-xs text-gray-600 mb-2 font-medium">
+                                Khẩu phần: {ing.neededQuantity} {ing.unit ? formatUnit(ing.unit) : ""}
+                              </p>
+                              
+                              {/* Nút giảm theo % */}
+                              <div className="flex flex-wrap gap-1.5 mb-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleRemoveByPercentage(ing.id, 25)
+                                  }}
+                                  className="flex-1 px-2 py-1.5 text-xs font-medium bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                >
+                                  -25%
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleRemoveByPercentage(ing.id, 50)
+                                  }}
+                                  className="flex-1 px-2 py-1.5 text-xs font-medium bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                >
+                                  -50%
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleRemoveByPercentage(ing.id, 70)
+                                  }}
+                                  className="flex-1 px-2 py-1.5 text-xs font-medium bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
+                                >
+                                  -70%
+                                </button>
+                              </div>
+                              
+                              {/* Nút điều chỉnh số lượng - Nút - là trừ (tăng số đã bỏ), Nút + là thêm lại (giảm số đã bỏ) */}
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      // Nút -: Trừ nguyên liệu (tăng số đã bỏ = giảm số còn lại)
+                                      handleRemoveByAmount(ing.id, getStepAmount(ing.unit))
+                                    }}
+                                    className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
+                                    disabled={removedQty >= ing.neededQuantity}
+                                    title={`Trừ ${getStepAmount(ing.unit)} ${formatUnit(ing.unit)}`}
+                                  >
+                                    <Minus size={14} className="mr-1" />
+                                    <span>{getStepAmount(ing.unit)}</span>
+                                  </button>
+                                  <span className="flex-1 text-center text-xs text-gray-700 font-medium">
+                                    {remainingQty} {ing.unit ? formatUnit(ing.unit) : ""}
+                                  </span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      // Nút +: Thêm lại nguyên liệu (giảm số đã bỏ = tăng số còn lại)
+                                      handleRemoveByAmount(ing.id, -getStepAmount(ing.unit))
+                                    }}
+                                    className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
+                                    disabled={removedQty <= 0}
+                                    title={`Thêm lại ${getStepAmount(ing.unit)} ${formatUnit(ing.unit)}`}
+                                  >
+                                    <Plus size={14} className="mr-1" />
+                                    <span>{getStepAmount(ing.unit)}</span>
+                                  </button>
+                                </div>
+                                
+                                {/* Hiển thị thông tin */}
+                                {removedQty > 0 && (
+                                  <p className="text-xs text-gray-600 text-center pt-1 border-t border-gray-200">
+                                    Đã bỏ: {removedQty} {ing.unit ? formatUnit(ing.unit) : ""} • Còn lại: {remainingQty} {ing.unit ? formatUnit(ing.unit) : ""}
+                                  </p>
+                                )}
+                                {removedQty === 0 && (
+                                  <p className="text-xs text-gray-500 text-center">
+                                    Còn nguyên: {ing.neededQuantity} {ing.unit ? formatUnit(ing.unit) : ""}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
-                  ) : (
-                    <p className="text-sm text-gray-500 text-center py-4">Không có nguyên liệu nào trong danh mục này</p>
+                  ) : null}
+
+                  {/* Add Ingredients */}
+                  {availableIngredients.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-base font-semibold text-gray-900">Thêm nguyên liệu (Tính phí)</h3>
+                        <div className="flex items-center gap-3">
+                          {/* Hiển thị giới hạn tổng số lượng nguyên liệu */}
+                          <div className="text-xs text-gray-600">
+                            <span className="font-medium">
+                              Đã thêm: {addedIngredients.length}/{MAX_TOTAL_ADDON_INGREDIENTS}
+                            </span>
+                          </div>
+                          {selectedTemplate && (
+                            <div className="text-xs text-gray-600 space-x-3">
+                              {selectedTemplate.max_Carb !== undefined && (
+                                <span>
+                                  Tinh Bột: {getTotalCountByPriority(1)}/{selectedTemplate.max_Carb}
+                                </span>
+                              )}
+                              {selectedTemplate.max_Protein !== undefined && (
+                                <span>
+                                  Protein: {getTotalCountByPriority(2)}/{selectedTemplate.max_Protein}
+                                </span>
+                              )}
+                              {selectedTemplate.max_Vegetable !== undefined && (
+                                <span>
+                                  Rau: {getTotalCountByPriority(3)}/{selectedTemplate.max_Vegetable}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Category selector */}
+                      {availableCategories.length > 1 && (
+                        <div className="relative mb-4">
+                          <div className="flex items-center gap-2">
+                            {showCatLeftArrow && (
+                              <button
+                                onClick={() => {
+                                  catScrollRef.current?.scrollBy({ left: -300, behavior: "smooth" })
+                                  setTimeout(handleCategoryScroll, 300)
+                                }}
+                                className="flex-shrink-0 z-10 bg-white border-2 border-gray-300 rounded-full p-2 shadow-md hover:bg-gray-50"
+                                aria-label="Scroll left"
+                              >
+                                <ChevronLeft size={20} />
+                              </button>
+                            )}
+                            <div
+                              ref={catScrollRef}
+                              onScroll={handleCategoryScroll}
+                              className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide flex-1"
+                            >
+                              {availableCategories.map((category) => (
+                                <button
+                                  key={category.id}
+                                  onClick={() => setSelectedCategoryId(category.id)}
+                                  className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors flex-shrink-0 ${
+                                    selectedCategoryId === category.id
+                                      ? "bg-orange-500 text-white"
+                                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                  }`}
+                                >
+                                  {category.name}
+                                </button>
+                              ))}
+                            </div>
+                            {showCatRightArrow && (
+                              <button
+                                onClick={() => {
+                                  catScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" })
+                                  setTimeout(handleCategoryScroll, 300)
+                                }}
+                                className="flex-shrink-0 z-10 bg-white border-2 border-gray-300 rounded-full p-2 shadow-md hover:bg-gray-50"
+                                aria-label="Scroll right"
+                              >
+                                <ChevronRight size={20} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Ingredients grid - Card style like CustomBowlModal */}
+                      {ingredientsForCategory.length > 0 ? (
+                        <div className="relative">
+                          <div className="flex items-center gap-2">
+                            {showIngLeftArrow && (
+                              <button
+                                onClick={() => {
+                                  ingScrollRef.current?.scrollBy({ left: -360, behavior: "smooth" })
+                                  setTimeout(handleIngredientScroll, 300)
+                                }}
+                                className="flex-shrink-0 z-10 bg-white border-2 border-gray-300 rounded-full p-2 shadow-md hover:bg-gray-50 hover:border-orange-500 transition-colors"
+                                aria-label="Scroll left"
+                              >
+                                <ChevronLeft size={20} className="text-gray-700" />
+                              </button>
+                            )}
+                            <div
+                              ref={ingScrollRef}
+                              onScroll={handleIngredientScroll}
+                              className="overflow-x-auto pb-4 scrollbar-hide flex-1"
+                            >
+                              <div className="flex gap-4" style={{ width: 'max-content' }}>
+                                {ingredientsForCategory.map((ingredient) => {
+                                  const isAdded = addedIngredients.some(added => added.id === ingredient.id)
+                                  const addedIng = addedIngredients.find(added => added.id === ingredient.id)
+                                  
+                                  // Check if can add this ingredient based on category limit and total limit
+                                  const ingredientCategory = ingredientCategories.find(cat => cat.id === ingredient.categoryId)
+                                  const ingredientPriority = ingredientCategory?.priority || 0
+                                  // Can add if:
+                                  // 1. Priority is 0 or > 3 (no category limit), or haven't reached category max limit, or already added
+                                  // 2. Haven't reached total addon ingredients limit, or already added
+                                  const canAddByCategory = ingredientPriority === 0 || ingredientPriority > 3 || canAddMoreForPriority(ingredientPriority) || isAdded
+                                  const currentAddonCount = recipeModifications.filter(mod => mod.sourceType === "ADDON").length
+                                  const canAddByCount = isAdded || currentAddonCount < MAX_TOTAL_ADDON_INGREDIENTS
+                                  const canAdd = canAddByCategory && canAddByCount
+                                  
+                                  return (
+                                    <div
+                                      key={ingredient.id}
+                                      className={`flex-shrink-0 w-48 p-4 rounded-xl border-2 cursor-pointer transition-all overflow-hidden ${
+                                        isAdded
+                                          ? "border-orange-500 bg-orange-50"
+                                          : canAdd
+                                          ? "border-gray-200 hover:border-orange-300"
+                                          : "border-gray-200 opacity-50 cursor-not-allowed"
+                                      }`}
+                                      onClick={() => {
+                                        // Giống CustomBowlModal: chỉ cần kiểm tra canAdd và gọi handleAddIngredient
+                                        // handleAddIngredient sẽ tự xử lý toggle (thêm nếu chưa có, xóa nếu đã có)
+                                        if (canAdd) {
+                                          handleAddIngredient(ingredient)
+                                        } else {
+                                          // Nếu không thể thêm (đạt giới hạn), hiển thị thông báo
+                                          let limitMsg = ""
+                                          if (ingredientPriority === 1) limitMsg = `Tinh Bột (tối đa ${selectedTemplate?.max_Carb || 0})`
+                                          else if (ingredientPriority === 2) limitMsg = `Protein (tối đa ${selectedTemplate?.max_Protein || 0})`
+                                          else if (ingredientPriority === 3) limitMsg = `Rau (tối đa ${selectedTemplate?.max_Vegetable || 0})`
+                                          toast.warning(`Đã đạt giới hạn tối đa cho ${limitMsg}`)
+                                        }
+                                      }}
+                                    >
+                                      {ingredient.imgUrl ? (
+                                        <img
+                                          src={ingredient.imgUrl}
+                                          alt={ingredient.name}
+                                          className="w-full h-32 object-cover rounded-lg mb-3"
+                                          onError={(e) => {
+                                            const img = e.target as HTMLImageElement
+                                            img.style.display = 'none'
+                                            const parent = img.parentElement
+                                            if (parent && !parent.querySelector('.no-image-placeholder')) {
+                                              const placeholder = document.createElement('div')
+                                              placeholder.className = 'no-image-placeholder w-full h-32 bg-gray-100 rounded-lg mb-3 flex items-center justify-center'
+                                              placeholder.innerHTML = '<span class="text-gray-400 text-xs">Không có ảnh</span>'
+                                              parent.insertBefore(placeholder, img)
+                                            }
+                                          }}
+                                        />
+                                      ) : (
+                                        <div className="w-full h-32 bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+                                          <span className="text-gray-400 text-xs">Không có ảnh</span>
+                                        </div>
+                                      )}
+                                      <h4 className="font-semibold text-gray-900 mb-1 text-sm">{ingredient.name}</h4>
+                                      {/* Chỉ hiển thị giá đơn vị khi chưa thêm */}
+                                      {!isAdded && ingredient.pricePerUnit !== undefined && (
+                                        <p className="text-xs text-gray-600 mb-2">
+                                          {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(ingredient.pricePerUnit)}/{formatUnit(ingredient.unit)}
+                                        </p>
+                                      )}
+                                      {isAdded && addedIng && (
+                                        <div className="space-y-2 mt-2">
+                                          {/* Nút điều chỉnh số lượng và nút bỏ */}
+                                          <div className="flex items-center gap-2">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleAdjustQuantity(ingredient.id, -1)
+                                              }}
+                                              className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
+                                              disabled={addedIng.quantity <= getStepAmount(ingredient.unit)}
+                                              title={`Giảm ${getStepAmount(ingredient.unit)} ${formatUnit(ingredient.unit)}`}
+                                            >
+                                              <Minus size={14} className="mr-1" />
+                                              <span>{getStepAmount(ingredient.unit)}</span>
+                                            </button>
+                                            <span className="flex-1 text-center text-xs text-gray-700 font-medium">
+                                              {addedIng.quantity} {formatUnit(ingredient.unit)}
+                                            </span>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleAdjustQuantity(ingredient.id, 1)
+                                              }}
+                                              className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
+                                              disabled={(() => {
+                                                const maxAvailable = ingredient.available ?? Infinity
+                                                const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
+                                                const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
+                                                return addedIng.quantity >= maxQuantity
+                                              })()}
+                                              title={`Thêm ${getStepAmount(ingredient.unit)} ${formatUnit(ingredient.unit)}`}
+                                            >
+                                              <Plus size={14} className="mr-1" />
+                                              <span>{getStepAmount(ingredient.unit)}</span>
+                                            </button>
+                                          </div>
+                                          {/* Hiển thị giá tiền cập nhật */}
+                                          {ingredient.pricePerUnit && (
+                                            <p className="text-xs font-semibold text-orange-600 text-center">
+                                              +{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Math.round(ingredient.pricePerUnit * addedIng.quantity))}
+                                            </p>
+                                          )}
+                                          {/* Hiển thị icon check để báo đã thêm */}
+                                          <div className="text-orange-500 flex justify-center">
+                                            <Check size={14} />
+                                          </div>
+                                        </div>
+                                      )}
+                                      {!isAdded && (
+                                        <div className="w-full mt-2 px-3 py-1 text-xs font-medium text-orange-600 border border-orange-500 rounded-lg text-center">
+                                          Nhấn để thêm
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                            {showIngRightArrow && (
+                              <button
+                                onClick={() => {
+                                  ingScrollRef.current?.scrollBy({ left: 360, behavior: "smooth" })
+                                  setTimeout(handleIngredientScroll, 300)
+                                }}
+                                className="flex-shrink-0 z-10 bg-white border-2 border-gray-300 rounded-full p-2 shadow-md hover:bg-gray-50 hover:border-orange-500 transition-colors"
+                                aria-label="Scroll right"
+                              >
+                                <ChevronRight size={20} className="text-gray-700" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 text-center py-4">Không có nguyên liệu nào trong danh mục này</p>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
 
               {/* Summary with detailed modifications */}
               <div className="border-t pt-4 mt-5">
@@ -1083,15 +1201,26 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
                     {removedIngredientIds.length > 0 && (
                       <div>
                         <p className="font-medium text-red-600 mb-1">Đã bỏ:</p>
-                        <ul className="list-disc list-inside ml-2 space-y-0.5">
+                        <ul className="space-y-1.5">
                           {recipeModifications
                             .filter(mod => mod.sourceType === "REMOVED")
                             .map(mod => {
                               const ing = originalIngredients.find(ing => ing.id === mod.ingredientId)
                               if (!ing) return null
                               return (
-                                <li key={mod.ingredientId} className="text-gray-700">
-                                  {ing.name}: {mod.quantity} {ing.unit ? formatUnit(ing.unit) : ""}
+                                <li key={mod.ingredientId} className="flex items-center justify-between p-2 bg-white rounded-md border border-gray-200 hover:border-red-300 transition-colors">
+                                  <span className="text-gray-700 text-sm">
+                                    {ing.name}: {mod.quantity} {ing.unit ? formatUnit(ing.unit) : ""}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      setRecipeModifications(prev => prev.filter(m => !(m.ingredientId === mod.ingredientId && m.sourceType === "REMOVED")))
+                                    }}
+                                    className="flex-shrink-0 ml-2 p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                    title="Hủy bỏ"
+                                  >
+                                    <X size={16} />
+                                  </button>
                                 </li>
                               )
                             })}
@@ -1103,19 +1232,30 @@ export default function PresetDishModal({ open, onClose, dish }: PresetDishModal
                     {addedIngredients.length > 0 && (
                       <div>
                         <p className="font-medium text-green-600 mb-1">Đã thêm:</p>
-                        <ul className="list-disc list-inside ml-2 space-y-0.5">
+                        <ul className="space-y-1.5">
                           {addedIngredients.map(added => {
                             const ingredient = allIngredients.find(ing => ing.id === added.id)
                             if (!ingredient) return null
                             const addedPrice = ingredient.pricePerUnit ? ingredient.pricePerUnit * added.quantity : 0
                             return (
-                              <li key={added.id} className="text-gray-700">
-                                {ingredient.name}: {added.quantity} {formatUnit(ingredient.unit)}
-                                {addedPrice > 0 && (
-                                  <span className="text-orange-600 ml-1">
-                                    (+{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(addedPrice)})
+                              <li key={added.id} className="flex items-center justify-between p-2 bg-white rounded-md border border-gray-200 hover:border-orange-300 transition-colors">
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-gray-700 text-sm">
+                                    {ingredient.name}: {added.quantity} {formatUnit(ingredient.unit)}
                                   </span>
-                                )}
+                                  {addedPrice > 0 && (
+                                    <span className="text-orange-600 ml-1 text-sm font-semibold">
+                                      (+{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(addedPrice)})
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => handleAddIngredient(ingredient)}
+                                  className="flex-shrink-0 ml-2 p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                  title="Gỡ nguyên liệu"
+                                >
+                                  <X size={16} />
+                                </button>
                               </li>
                             )
                           })}

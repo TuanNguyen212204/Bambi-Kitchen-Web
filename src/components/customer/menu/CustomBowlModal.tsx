@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react"
-import { X, ChevronLeft, ChevronRight, Check } from "lucide-react"
+import { X, ChevronLeft, ChevronRight, Check, Plus, Minus } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { toast } from "sonner"
@@ -224,6 +224,24 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
     return getSelectedCountByPriority(currentPriority)
   }
 
+  // Get step amount for ingredient based on unit
+  const getStepAmount = (unit?: string): number => {
+    if (!unit) return 200
+    const unitUpper = unit.toUpperCase()
+    switch (unitUpper) {
+      case "PCS":
+        return 1
+      case "GRAM":
+        return 200
+      case "KILOGRAM":
+        return 0.2
+      case "LITER":
+        return 0.2
+      default:
+        return 200
+    }
+  }
+
   // Handle ingredient selection với validation chặt chẽ
   const handleIngredientToggle = (ingredient: StoreIngredient) => {
     // Hết hàng thì không cho chọn
@@ -252,21 +270,9 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
         return
       }
       
-      // Add ingredient với số lượng mặc định theo đơn vị
-      // - PCS: 1 phần
-      // - GRAM: 100 gram (mặc định hợp lý cho một phần)
-      // - KILOGRAM: 0.1 kg
-      // - LITER: 0.1 L
+      // Add ingredient với số lượng mặc định (dùng getStepAmount để nhất quán)
       const category = ingredientCategories.find(cat => cat.id === ingredient.categoryId)
-      const defaultQuantity = ingredient.unit?.toUpperCase() === "PCS" 
-        ? 1 
-        : ingredient.unit?.toUpperCase() === "GRAM" 
-        ? 100 
-        : ingredient.unit?.toUpperCase() === "KILOGRAM"
-        ? 0.1
-        : ingredient.unit?.toUpperCase() === "LITER"
-        ? 0.1
-        : 1
+      const defaultQuantity = getStepAmount(ingredient.unit)
       
       setSelectedIngredients(prev => [...prev, {
         ingredientId: ingredient.id,
@@ -277,6 +283,30 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
       
       // Set input value mặc định
       setInputValues(prev => ({ ...prev, [ingredient.id]: defaultQuantity.toString() }))
+    }
+  }
+
+  // Handle add/subtract quantity for selected ingredient
+  const handleAdjustQuantity = (ingredientId: number, delta: number) => {
+    const selectedIng = selectedIngredients.find(ing => ing.ingredientId === ingredientId)
+    const ingredient = ingredients.find(ing => ing.id === ingredientId)
+    if (!ingredient || !selectedIng) return
+    
+    const currentQty = selectedIng.quantity
+    const stepAmount = getStepAmount(ingredient.unit)
+    const newQty = currentQty + (delta * stepAmount)
+    const maxAvailable = ingredient.available ?? Infinity
+    const maxQuantityByUnit = getMaxQuantityForUnit(ingredient.unit)
+    const maxQuantity = Math.min(maxAvailable, maxQuantityByUnit)
+    const finalQuantity = Math.max(0.1, Math.min(newQty, maxQuantity))
+    
+    if (finalQuantity > 0) {
+      setSelectedIngredients(prev => prev.map(ing =>
+        ing.ingredientId === ingredientId
+          ? { ...ing, quantity: finalQuantity }
+          : ing
+      ))
+      setInputValues(prev => ({ ...prev, [ingredientId]: finalQuantity.toString() }))
     }
   }
 
@@ -764,44 +794,52 @@ export default function CustomBowlModal({ open, onClose }: CustomBowlModalProps)
                               </div>
                             )}
                             <h4 className="font-semibold text-gray-900 mb-1 text-sm">{ingredient.name}</h4>
-                            {ingredient.pricePerUnit !== undefined && (
-                              <p className="text-xs text-gray-600 mb-1">
-                                {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(ingredient.pricePerUnit)}
+                            {/* Chỉ hiển thị giá đơn vị khi chưa chọn */}
+                            {!isSelected && ingredient.pricePerUnit !== undefined && (
+                              <p className="text-xs text-gray-600 mb-2">
+                                {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(ingredient.pricePerUnit)}/{formatUnit(ingredient.unit)}
                               </p>
                             )}
-                            <p className="text-[11px] text-gray-500 mb-2">
-                              Khả dụng: {ingredient.available ?? 0}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
-                            </p>
-                            {isSelected && (
-                              <div className="flex items-center gap-1.5 mt-2 w-full">
-                                <label className="text-xs text-gray-600 whitespace-nowrap flex-shrink-0">Số lượng:</label>
-                                <Input
-                                  type="number"
-                                  step={ingredient.unit?.toUpperCase() === "PCS" ? "1" : "0.1"}
-                                  min={0}
-                                  max={Math.min(ingredient.available ?? Infinity, getMaxQuantityForUnit(ingredient.unit))}
-                                  value={inputValues[ingredient.id] !== undefined 
-                                    ? inputValues[ingredient.id] 
-                                    : selectedIng?.quantity?.toString() || ""}
-                                  onChange={(e) => {
-                                    e.stopPropagation()
-                                    handleQuantityInputChange(ingredient.id, e.target.value)
-                                  }}
-                                  onBlur={(e) => {
-                                    e.stopPropagation()
-                                    handleQuantityBlur(ingredient.id)
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onFocus={(e) => {
-                                    e.stopPropagation()
-                                    // Khi focus, select all text để dễ xóa
-                                    e.target.select()
-                                  }}
-                                  className="w-14 h-7 text-xs text-center p-1 flex-shrink-0"
-                                  placeholder="Nhập số"
-                                />
-                                <span className="text-xs text-gray-600 flex-shrink-0">{formatUnit(ingredient.unit)}</span>
-                                <div className="text-orange-500 flex-shrink-0 ml-auto pr-1">
+                            {isSelected && selectedIng && (
+                              <div className="space-y-2 mt-2">
+                                {/* Nút điều chỉnh số lượng */}
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleAdjustQuantity(ingredient.id, -1)
+                                    }}
+                                    className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
+                                    disabled={selectedIng.quantity <= getStepAmount(ingredient.unit)}
+                                    title={`Giảm ${getStepAmount(ingredient.unit)} ${formatUnit(ingredient.unit)}`}
+                                  >
+                                    <Minus size={14} className="mr-1" />
+                                    <span>{getStepAmount(ingredient.unit)}</span>
+                                  </button>
+                                  <span className="flex-1 text-center text-xs text-gray-700 font-medium">
+                                    {selectedIng.quantity} {formatUnit(ingredient.unit)}
+                                  </span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleAdjustQuantity(ingredient.id, 1)
+                                    }}
+                                    className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
+                                    disabled={(ingredient.available ?? 0) <= selectedIng.quantity}
+                                    title={`Thêm ${getStepAmount(ingredient.unit)} ${formatUnit(ingredient.unit)}`}
+                                  >
+                                    <Plus size={14} className="mr-1" />
+                                    <span>{getStepAmount(ingredient.unit)}</span>
+                                  </button>
+                                </div>
+                                {/* Hiển thị giá tiền cập nhật */}
+                                {ingredient.pricePerUnit && (
+                                  <p className="text-xs font-semibold text-orange-600 text-center">
+                                    +{new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Math.round(ingredient.pricePerUnit * selectedIng.quantity))}
+                                  </p>
+                                )}
+                                {/* Hiển thị icon check để báo đã chọn */}
+                                <div className="text-orange-500 flex justify-center">
                                   <Check size={14} />
                                 </div>
                               </div>
