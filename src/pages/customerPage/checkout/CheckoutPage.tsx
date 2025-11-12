@@ -16,7 +16,7 @@ import type { DishItem } from "@/zustand/slices/dish/list.slice"
 import type { Dish } from "@models/dish/dish"
 import type { DishTemplateItem } from "@/zustand/slices/dish/template.slice"
 
-type PaymentMethod = "MOMO" | "VNPAY" | "COD"
+type PaymentMethod = "MOMO" | "VNPAY"
 
 interface OrderItemRequest {
   dishId?: number
@@ -45,7 +45,7 @@ const CheckoutPage: React.FC = () => {
   const { items, updateQuantity, removeItem, updateItem, totalPrice: cartTotalPrice } = useCartStore()
   const { user, isAuthenticated } = useAuthStore()
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("COD")
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("MOMO")
   const [note, setNote] = useState("")
   const [discount] = useState(0) // TODO: Implement discount feature
   const [submitting, setSubmitting] = useState(false)
@@ -300,16 +300,27 @@ const CheckoutPage: React.FC = () => {
 
       // Nếu response là URL (payment gateway), redirect đến đó
       if (typeof response.data === "string" && response.data.startsWith("http")) {
+        try {
+          sessionStorage.setItem("bambi-clear-cart-after-payment", "true")
+        } catch {
+          // ignore storage errors
+        }
         window.location.href = response.data
         return
       }
 
-      // Nếu không phải URL (COD hoặc thanh toán thành công ngay), clear cart và redirect đến success page
+      // Nếu không phải URL (thanh toán thành công ngay), clear cart và redirect đến success page
       useCartStore.getState().clearCart()
+      try {
+        sessionStorage.removeItem("bambi-clear-cart-after-payment")
+      } catch {
+        // ignore storage errors
+      }
       navigate(PATHS.SUCCESS, { 
         state: { 
           title: "Đặt hàng thành công!",
-          message: "Đơn hàng của bạn đã được đặt thành công. Chúng tôi sẽ xử lý đơn hàng sớm nhất có thể."
+          message: "Đơn hàng của bạn đã được đặt thành công. Chúng tôi sẽ xử lý đơn hàng sớm nhất có thể.",
+          clearCart: true,
         } 
       })
     } catch (error: unknown) {

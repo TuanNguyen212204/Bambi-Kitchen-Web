@@ -1,5 +1,5 @@
 import type { StateCreator } from "zustand"
-import { bambiApi, API_ENDPOINTS } from "@/utils/api"
+import { bambiApi, bambiPublicApi, API_ENDPOINTS } from "@/utils/api"
 
 export interface DishItem {
   id: number
@@ -42,7 +42,21 @@ export const createDishListSlice: StateCreator<
       const endpoint = filterType === "menu" 
         ? API_ENDPOINTS.API_DISHES 
         : API_ENDPOINTS.API_DISHES_ALL
-      const { data } = await bambiApi.get<DishItem[]>(endpoint as string)
+
+      let client = bambiApi
+      if (filterType === "menu") {
+        try {
+          const { useAuthStore } = await import("@/zustand/stores/auth")
+          const authToken = useAuthStore.getState().token
+          client = authToken ? bambiApi : bambiPublicApi
+        } catch {
+          client = bambiPublicApi
+        }
+      }
+
+      const { data } = await client.get<DishItem[]>(endpoint as string, {
+        headers: { "x-silent-error": "1" },
+      })
       let items = Array.isArray(data) ? data : []
       
       // Filter theo active=false nếu là "inactive"

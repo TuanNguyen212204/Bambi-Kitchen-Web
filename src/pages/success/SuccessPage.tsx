@@ -1,8 +1,10 @@
+import { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@components/ui/card/card";
 import { Button } from "@components/ui/button/index";
 import { CheckCircle, Home } from "lucide-react";
 import { PATHS } from "@config/path";
+import { useCartStore } from "@zustand/stores/cart";
 
 interface SuccessPageProps {
   title?: string;
@@ -17,6 +19,19 @@ export const SuccessPage = ({
 }: SuccessPageProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const clearCart = useCartStore((state) => state.clearCart);
+  const hasClearedRef = useRef(false);
+  
+  useEffect(() => {
+    const shouldClearFromState = Boolean(location.state?.clearCart);
+    const shouldClearFromStorage = sessionStorage.getItem("bambi-clear-cart-after-payment") === "true";
+    
+    if ((shouldClearFromState || shouldClearFromStorage) && !hasClearedRef.current) {
+      clearCart();
+      hasClearedRef.current = true;
+      sessionStorage.removeItem("bambi-clear-cart-after-payment");
+    }
+  }, [location.state, clearCart]);
   
   // Lấy title và message từ location state hoặc props
   const title = location.state?.title || propTitle || "Thành công!";

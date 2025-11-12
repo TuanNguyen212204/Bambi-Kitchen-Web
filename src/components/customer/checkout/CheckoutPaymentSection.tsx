@@ -1,6 +1,6 @@
 import React from "react"
 
-type PaymentMethod = "MOMO" | "VNPAY" | "COD"
+type PaymentMethod = "MOMO" | "VNPAY"
 
 interface CheckoutPaymentSectionProps {
   paymentMethod: PaymentMethod
@@ -38,17 +38,6 @@ export const CheckoutPaymentSection: React.FC<CheckoutPaymentSectionProps> = ({
             className="w-4 h-4 text-[#fc8a06] focus:ring-[#fc8a06]"
           />
           <span className="flex-1 font-medium text-black text-sm">VNPAY</span>
-        </label>
-        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors border-gray-200 hover:border-[#fc8a06]">
-          <input
-            type="radio"
-            name="paymentMethod"
-            value="COD"
-            checked={paymentMethod === "COD"}
-            onChange={(e) => onPaymentMethodChange(e.target.value as PaymentMethod)}
-            className="w-4 h-4 text-[#fc8a06] focus:ring-[#fc8a06]"
-          />
-          <span className="flex-1 font-medium text-black text-sm">COD (Thanh toán khi nhận hàng)</span>
         </label>
       </div>
     </div>

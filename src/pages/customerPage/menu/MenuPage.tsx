@@ -7,7 +7,7 @@ import type { DishListSlice } from "@/zustand/slices/dish/list.slice"
 import type { DishCategory } from "@/models/category/category"
 import { Plus } from "lucide-react"
 import { useAuthStore } from "@zustand/stores/auth"
-import { useLocation, useNavigate } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { PATHS } from "@config/path"
 import { toast } from "sonner"
 
@@ -55,7 +55,8 @@ const MenuCard: React.FC<{
   const { isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
-  
+  const detailPath = PATHS.DISH_DETAIL.replace(":id", String(dish.id))
+
   const handleAddToCart = () => {
     if (!isAuthenticated) {
       toast.info("Vui lòng đăng nhập để thêm món vào giỏ", {
@@ -68,19 +69,26 @@ const MenuCard: React.FC<{
   
   return (
     <div className="bg-white rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center text-center relative">
-      <div className="relative mb-4">
+      <Link
+        to={detailPath}
+        state={{ from: location.pathname }}
+        className="relative mb-4 block focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500 rounded-full"
+      >
         <div className="w-44 h-44 rounded-full overflow-hidden bg-gray-100">
           <img src={dish.imageUrl || getFallbackImage(idx)} alt={dish.name} className="w-full h-full object-cover" />
         </div>
         <div className="absolute top-2 right-2 bg-gray-800 text-white px-3 py-2 rounded-full text-sm font-bold shadow-lg">
           {priceFormat(dish.price)}
         </div>
-      </div>
+      </Link>
       <div className="px-2 flex-1">
-        <h3 className="text-lg font-bold text-gray-900 mb-2">{dish.name}</h3>
-        {dish.description ? (
-          <p className="text-gray-500 text-sm leading-relaxed line-clamp-3 mb-4">{dish.description}</p>
-        ) : null}
+        <Link
+          to={detailPath}
+          state={{ from: location.pathname }}
+          className="text-lg font-bold text-gray-900 mb-2 block hover:text-orange-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500 rounded"
+        >
+          {dish.name}
+        </Link>
       </div>
       <Button 
         onClick={handleAddToCart}

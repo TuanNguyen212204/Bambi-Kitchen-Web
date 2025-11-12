@@ -8,6 +8,7 @@ export const PATHS = {
   
   HOME: "/",
   MENU: "/menu",
+  DISH_DETAIL: "/menu/dish/:id",
   ABOUT: "/about",
   CONTACT: "/contact",
   ORDER: "/order",
