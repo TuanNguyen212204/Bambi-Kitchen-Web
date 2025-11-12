@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from "react"
-import { Card, CardContent } from "@components/ui/card/card"
 import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
@@ -104,45 +103,6 @@ export default function AdminIngredientCategoryPage() {
       return hasIngredients
     }).length
   }, [categories, allIngredients])
-
-  const statsData = [
-    {
-      title: "Tổng danh mục",
-      value: totalCategories.toString(),
-      subtitle: `${categoriesWithIngredients} danh mục có nguyên liệu`,
-      icon: Box,
-      bgColor: "bg-blue-100",
-      iconColor: "text-blue-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Tổng nguyên liệu",
-      value: totalIngredients.toString(),
-      subtitle: `${activeIngredients} nguyên liệu đang hoạt động`,
-      icon: Package,
-      bgColor: "bg-green-100",
-      iconColor: "text-green-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Nguyên liệu hoạt động",
-      value: activeIngredients.toString(),
-      subtitle: `${totalIngredients > 0 ? Math.round((activeIngredients / totalIngredients) * 100) : 0}% tổng nguyên liệu`,
-      icon: CheckCircle,
-      bgColor: "bg-amber-100",
-      iconColor: "text-amber-600",
-      subtitleColor: "text-gray-600",
-    },
-    {
-      title: "Danh mục đã dùng",
-      value: categoriesWithIngredients.toString(),
-      subtitle: `${totalCategories > 0 ? Math.round((categoriesWithIngredients / totalCategories) * 100) : 0}% tổng danh mục`,
-      icon: TrendingUp,
-      bgColor: "bg-pink-100",
-      iconColor: "text-pink-500",
-      subtitleColor: "text-green-600",
-    },
-  ];
 
   const submit = async () => {
     if (!name.trim()) {

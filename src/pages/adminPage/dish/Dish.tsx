@@ -58,12 +58,6 @@ const AdminDishPage = () => {
   const publicCount = items.filter((i: { public?: boolean }) => i.public === true).length
   const activeCount = items.filter((i: { active?: boolean }) => i.active !== false).length
 
-  const metricCards = [
-    { title: "Tổng món", value: String(total), icon: "🍽️" },
-    { title: "Công khai", value: String(publicCount), icon: "🌐" },
-    { title: "Đang hoạt động", value: String(activeCount), icon: "✅" },
-  ]
-
   return (
     <div className="space-y-6">
       <section>

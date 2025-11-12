@@ -21,21 +21,12 @@ const GRID_COLS = 5
 const TOTAL_CELLS = GRID_ROWS * GRID_COLS
 
 export default function KitchenCounter({ ingredients, neededIngredientIds = [], orderId }: KitchenCounterProps) {
-  // Tạo map để dễ dàng tìm nguyên liệu theo ID
-  const ingredientMap = useMemo(() => {
-    const map = new Map<number, Ingredient>()
-    ingredients.forEach(ing => {
-      map.set(ing.id, ing)
-    })
-    return map
-  }, [ingredients])
-
   // Tạo mảng 30 ô (6x5)
   const cells = useMemo(() => {
     const cells: Array<{ ingredient: Ingredient | null; isEmpty: boolean; isNeeded: boolean }> = []
     
     // Điền các nguyên liệu vào các ô đầu tiên
-    ingredients.slice(0, TOTAL_CELLS).forEach((ing, index) => {
+    ingredients.slice(0, TOTAL_CELLS).forEach((ing) => {
       const isNeeded = neededIngredientIds.includes(ing.id)
       cells.push({
         ingredient: ing,

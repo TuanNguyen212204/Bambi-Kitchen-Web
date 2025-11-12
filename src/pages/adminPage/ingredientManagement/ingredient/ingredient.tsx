@@ -113,45 +113,6 @@ export const AdminIngredientsPage = () => {
   const lowCount = items.filter((i: { stockStatus?: string }) => i.stockStatus === 'low').length
   const outCount = items.filter((i: { stockStatus?: string }) => i.stockStatus === 'out').length
 
-  const metricCards = [
-    {
-      title: "Tổng nguyên liệu",
-      value: String(total),
-      subtitle: `+${newThisWeek} loại mới tuần này`,
-      icon: "📦",
-      iconBg: "bg-blue-100",
-      iconColor: "text-blue-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Đang hoạt động",
-      value: String(activeCount),
-      subtitle: total ? `${((activeCount / total) * 100).toFixed(1)}% đang sử dụng` : "0%",
-      icon: "✅",
-      iconBg: "bg-green-100",
-      iconColor: "text-green-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Sắp hết hàng",
-      value: String(lowCount),
-      subtitle: lowCount > 0 ? "Cần bổ sung ngay" : "",
-      icon: "!",
-      iconBg: "bg-amber-100",
-      iconColor: "text-amber-600",
-      subtitleColor: "text-red-500",
-    },
-    {
-      title: "Hết hàng",
-      value: String(outCount),
-      subtitle: outCount > 0 ? "Cần nhập khẩn cấp" : "",
-      icon: "🚫",
-      iconBg: "bg-red-100",
-      iconColor: "text-red-500",
-      subtitleColor: "text-red-500",
-    },
-  ]
-
   return (
     <div className="space-y-6">
       <section>

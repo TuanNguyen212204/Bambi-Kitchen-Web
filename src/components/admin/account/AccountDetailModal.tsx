@@ -6,7 +6,7 @@ import { Label } from "@components/ui/label";
 import { Badge } from "@components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select";
 import { Switch } from "@components/ui/switch";
-import { User, Mail, Phone, Trash2, Save, X } from "lucide-react";
+import { User, Mail, Phone, Save, X } from "lucide-react";
 import type { StoreAccount } from "@/zustand/types/account";
 
 interface AccountDetailModalProps {
@@ -34,7 +34,6 @@ export function AccountDetailModal({
   });
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (account) {
@@ -67,23 +66,6 @@ export function AccountDetailModal({
     }
   };
 
-  const handleDelete = async () => {
-    if (!account || !onDelete || !account.id) return;
-    
-    if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${account.name}"?`)) {
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      await onDelete(account.id);
-      onClose();
-    } catch (error) {
-      console.error("Error deleting account:", error);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
   const getRoleLabel = (role: string) => {
     switch (role) {

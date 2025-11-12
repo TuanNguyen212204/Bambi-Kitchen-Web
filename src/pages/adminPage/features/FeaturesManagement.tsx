@@ -41,7 +41,8 @@ const FeaturesManagement = () => {
 
   const formatDate = (d?: string) => (d ? new Date(d).toLocaleDateString("vi-VN") : "N/A")
 
-  const statusLabel = (s: string) => {
+  const statusLabel = (s?: string) => {
+    if (!s) return "Không xác định"
     const m: Record<string, string> = {
       PENDING: "Chờ xử lý",
       PREPARING: "Đang chuẩn bị",

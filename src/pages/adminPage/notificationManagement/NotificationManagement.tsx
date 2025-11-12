@@ -60,45 +60,6 @@ export default function NotificationManagement() {
     fetchAccounts()
   }, [])
 
-  const statsData = [
-    {
-      title: "Tổng thông báo",
-      value: totalNotifications.toString(),
-      subtitle: `${Math.floor(totalNotifications * 0.1)} thông báo mới tuần này`,
-      icon: Bell,
-      bgColor: "bg-blue-100",
-      iconColor: "text-blue-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Chưa đọc",
-      value: unreadNotifications.toString(),
-      subtitle: `${totalNotifications > 0 ? Math.round((unreadNotifications / totalNotifications) * 100) : 0}% tổng thông báo`,
-      icon: Mail,
-      bgColor: "bg-amber-100",
-      iconColor: "text-amber-600",
-      subtitleColor: "text-amber-600",
-    },
-    {
-      title: "Đã đọc",
-      value: readNotifications.toString(),
-      subtitle: `${totalNotifications > 0 ? Math.round((readNotifications / totalNotifications) * 100) : 0}% tổng thông báo`,
-      icon: CheckCircle,
-      bgColor: "bg-green-100",
-      iconColor: "text-green-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Trong tháng",
-      value: totalNotifications.toString(),
-      subtitle: "Tăng 15% so với tháng trước",
-      icon: Calendar,
-      bgColor: "bg-pink-100",
-      iconColor: "text-pink-500",
-      subtitleColor: "text-green-600",
-    },
-  ]
-
   const handleViewDetail = (notification: any) => {
     setSelectedNotification(notification)
     setShowDetailModal(true)

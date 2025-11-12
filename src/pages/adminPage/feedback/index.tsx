@@ -25,13 +25,6 @@ const AdminFeedbackPage = () => {
     })()
   }, [])
 
-  const stats = useMemo(() => {
-    const total = all.length
-    const avg = total ? (all.reduce((s, f) => s + (f.ranking || 0), 0) / total) : 0
-    const five = all.filter(f => f.ranking === 5).length
-    const one = all.filter(f => f.ranking === 1).length
-    return { total, avg: Number(avg.toFixed(2)), five, one }
-  }, [all])
 
   const list = useMemo(() => {
     let data = all
