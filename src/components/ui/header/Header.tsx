@@ -87,7 +87,6 @@ const Header = () => {
           <NavLink to={PATHS.HOME} end className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Home</NavLink>
           <NavLink to={"/menu"} className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Menu</NavLink>
           <NavLink to={PATHS.ABOUT} className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>About Us</NavLink>
-          <NavLink to={"/specials"} className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Our specials</NavLink>
           <NavLink to={PATHS.CONTACT} className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Contact</NavLink>
         </nav>
 
