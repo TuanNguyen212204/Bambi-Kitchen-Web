@@ -131,7 +131,7 @@ const CheckoutPage: React.FC = () => {
     // Custom Bowl: có template, không có basedOnId
     if (parsedData?.template && !parsedData.basedOnId) {
       // Fetch template để có đầy đủ thông tin
-      bambiApi.get<DishTemplateItem[]>(API_ENDPOINTS.API_DISH_TEMPLATE)
+      bambiApi.get<DishTemplateItem[]>(API_ENDPOINTS.API_DISH_TEMPLATES)
         .then(res => {
           const templates = res.data
           const template = templates.find(t => t.size === parsedData!.template!.size)
