@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 // Import local images
 import TunaImg from "@assets/Menu/tuna.png";
@@ -50,12 +50,23 @@ const ProductCard: React.FC<{ product: HomeDish; idx: number }> = ({ product, id
 
 const Products: React.FC = () => {
   const { fetchAll, items, loading } = useDishStore()
+  const [showAll, setShowAll] = useState(false)
+  const INITIAL_VISIBLE_PRODUCTS = 8
 
   useEffect(() => {
-    fetchAll()
+    fetchAll("menu")
   }, [fetchAll])
 
   const visible = useMemo(() => items.filter((d) => (d.public === true) && (d.active ?? true)), [items])
+  const displayedProducts = useMemo(
+    () => (showAll ? visible : visible.slice(0, INITIAL_VISIBLE_PRODUCTS)),
+    [visible, showAll]
+  )
+  const hiddenCount = Math.max(visible.length - INITIAL_VISIBLE_PRODUCTS, 0)
+
+  useEffect(() => {
+    setShowAll(false)
+  }, [visible.length])
 
   return (
     <section className="py-20 bg-gray-50 relative overflow-hidden">
@@ -108,11 +119,22 @@ const Products: React.FC = () => {
           {loading ? (
             <div className="col-span-4 text-center text-gray-500">Đang tải món ăn...</div>
           ) : (
-            visible.map((product, idx) => (
+            displayedProducts.map((product, idx) => (
               <ProductCard key={product.id} product={product} idx={idx} />
             ))
           )}
         </div>
+
+        {!loading && hiddenCount > 0 && (
+          <div className="text-center mt-10">
+            <button
+              onClick={() => setShowAll((prev) => !prev)}
+              className="inline-flex items-center px-6 py-3 border-2 border-orange-500 text-orange-500 font-semibold rounded-full hover:bg-orange-50 transition-colors"
+            >
+              {showAll ? "Thu gọn" : `Xem thêm (${hiddenCount} món)`}
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

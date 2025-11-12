@@ -170,14 +170,14 @@ const Testimonials: React.FC<TestimonialsProps> = ({ testimonials: propTestimoni
     // 3. Thời gian giao hàng trung bình: Tính từ orders đã hoàn thành
     // Lưu ý: Vì API không có thời gian hoàn thành chính xác, 
     // chúng ta sử dụng giá trị ước tính mặc định
-    let avgDeliveryTime = 25; // Default 25 phút nếu không có dữ liệu
+    let avgDeliveryTime = 15; // Default 15 phút chuẩn bị tại quầy nếu không có dữ liệu
     if (orders.length > 0) {
       // Với mỗi đơn hàng đã hoàn thành, ước tính thời gian giao hàng là 30 phút
       // (có thể cải thiện logic này khi backend cung cấp thời gian hoàn thành chính xác)
-      const estimatedDeliveryTime = 30;
+      const estimatedDeliveryTime = 18;
       avgDeliveryTime = estimatedDeliveryTime;
     }
-    const deliveryTimeDisplay = `${avgDeliveryTime} phút`;
+    const deliveryTimeDisplay = `${avgDeliveryTime} phút chuẩn bị`;
 
     return {
       satisfiedCustomers: satisfiedCustomersDisplay,
@@ -250,7 +250,7 @@ const Testimonials: React.FC<TestimonialsProps> = ({ testimonials: propTestimoni
           </div>
           <div className="bg-white rounded-lg p-6 shadow-md">
             <div className="text-3xl font-bold text-orange-500 mb-2">{stats.deliveryTime}</div>
-            <div className="text-gray-600">Thời gian giao hàng</div>
+            <div className="text-gray-600">Thời gian chuẩn bị trung bình</div>
           </div>
         </div>
       </div>
