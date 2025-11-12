@@ -385,34 +385,33 @@ function normalizeRecipeResponse(data: unknown, ingredientSource: StoreIngredien
   }
 
   if (Array.isArray(data)) {
-    const mapped = data
-      .map((item) => {
-        if (!item || typeof item !== "object") return null
-        const recipe = item as {
-          ingredient?: {
-            id?: number
-            name?: string
-            unit?: string
-            available?: number
-            quantity?: number
-            category?: { id?: number; name?: string }
-            imgUrl?: string
-            imageUrl?: string
-          }
+    const mapped: IngredientSummary[] = []
+    for (const item of data) {
+      if (!item || typeof item !== "object") continue
+      const recipe = item as {
+        ingredient?: {
+          id?: number
+          name?: string
+          unit?: string
+          available?: number
           quantity?: number
+          category?: { id?: number; name?: string }
+          imgUrl?: string
+          imageUrl?: string
         }
-        if (!recipe.ingredient?.id || typeof recipe.quantity !== "number") return null
-        return {
-          id: recipe.ingredient.id,
-          name: recipe.ingredient.name || "Nguyên liệu",
-          quantity: recipe.quantity,
-          storedQuantity: recipe.ingredient.available ?? recipe.ingredient.quantity,
-          unit: recipe.ingredient.unit,
-          category: recipe.ingredient.category,
-          imageUrl: recipe.ingredient.imgUrl || recipe.ingredient.imageUrl,
-        } satisfies IngredientSummary
+        quantity?: number
+      }
+      if (!recipe.ingredient?.id || typeof recipe.quantity !== "number") continue
+      mapped.push({
+        id: recipe.ingredient.id,
+        name: recipe.ingredient.name || "Nguyên liệu",
+        quantity: recipe.quantity,
+        storedQuantity: recipe.ingredient.available ?? recipe.ingredient.quantity,
+        unit: recipe.ingredient.unit,
+        category: recipe.ingredient.category,
+        imageUrl: recipe.ingredient.imgUrl || recipe.ingredient.imageUrl,
       })
-      .filter((ing): ing is IngredientSummary => ing !== null)
+    }
 
     return mapped.map(enrich)
   }
@@ -430,20 +429,19 @@ function normalizeRecipeResponse(data: unknown, ingredientSource: StoreIngredien
       }>
     }
     const ingredientList = recipeObj.ingredients ?? []
-    const normalized = ingredientList
-      .map((ing) => {
-        if (!ing?.id || typeof ing.neededQuantity !== "number") return null
-        return {
-          id: ing.id,
-          name: ing.name || "Nguyên liệu",
-          quantity: ing.neededQuantity,
-          storedQuantity: ing.storedQuantity,
-          unit: ing.unit,
-          category: ing.category,
-          imageUrl: ing.imageUrl,
-        } satisfies IngredientSummary
+    const normalized: IngredientSummary[] = []
+    for (const ing of ingredientList) {
+      if (!ing?.id || typeof ing.neededQuantity !== "number") continue
+      normalized.push({
+        id: ing.id,
+        name: ing.name || "Nguyên liệu",
+        quantity: ing.neededQuantity,
+        storedQuantity: ing.storedQuantity,
+        unit: ing.unit,
+        category: ing.category,
+        imageUrl: ing.imageUrl,
       })
-      .filter((ing): ing is IngredientSummary => ing !== null)
+    }
 
     return normalized.map(enrich)
   }
