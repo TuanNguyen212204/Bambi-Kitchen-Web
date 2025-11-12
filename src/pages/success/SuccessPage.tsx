@@ -31,6 +31,13 @@ export const SuccessPage = ({
       hasClearedRef.current = true;
       sessionStorage.removeItem("bambi-clear-cart-after-payment");
     }
+    
+    // Clear payment redirecting flag khi đã quay lại từ payment gateway
+    try {
+      sessionStorage.removeItem("bambi-payment-redirecting");
+    } catch {
+      // ignore storage errors
+    }
   }, [location.state, clearCart]);
   
   // Lấy title và message từ location state hoặc props

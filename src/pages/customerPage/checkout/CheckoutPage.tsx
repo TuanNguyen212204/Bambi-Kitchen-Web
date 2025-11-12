@@ -256,14 +256,17 @@ const CheckoutPage: React.FC = () => {
           orderItem.recipe = parsedData.recipe
         }
       }
-      // Trường hợp khác: có dishTemplate nhưng không có basedOnId (có thể là preset nhưng không tùy chỉnh)
-      else if (parsedData.dishTemplate) {
+      // Trường hợp: có dishTemplate nhưng không có basedOnId và không có template
+      // Đây là preset không tùy chỉnh nhưng size khác M
+      else if (parsedData.dishTemplate && !parsedData.template) {
+        // Preset không tùy chỉnh nhưng size khác M: dùng dishId
+        orderItem.dishId = item.dish.id
         orderItem.dishTemplate = parsedData.dishTemplate
         orderItem.recipe = parsedData.recipe && Array.isArray(parsedData.recipe) ? parsedData.recipe : []
       }
     } else {
       // Nếu không có customization, dùng dishId trực tiếp
-      // Dish Preset (không tùy chỉnh)
+      // Dish Preset (không tùy chỉnh, size M mặc định)
       orderItem.dishId = item.dish.id
       orderItem.dishTemplate = { size: "M" } // Mặc định size M
       orderItem.recipe = []
@@ -302,10 +305,14 @@ const CheckoutPage: React.FC = () => {
       if (typeof response.data === "string" && response.data.startsWith("http")) {
         try {
           sessionStorage.setItem("bambi-clear-cart-after-payment", "true")
+          // Đánh dấu đang redirect đến payment gateway để tránh các API calls không cần thiết
+          sessionStorage.setItem("bambi-payment-redirecting", "true")
         } catch {
           // ignore storage errors
         }
-        window.location.href = response.data
+        // Dùng window.location.replace thay vì href để tránh back button issues
+        // và đảm bảo trang hiện tại được thay thế hoàn toàn
+        window.location.replace(response.data)
         return
       }
 
