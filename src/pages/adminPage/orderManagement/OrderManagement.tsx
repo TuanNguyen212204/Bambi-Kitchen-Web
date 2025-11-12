@@ -29,6 +29,18 @@ type OrderDetailV3 = {
   size?: string
 }
 
+type PaymentV3 = {
+  orderId: number
+  accountId: number
+  amount?: number
+  paymentMethod?: string
+  status?: string
+  createdAt?: string
+  updatedAt?: string
+  transactionId?: string
+  note?: string
+}
+
 const OrderManagement = () => {
   const [orders, setOrders] = useState<OrderV3[]>([])
   const [loading, setLoading] = useState(false)
@@ -36,6 +48,8 @@ const OrderManagement = () => {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
   const [details, setDetails] = useState<OrderDetailV3[]>([])
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [payment, setPayment] = useState<PaymentV3 | null>(null)
+  const [loadingPayment, setLoadingPayment] = useState(false)
   const [q, setQ] = useState("")
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "PAID" | "COMPLETED" | "CANCELLED">("ALL")
   const [openFeedback, setOpenFeedback] = useState(false)
@@ -52,10 +66,12 @@ const OrderManagement = () => {
   const statusLabel = (s: string) => {
     const m: Record<string, string> = {
       PENDING: "Chờ xử lý",
+      PREPARING: "Đang chuẩn bị",
       COMPLETED: "Hoàn thành",
       PAID: "Đã thanh toán",
       CANCELLED: "Đã hủy",
       pending: "Chờ xử lý",
+      preparing: "Đang chuẩn bị",
       completed: "Hoàn thành",
       paid: "Đã thanh toán",
       cancelled: "Đã hủy",
@@ -106,6 +122,7 @@ const OrderManagement = () => {
     })()
   }, [])
 
+
   const loadDetails = async (orderId: number) => {
     setLoadingDetails(true)
     try {
@@ -115,6 +132,27 @@ const OrderManagement = () => {
       setDetails(res.data || [])
     } finally {
       setLoadingDetails(false)
+    }
+  }
+
+  const loadPayment = async (orderId: number) => {
+    setLoadingPayment(true)
+    try {
+      // Lấy userId từ order hiện tại
+      const order = orders.find(o => o.id === orderId)
+      if (order?.userId) {
+        const res = await bambiApi.get<PaymentV3[]>(
+          API_ENDPOINTS.API_PAYMENTS_BY_ACCOUNT(order.userId)
+        )
+        const paymentData = (res.data || []).find(p => p.orderId === orderId)
+        setPayment(paymentData || null)
+      } else {
+        setPayment(null)
+      }
+    } catch {
+      setPayment(null)
+    } finally {
+      setLoadingPayment(false)
     }
   }
 
@@ -239,6 +277,7 @@ const OrderManagement = () => {
                   onClick={() => {
                     setSelectedOrderId(o.id)
                     loadDetails(o.id)
+                    loadPayment(o.id)
                   }}
                   className={`p-3 rounded-lg border cursor-pointer transition-all ${
                     active ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
@@ -334,6 +373,55 @@ const OrderManagement = () => {
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+
+              {/* Thông tin thanh toán */}
+              <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                <h5 className="text-sm font-semibold text-gray-800 mb-3">Thông tin thanh toán</h5>
+                {loadingPayment ? (
+                  <div className="flex justify-center items-center py-6">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : payment ? (
+                  <div className="space-y-2 text-sm text-gray-700">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Phương thức thanh toán:</span>
+                      <span>{payment.paymentMethod || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Trạng thái:</span>
+                      <Badge className={payment.status === 'SUCCESS' || payment.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}>
+                        {payment.status || 'N/A'}
+                      </Badge>
+                    </div>
+                    {typeof payment.amount === 'number' && (
+                      <div className="flex justify-between">
+                        <span className="font-medium">Số tiền:</span>
+                        <span className="font-semibold text-orange-600">{formatCurrency(payment.amount)}</span>
+                      </div>
+                    )}
+                    {payment.transactionId && (
+                      <div className="flex justify-between">
+                        <span className="font-medium">Mã giao dịch:</span>
+                        <span className="font-mono text-xs">{payment.transactionId}</span>
+                      </div>
+                    )}
+                    {payment.createdAt && (
+                      <div className="flex justify-between">
+                        <span className="font-medium">Thời gian:</span>
+                        <span>{new Date(payment.createdAt).toLocaleString('vi-VN')}</span>
+                      </div>
+                    )}
+                    {payment.note && (
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <span className="font-medium">Ghi chú:</span>
+                        <p className="text-xs text-gray-600 mt-1">{payment.note}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-500">Chưa có thông tin thanh toán</div>
                 )}
               </div>
             </div>

@@ -250,17 +250,7 @@ export function AccountDetailModal({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-6 border-t">
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="flex items-center gap-2"
-          >
-            <Trash2 className="w-4 h-4" />
-            {isDeleting ? "Đang xóa..." : "Xóa tài khoản"}
-          </Button>
-
+        <div className="flex items-center justify-end pt-6 border-t">
           <div className="flex items-center gap-3">
             {isEditing ? (
               <>

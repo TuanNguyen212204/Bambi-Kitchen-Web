@@ -43,13 +43,6 @@ const AdminFeedbackPage = () => {
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-2 border-gray-200"><CardContent className="p-4"><div className="text-sm text-gray-500">Tổng feedback</div><div className="text-2xl font-semibold">{stats.total}</div></CardContent></Card>
-        <Card className="border-2 border-gray-200"><CardContent className="p-4"><div className="text-sm text-gray-500">Điểm trung bình</div><div className="text-2xl font-semibold">{stats.avg}</div></CardContent></Card>
-        <Card className="border-2 border-gray-200"><CardContent className="p-4"><div className="text-sm text-gray-500">5 sao</div><div className="text-2xl font-semibold text-green-600">{stats.five}</div></CardContent></Card>
-        <Card className="border-2 border-gray-200"><CardContent className="p-4"><div className="text-sm text-gray-500">1 sao</div><div className="text-2xl font-semibold text-rose-600">{stats.one}</div></CardContent></Card>
-      </div>
 
       {/* Header */}
       <section>
