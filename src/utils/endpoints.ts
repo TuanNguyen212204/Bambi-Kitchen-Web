@@ -73,6 +73,10 @@ export const API_ENDPOINTS = {
   AI_ANALYZE: "/ai/analyze",
   AI_SUGGESTIONS: "/ai/suggestions",
   
+  // Gemini AI Chat
+  API_GEMINI_CHAT: (message: string) => `/api/gemini/chat?message=${encodeURIComponent(message)}`,
+  API_GEMINI_AGENT: "/api/gemini/agent",
+  
   ACTIVE_ORDERS: "/staff/orders/active",
   ORDER_STATUS: (id: string) => `/staff/orders/${id}/status`,
   CLAIM_ORDER: (id: string) => `/staff/orders/${id}/claim`,
