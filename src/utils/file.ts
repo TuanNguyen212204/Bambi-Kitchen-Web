@@ -54,16 +54,8 @@ export function normalizeImageUrl(url?: string | null): string | undefined {
     // Lấy API_BASE_URL
     const baseUrl = API_BASE_URL || "";
     
-    // Debug: log API_BASE_URL trong development
-    if (import.meta.env.DEV) {
-        console.log("[normalizeImageUrl] API_BASE_URL:", baseUrl, "Original URL:", trimmedUrl);
-    }
-    
-    // Nếu không có API_BASE_URL hoặc vẫn là localhost trong production, log warning
+    // Nếu không có API_BASE_URL hoặc vẫn là localhost trong production, trả về URL gốc
     if (!baseUrl || (import.meta.env.PROD && baseUrl === "http://localhost:8085")) {
-        console.warn("[normalizeImageUrl] ⚠️ API_BASE_URL không được set đúng hoặc vẫn là localhost trong production!");
-        console.warn("[normalizeImageUrl] API_BASE_URL hiện tại:", baseUrl);
-        console.warn("[normalizeImageUrl] Vui lòng đảm bảo VITE_API_BASE_URL được set trong Vercel và đã rebuild deployment!");
         // Nếu URL bắt đầu bằng /, vẫn trả về để browser tự resolve (có thể hoạt động nếu cùng domain)
         return trimmedUrl.startsWith("/") ? trimmedUrl : `/${trimmedUrl}`;
     }
@@ -73,19 +65,11 @@ export function normalizeImageUrl(url?: string | null): string | undefined {
     
     // Nếu là relative URL (bắt đầu bằng /), prepend API_BASE_URL
     if (trimmedUrl.startsWith("/")) {
-        const normalized = `${cleanBaseUrl}${trimmedUrl}`;
-        if (import.meta.env.DEV) {
-            console.log("[normalizeImageUrl] Normalized:", trimmedUrl, "->", normalized);
-        }
-        return normalized;
+        return `${cleanBaseUrl}${trimmedUrl}`;
     }
     
     // Nếu không bắt đầu bằng /, prepend API_BASE_URL và thêm /
-    const normalized = `${cleanBaseUrl}/${trimmedUrl}`;
-    if (import.meta.env.DEV) {
-        console.log("[normalizeImageUrl] Normalized:", trimmedUrl, "->", normalized);
-    }
-    return normalized;
+    return `${cleanBaseUrl}/${trimmedUrl}`;
 }
 
 
