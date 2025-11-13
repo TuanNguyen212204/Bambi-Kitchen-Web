@@ -122,6 +122,14 @@ export default function NotificationIcon({ className = "", onClick }: Notificati
     }
   }, [items, user?.role_id])
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const event = new CustomEvent<number>("notifications:update-unread", {
+      detail: unreadCount,
+    })
+    window.dispatchEvent(event)
+  }, [unreadCount])
+
   // Lắng nghe event khi notification được mark as read để refresh unread count
   useEffect(() => {
     if (!user?.id) return

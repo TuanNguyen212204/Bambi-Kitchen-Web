@@ -103,14 +103,33 @@ const MenuCard: React.FC<{
 
 const MenuPage: React.FC = () => {
   const store = useDishStore() as unknown as LocalDishStore
-  const { fetchAll, items, loading, categories, fetchCategories, query, setQuery, selectedCategoryId, setSelectedCategoryId } = store
+  const { fetchAll, items, loading, categories, query, setQuery, selectedCategoryId, setSelectedCategoryId } = store
   const { isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
 
+  const resolvedCategories = useMemo<DishCategory[]>(() => {
+    if (Array.isArray(categories) && categories.length > 0) {
+      return categories
+    }
+
+    const map = new Map<number, DishCategory>()
+    ;(items as MenuDish[]).forEach((dish) => {
+      const cat = (dish as unknown as { category?: DishCategory })?.category
+      if (cat?.id && !map.has(cat.id)) {
+        map.set(cat.id, {
+          id: cat.id,
+          name: cat.name ?? `Danh mục ${cat.id}`,
+          description: cat.description,
+        })
+      }
+    })
+    return Array.from(map.values())
+  }, [categories, items])
+
   const anchors = useMemo(() => (["Signature Poké Bowls","Aloha Bowls","Make your own bowl","Drinks"] as const)
-    .filter(label => (categories as DishCategory[]).some(c => c.name?.toLowerCase() === label.toLowerCase()))
-    .map(label => ({ label, id: slugify(label) })), [categories])
+    .filter(label => (resolvedCategories as DishCategory[]).some(c => c.name?.toLowerCase() === label.toLowerCase()))
+    .map(label => ({ label, id: slugify(label) })), [resolvedCategories])
 
   const [activeAnchorId, setActiveAnchorId] = useState<string | undefined>(anchors[0]?.id)
   const [showAllDishes, setShowAllDishes] = useState(false)
@@ -131,11 +150,9 @@ const MenuPage: React.FC = () => {
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
-  useEffect(() => { fetchCategories?.() }, [fetchCategories])
-
   const visible = useMemo(() => {
     // Lọc bỏ "Make your own bowl" category khỏi preset dishes
-    const makeYourOwnBowlCategory = (categories as DishCategory[]).find(
+    const makeYourOwnBowlCategory = (resolvedCategories as DishCategory[]).find(
       c => c.name?.toLowerCase() === "make your own bowl"
     )
     return (items as MenuDish[]).filter((d) => {
@@ -202,7 +219,7 @@ const MenuPage: React.FC = () => {
                 <SelectTrigger className="bg-white"><SelectValue placeholder="Tất cả danh mục" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả danh mục</SelectItem>
-                  {(categories as DishCategory[] || []).map((c) => (
+                  {(resolvedCategories as DishCategory[] || []).map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -241,7 +258,7 @@ const MenuPage: React.FC = () => {
             <div className="col-span-12 md:col-span-9 lg:col-span-10 space-y-12">
               {(() => {
                 const catMap = new Map<number, string>()
-                ;(categories as DishCategory[]).forEach(c => catMap.set(c.id, c.name))
+                ;(resolvedCategories as DishCategory[]).forEach(c => catMap.set(c.id, c.name))
                 const grouped = new Map<string, MenuDish[]>()
                 ;(filtered as MenuDish[]).forEach(d => {
                   const catName = d.categoryId ? (catMap.get(d.categoryId) || "Others") : "Others"

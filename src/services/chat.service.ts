@@ -1,9 +1,6 @@
+import type { ChatMessageMetadata } from "@models/chat"
 import { bambiApi } from "@utils/api"
 import { API_ENDPOINTS } from "@utils/endpoints"
-
-export interface ChatRequest {
-  message: string
-}
 
 export class ChatError extends Error {
   constructor(
@@ -16,62 +13,66 @@ export class ChatError extends Error {
   }
 }
 
-/**
- * Gửi tin nhắn chat đến AI bằng GET request
- */
-export async function chatWithAI(message: string): Promise<string> {
-  try {
-    const response = await bambiApi.get<string>(API_ENDPOINTS.API_GEMINI_CHAT(message))
-    return response.data || ""
-  } catch (error) {
-    const status = (error as { response?: { status?: number } })?.response?.status
-    throw new ChatError(
-      "Không thể kết nối với AI. Vui lòng thử lại sau.",
-      status,
-      status === 500 || status === 503
-    )
-  }
+export interface ChatServiceResponse {
+  message: string
+  metadata?: ChatMessageMetadata | null
+  conversationId?: string
+  raw?: unknown
 }
 
 /**
- * Gửi tin nhắn chat đến AI bằng POST request (agent chat)
+ * Gửi tin nhắn chat đến AI thông qua endpoint /chat mới (POST)
+ * Backend có thể trả về string thuần hoặc object chứa metadata.
  */
-export async function agentChatWithAI(message: string): Promise<string> {
+export async function chatWithAI(message: string): Promise<ChatServiceResponse> {
   try {
-    const response = await bambiApi.post<string, ChatRequest>(
-      API_ENDPOINTS.API_GEMINI_AGENT,
-      { message }
-    )
-    return response.data || ""
-  } catch (error) {
-    const status = (error as { response?: { status?: number } })?.response?.status
-    throw new ChatError(
-      "Không thể kết nối với AI. Vui lòng thử lại sau.",
-      status,
-      status === 500 || status === 503
-    )
-  }
-}
+    const response = await bambiApi.get<unknown>(API_ENDPOINTS.API_GEMINI_CHAT, {
+      params: { message },
+    })
+    const data = response.data
 
-/**
- * Gửi tin nhắn với fallback: thử POST trước, nếu lỗi thì thử GET
- */
-export async function chatWithAIFallback(message: string): Promise<string> {
-  try {
-    // Thử POST trước (agent chat - tốt hơn)
-    return await agentChatWithAI(message)
-  } catch (error) {
-    // Nếu POST lỗi (đặc biệt là 500), thử GET làm fallback
-    if (error instanceof ChatError && error.shouldRetry) {
-      try {
-        return await chatWithAI(message)
-      } catch (fallbackError) {
-        // Nếu cả hai đều lỗi, throw lỗi cuối cùng
-        throw fallbackError
+    if (typeof data === "string") {
+      return { message: data, raw: data }
+    }
+
+    if (data && typeof data === "object") {
+      const maybeObject = data as {
+        message?: string
+        reply?: string
+        content?: string
+        metadata?: ChatMessageMetadata | null
+        meta?: ChatMessageMetadata | null
+        conversationId?: string
+      }
+
+      const resolvedMessage =
+        maybeObject.message ??
+        maybeObject.reply ??
+        maybeObject.content ??
+        JSON.stringify(data)
+
+      const metadata = maybeObject.metadata ?? maybeObject.meta ?? null
+
+      return {
+        message: resolvedMessage,
+        metadata,
+        conversationId: maybeObject.conversationId,
+        raw: data,
       }
     }
-    // Nếu không phải lỗi có thể retry, throw ngay
-    throw error
+
+    // Fallback: không nhận diện được data, convert sang string
+    return {
+      message: typeof data === "undefined" || data === null ? "" : String(data),
+      raw: data,
+    }
+  } catch (error) {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    throw new ChatError(
+      "Không thể kết nối với AI. Vui lòng thử lại sau.",
+      status,
+      status === 500 || status === 503
+    )
   }
 }
 
