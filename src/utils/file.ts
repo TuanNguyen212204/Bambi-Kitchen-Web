@@ -26,8 +26,7 @@ export async function uploadFile(file: File | Blob, options: UploadFileOptions =
 
 /**
  * Normalize image URL để đảm bảo nó là absolute URL
- * Nếu URL là relative (bắt đầu bằng / hoặc không có protocol), 
- * thì prepend API_BASE_URL
+ * Hỗ trợ cả Firebase Storage URLs và Cloudinary URLs từ backend
  */
 export function normalizeImageUrl(url?: string | null): string | undefined {
     if (!url || typeof url !== "string" || url.trim() === "") {
@@ -37,6 +36,7 @@ export function normalizeImageUrl(url?: string | null): string | undefined {
     const trimmedUrl = url.trim();
     
     // Nếu đã là absolute URL (có protocol), trả về nguyên
+    // Bao gồm cả Cloudinary URLs (https://res.cloudinary.com/...)
     if (trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://")) {
         return trimmedUrl;
     }
@@ -51,13 +51,25 @@ export function normalizeImageUrl(url?: string | null): string | undefined {
         return trimmedUrl;
     }
     
+    // Nếu là Cloudinary URL không có protocol (bắt đầu bằng res.cloudinary.com)
+    // Thêm https://
+    if (trimmedUrl.startsWith("res.cloudinary.com")) {
+        return `https://${trimmedUrl}`;
+    }
+    
     // Lấy API_BASE_URL
     const baseUrl = API_BASE_URL || "";
     
-    // Nếu không có API_BASE_URL hoặc vẫn là localhost trong production, trả về URL gốc
-    if (!baseUrl || (import.meta.env.PROD && baseUrl === "http://localhost:8085")) {
-        // Nếu URL bắt đầu bằng /, vẫn trả về để browser tự resolve (có thể hoạt động nếu cùng domain)
-        return trimmedUrl.startsWith("/") ? trimmedUrl : `/${trimmedUrl}`;
+    // Nếu không có API_BASE_URL hoặc vẫn là localhost trong production
+    // Và URL là relative, trả về URL gốc (browser sẽ tự resolve nếu cùng domain)
+    if (!baseUrl || (import.meta.env.PROD && baseUrl.includes("localhost"))) {
+        // Nếu URL bắt đầu bằng /, trả về nguyên (có thể hoạt động nếu backend serve static files)
+        // Nếu không, có thể là Cloudinary path, thử thêm https://
+        if (trimmedUrl.startsWith("/")) {
+            return trimmedUrl;
+        }
+        // Nếu không bắt đầu bằng /, có thể là relative path, thêm /
+        return `/${trimmedUrl}`;
     }
     
     // Loại bỏ trailing slash từ API_BASE_URL nếu có

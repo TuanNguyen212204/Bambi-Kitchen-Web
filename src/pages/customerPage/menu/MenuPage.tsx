@@ -18,7 +18,6 @@ import ShrimpsImg from "@assets/Menu/shrimps.png"
 import BackgroundMenu from "@assets/Menu/backgroundMenu.png"
 import CustomBowlModal from "@/components/customer/menu/CustomBowlModal"
 import PresetDishModal from "@/components/customer/menu/PresetDishModal"
-import { normalizeImageUrl } from "@/utils/file"
 
 const fallbackImages = [TunaImg, PorkImg, BeefImg, ShrimpsImg]
 const getFallbackImage = (idx: number) => fallbackImages[idx % fallbackImages.length]
@@ -77,7 +76,7 @@ const MenuCard: React.FC<{
       >
         <div className="w-44 h-44 rounded-full overflow-hidden bg-gray-100">
           <img 
-            src={normalizeImageUrl(dish.imageUrl) || getFallbackImage(idx)} 
+            src={dish.imageUrl || getFallbackImage(idx)} 
             alt={dish.name} 
             className="w-full h-full object-cover"
             onError={(e) => {

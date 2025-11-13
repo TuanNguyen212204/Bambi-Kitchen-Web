@@ -10,7 +10,6 @@ import { useDishStore } from "@/zustand/stores/dish";
 import { useAuthStore } from "@zustand/stores/auth";
 import type { DishListSlice } from "@/zustand/slices/dish/list.slice";
 import { PATHS } from "@config/path";
-import { normalizeImageUrl } from "@/utils/file";
 
 type HomeDish = DishListSlice["items"][number]
 
@@ -38,7 +37,7 @@ const ProductCard: React.FC<{ product: HomeDish; idx: number }> = ({ product, id
       >
         <div className="w-48 h-48 rounded-full overflow-hidden bg-gray-100">
           <img
-            src={normalizeImageUrl(product.imageUrl) || getFallbackImage(idx)}
+            src={product.imageUrl || getFallbackImage(idx)}
             alt={product.name}
             className="w-full h-full object-cover"
             onError={(e) => {
