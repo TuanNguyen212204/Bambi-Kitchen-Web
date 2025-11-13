@@ -1,5 +1,5 @@
 import type { StateCreator } from "zustand"
-import { bambiApi, API_ENDPOINTS } from "@/utils/api"
+import { bambiApi, bambiPublicApi, API_ENDPOINTS } from "@/utils/api"
 
 export interface DishItem {
   id: number
@@ -19,8 +19,8 @@ export interface DishListSlice {
   error?: string
   fetchAll: (filterType?: "all" | "menu" | "inactive") => Promise<void>
   remove: (id: number) => Promise<void>
-  togglePublic: (id: number) => Promise<void>
-  toggleActive: (id: number) => Promise<void>
+  togglePublic: (id: number) => Promise<boolean>
+  toggleActive: (id: number) => Promise<boolean>
 }
 
 export const createDishListSlice: StateCreator<
@@ -42,7 +42,33 @@ export const createDishListSlice: StateCreator<
       const endpoint = filterType === "menu" 
         ? API_ENDPOINTS.API_DISHES 
         : API_ENDPOINTS.API_DISHES_ALL
-      const { data } = await bambiApi.get<DishItem[]>(endpoint as string)
+
+      if (filterType === "menu") {
+        try {
+          const { useAuthStore } = await import("@/zustand/stores/auth")
+          const authToken = useAuthStore.getState().token
+          if (authToken) {
+            const { data } = await bambiApi.get<DishItem[]>(endpoint as string, {
+              headers: { "x-silent-error": "1" },
+            })
+            let items = Array.isArray(data) ? data : []
+            set({ items, loading: false })
+            return
+          }
+        } catch {
+          // Fall through to use public API
+        }
+        const { data } = await bambiPublicApi.get<DishItem[]>(endpoint as string, {
+          headers: { "x-silent-error": "1" },
+        })
+        let items = Array.isArray(data) ? data : []
+        set({ items, loading: false })
+        return
+      }
+
+      const { data } = await bambiApi.get<DishItem[]>(endpoint as string, {
+        headers: { "x-silent-error": "1" },
+      })
       let items = Array.isArray(data) ? data : []
       
       // Filter theo active=false nếu là "inactive"
@@ -74,10 +100,12 @@ export const createDishListSlice: StateCreator<
     try {
       const { data } = await bambiApi.get<boolean>(API_ENDPOINTS.API_DISH_TOGGLE_PUBLIC(id))
       set((s) => ({ items: s.items.map((d) => (d.id === id ? { ...d, public: data } : d)) }))
+      return data
     } catch (error) {
       const { toast } = await import("sonner")
       const { extractErrorMessage } = await import("@utils/errors")
       toast.error(extractErrorMessage(error) || "Đổi trạng thái công khai thất bại")
+      throw error
     }
   },
 
@@ -85,10 +113,12 @@ export const createDishListSlice: StateCreator<
     try {
       const { data } = await bambiApi.get<boolean>(API_ENDPOINTS.API_DISH_TOGGLE_ACTIVE(id))
       set((s) => ({ items: s.items.map((d) => (d.id === id ? { ...d, active: data } : d)) }))
+      return data
     } catch (error) {
       const { toast } = await import("sonner")
       const { extractErrorMessage } = await import("@utils/errors")
       toast.error(extractErrorMessage(error) || "Đổi trạng thái hoạt động thất bại")
+      throw error
     }
   },
 })

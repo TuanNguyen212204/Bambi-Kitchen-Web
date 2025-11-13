@@ -19,38 +19,86 @@ const OAuthCallback = () => {
         const token = searchParams.get('token');
         
         if (!token) {
-          setError('Không tìm thấy token trong URL');
-          setIsProcessing(false);
-          return;
+          // Một số luồng backend trả token qua cookie (HTTP-only) mà không đính kèm trên URL.
+          // Thử gọi /me: nếu đã đăng nhập, điều hướng theo role; nếu chưa, báo lỗi.
+          try {
+            const meResp = await bambiApi.get<{ id: number; name?: string; mail?: string; phone?: string; role?: 'ADMIN'|'STAFF'|'USER' }>(API_ENDPOINTS.AUTH_ME);
+            const me = meResp.data
+            const finalUser = {
+              id: me.id,
+              name: me.name || 'User',
+              email: me.mail || '',
+              role: me.role || 'USER' as const,
+              role_id: (me.role === 'ADMIN' ? 1 : me.role === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
+            }
+            setUser(finalUser)
+            const redirectTo = localStorage.getItem('redirectAfterLogin') || 
+              (finalUser.role === 'ADMIN' ? PATHS.ADMIN : 
+               finalUser.role === 'STAFF' ? PATHS.ADMIN_ORDERS : 
+               PATHS.HOME);
+            localStorage.removeItem('redirectAfterLogin');
+            // Dùng hard navigation để tránh bất kỳ guard nào chặn giữa đường
+            window.location.replace(`${window.location.origin}${redirectTo}`);
+            return
+          } catch {
+            console.warn('[OAuthCallback] /me failed and no token in URL.');
+            setError('Không tìm thấy token trong URL');
+            setIsProcessing(false);
+            return;
+          }
         }
 
+        // 1) Lưu token ngay để các request sau dùng được Authorization
         setSession(token);
+        // Đợi một nhịp ngắn để đảm bảo persist/interceptor có thể đọc được token
+        await new Promise((r) => setTimeout(r, 50));
 
-        let userFromToken = null;
+        // 2) Phân tích role trực tiếp từ token và điều hướng NGAY (tránh bị thấy trang login do độ trễ /me)
+        let roleFromToken: 'ADMIN' | 'STAFF' | 'USER' = 'USER'
+        let userFromToken: { id: number; name: string; email: string; role: 'ADMIN'|'STAFF'|'USER'; role_id: 1|3|4 } | null = null
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
-          userFromToken = {
-            id: parseInt(payload.sub),
-            name: payload.name || payload.email || 'User',
-            email: payload.email || '',
-            role: payload.roles?.[0] || 'USER',
-            role_id: (payload.roles?.[0] === 'ADMIN' ? 1 : payload.roles?.[0] === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
-          };
-        } catch { void 0 }
+          const rawRole = (payload.roles?.[0] || 'USER') as string
+          const normalizedRole = (rawRole.startsWith('ROLE_') ? rawRole.slice(5) : rawRole) as 'ADMIN'|'STAFF'|'USER'
+          roleFromToken = normalizedRole
+          const typedUser = {
+            id: Number.isFinite(Number(payload.sub)) ? parseInt(payload.sub) : 0,
+            name: (payload.name || payload.email || 'User') as string,
+            email: (payload.email || '') as string,
+            role: normalizedRole,
+            role_id: (normalizedRole === 'ADMIN' ? 1 : normalizedRole === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
+          }
+          userFromToken = typedUser
+          setUser(typedUser)
+        } catch { /* ignore */ 
+          // Failed to decode token payload
+        }
 
-        let finalUser = null;
+        // Tính đích đến ưu tiên theo role. Bỏ qua redirect lưu nếu nó trỏ tới trang auth (vd: /login)
+        const storedRedirect = localStorage.getItem('redirectAfterLogin') || ''
+        const AUTH_PAGES = new Set([PATHS.LOGIN, PATHS.REGISTER, PATHS.OAUTH_CALLBACK, PATHS.UNAUTHORIZED, PATHS.UNAUTHENTICATED])
+        const useStored = storedRedirect && !AUTH_PAGES.has(storedRedirect)
+        const fallbackByRole =
+          (roleFromToken === 'ADMIN' ? PATHS.ADMIN :
+           roleFromToken === 'STAFF' ? PATHS.ADMIN_ORDERS :
+           PATHS.HOME)
+        const immediateRedirect = useStored ? storedRedirect : fallbackByRole
+        localStorage.removeItem('redirectAfterLogin');
+        // Dùng hard replace để tránh race-condition với Authentication/Authorization guard
+        window.location.replace(`${window.location.origin}${immediateRedirect}`);
+
+        // 3) Gọi /me ở nền để hydrate dữ liệu người dùng chính xác hơn (không điều hướng lại)
         try {
           const userResponse = await bambiApi.get<{ id: number; name?: string; mail?: string; phone?: string; role?: 'ADMIN'|'STAFF'|'USER' }>(API_ENDPOINTS.AUTH_ME);
           const userMe = userResponse.data;
-          
-          finalUser = {
+          const finalUser = {
             id: userMe.id,
             name: userMe.name || userFromToken?.name || 'User',
             email: userMe.mail || userFromToken?.email || '',
-            role: userMe.role || userFromToken?.role || 'USER',
-            role_id: (userMe.role === 'ADMIN' ? 1 : userMe.role === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
+            role: ((userMe.role || userFromToken?.role || 'USER') as string).replace(/^ROLE_/, '') as 'ADMIN'|'STAFF'|'USER',
+            role_id: (((userMe.role || userFromToken?.role || 'USER') as string).replace(/^ROLE_/, '') === 'ADMIN' ? 1 :
+                      ((userMe.role || userFromToken?.role || 'USER') as string).replace(/^ROLE_/, '') === 'STAFF' ? 3 : 4) as 1 | 3 | 4,
           };
-          
           setUser(finalUser);
 
           if (!userMe.phone || userMe.phone.trim() === "") {
@@ -59,29 +107,7 @@ const OAuthCallback = () => {
               action: { label: "Cập nhật ngay", onClick: () => navigate(PATHS.PROFILE) },
             });
           }
-        } catch {
-          if (userFromToken) {
-            finalUser = userFromToken;
-            setUser(userFromToken);
-          } else {
-            finalUser = {
-              id: 0,
-              name: 'User',
-              email: '',
-              role: 'USER' as const,
-              role_id: 4 as const,
-            };
-            setUser(finalUser);
-          }
-        }
-
-        const redirectTo = localStorage.getItem('redirectAfterLogin') || 
-          (finalUser?.role === 'ADMIN' ? PATHS.ADMIN : 
-           finalUser?.role === 'STAFF' ? PATHS.STAFF : 
-           PATHS.HOME);
-        localStorage.removeItem('redirectAfterLogin');
-        
-        navigate(redirectTo, { replace: true });
+        } catch { /* ignore background hydrate errors */ }
         
       } catch {
         setError('Có lỗi xảy ra khi xử lý đăng nhập');

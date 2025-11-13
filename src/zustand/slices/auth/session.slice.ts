@@ -7,6 +7,8 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
   isAuthenticated: false,
   loading: false,
   error: null,
+  // Đánh dấu khi user đã được đồng bộ đầy đủ từ /me
+  userHydrated: false,
   
   setSession: (token, refreshToken = null) => set({ 
     token, 
@@ -21,7 +23,8 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
   }),
   
   login: async (phone, password) => {
-    set({ loading: true, error: null })
+    // Reset transient auth state at the beginning to avoid stale user from previous session
+    set({ loading: true, error: null, user: null, isAuthenticated: false, userHydrated: false })
     
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
@@ -35,23 +38,73 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       )
 
       const accessToken = loginRes.data
-      set({ token: accessToken, refreshToken: null, isAuthenticated: true, loading: false })
+      // Ghi đè token cũ trước để interceptor dùng ngay
+      set({ token: accessToken, refreshToken: null, isAuthenticated: true })
 
-      // Nếu login thành công, gọi /me request
+      // Thiết lập tạm thời user từ payload JWT để tránh chớp nháy/nhầm phiên cũ
+      try {
+        const base64 = accessToken.split(".")[1]
+        const json = JSON.parse(atob(base64)) as { sub?: string; name?: string; email?: string; roles?: string[] }
+        if (json?.sub) {
+          const role = (Array.isArray(json.roles) && json.roles[0] ? json.roles[0] : "USER") as "ADMIN" | "STAFF" | "USER"
+          const tempUser = {
+            id: Number(json.sub),
+            name: (json.name as string) || "",
+            email: (json.email as string) || "",
+            role,
+            role_id: (role === "ADMIN" ? 1 : role === "STAFF" ? 3 : 4) as 1 | 3 | 4,
+          }
+          set({ user: tempUser })
+        }
+      } catch { /* ignore decode errors */ }
+      
+      // Đợi một chút để ensure token được persist và interceptor có thể đọc được
+      // Zustand persist là async, cần đợi để tránh race condition
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Nếu login thành công, gọi /me request với token đã được set
       const userResponse = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME, {
-        headers: { 'x-silent-error': '1' } // Tắt toast tự động cho /me request
+        headers: { 
+          'x-silent-error': '1', // Tắt toast tự động cho /me request
+          'Authorization': `Bearer ${accessToken}` // Đảm bảo token được set vào header
+        }
       })
       const userMe = userResponse.data
-      const normalizedRole = (userMe.role || "USER") as "USER" | "ADMIN" | "STAFF"
+      // So khớp role giữa JWT và /me, ưu tiên vai trò THẤP HƠN để tránh escalate quyền do cookie phiên cũ trên server
+      const tokenStr = get().token || ""
+      let tokenRole: "USER" | "ADMIN" | "STAFF" | null = null
+      let tokenSub: number | null = null
+      try {
+        const base64Payload = tokenStr.split(".")[1]
+        const json = JSON.parse(atob(base64Payload)) as { sub?: string; roles?: string[] }
+        const rawRole = (Array.isArray(json.roles) && json.roles[0]) || "USER"
+        const normalized = String(rawRole).replace(/^ROLE_/i, "") as "USER" | "ADMIN" | "STAFF"
+        tokenRole = (normalized === "ADMIN" || normalized === "STAFF" || normalized === "USER") ? normalized : "USER"
+        tokenSub = json?.sub ? Number(json.sub) : null
+      } catch { /* ignore */ }
+
+      const meRole = (userMe.role || "USER") as "USER" | "ADMIN" | "STAFF"
+      const rank = (r: "USER" | "STAFF" | "ADMIN") => (r === "ADMIN" ? 3 : r === "STAFF" ? 2 : 1)
+      const resolvedRole = tokenRole ? (rank(meRole) < rank(tokenRole) ? meRole : tokenRole) : meRole
+      const resolvedId = (tokenRole && tokenRole !== meRole && tokenSub) ? tokenSub : userMe.id
+
       const user = {
-        id: userMe.id,
+        id: resolvedId,
         name: userMe.name,
-        role: normalizedRole,
+        role: resolvedRole,
         email: userMe.mail,
-        role_id: (normalizedRole === "ADMIN" ? 1 : normalizedRole === "STAFF" ? 3 : 4) as 1 | 3 | 4,
+        role_id: (resolvedRole === "ADMIN" ? 1 : resolvedRole === "STAFF" ? 3 : 4) as 1 | 3 | 4,
       }
 
-      set({ user })
+      set({ user, userHydrated: true, loading: false })
+
+      // Load cart của user sau khi login thành công
+      try {
+        const { useCartStore } = await import("@/zustand/stores/cart")
+        useCartStore.getState().loadUserCart(user.id)
+      } catch {
+        // Ignore errors
+      }
 
       const { toast } = await import("sonner")
       toast.success("Đăng nhập thành công!")
@@ -64,7 +117,8 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
       set({ 
         loading: false, 
         error: message,
-        isAuthenticated: false 
+        isAuthenticated: false,
+        userHydrated: false 
       })
 
       // Chỉ hiển thị message từ backend, không có title hardcode
@@ -135,6 +189,14 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
 
+    // Clear cart khi đăng xuất
+    try {
+      const { useCartStore } = await import("@/zustand/stores/cart")
+      useCartStore.getState().clearCart()
+    } catch {
+      // Ignore errors
+    }
+
     if (hadSession) {
       const toastModule = await import("sonner")
       toastModule.toast.success("Đăng xuất thành công!", {
@@ -147,17 +209,44 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
     const currentState = get()
     const hadToken = !!currentState.token || currentState.isAuthenticated
     
-    set({ loading: true })
+    // Nếu đã có user và token, không cần verify lại (tránh race condition sau khi login)
+    if (currentState.user && currentState.token && currentState.token !== "session-based") {
+      return
+    }
+    
+    set({ loading: true, userHydrated: false })
 
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@utils/api")
-      await bambiApi.get(API_ENDPOINTS.AUTH_ME)
+      const me = await bambiApi.get<UserMeResponse>(API_ENDPOINTS.AUTH_ME)
       
-      set({
-        token: "session-based",
+      // Không ghi đè token (tránh gán "session-based" làm hỏng Authorization header)
+      const userData = me.data ? {
+        id: me.data.id,
+        name: me.data.name,
+        role: (me.data.role || "USER") as "USER" | "ADMIN" | "STAFF",
+        email: me.data.mail,
+        role_id: ((me.data.role || "USER") === "ADMIN" ? 1 : (me.data.role === "STAFF" ? 3 : 4)) as 1 | 3 | 4,
+      } : null
+      
+      set((state) => ({
+        token: state.token,
         isAuthenticated: true,
         loading: false,
-      })
+        // Nếu chưa có user (VD refresh trang), đồng bộ user dựa trên /me
+        user: state.user || userData,
+        userHydrated: true,
+      }))
+
+      // Load cart của user nếu có user data
+      if (userData?.id) {
+        try {
+          const { useCartStore } = await import("@/zustand/stores/cart")
+          useCartStore.getState().loadUserCart(userData.id)
+        } catch {
+          // Ignore errors
+        }
+      }
 
     } catch {
       set({
@@ -165,6 +254,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [], [], SessionSlice
         refreshToken: null,
         isAuthenticated: false,
         loading: false,
+        userHydrated: false,
       })
 
       if (hadToken) {

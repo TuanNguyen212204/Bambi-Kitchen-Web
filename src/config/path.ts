@@ -8,10 +8,12 @@ export const PATHS = {
   
   HOME: "/",
   MENU: "/menu",
+  DISH_DETAIL: "/menu/dish/:id",
   ABOUT: "/about",
   CONTACT: "/contact",
   ORDER: "/order",
-  ORDER_STEP: "/order/:step", 
+  ORDER_STEP: "/order/:step",
+  ORDER_STATUS: "/order/status",
   ORDER_HISTORY: "/orders",
   QUICK_ORDER: "/quick-order/:orderId",
   PROFILE: "/profile",
@@ -39,6 +41,7 @@ export const PATHS = {
   ADMIN_DISH_CATEGORIES: "/admin/dish-categories",
   ADMIN_DISH_TEMPLATES: "/admin/dish-templates",
   ADMIN_INGREDIENT_CATEGORIES: "/admin/ingredient-categories",
+  ADMIN_FEATURES: "/admin/features",
   
   UNAUTHORIZED: "/unauthorized",
   UNAUTHENTICATED: "/unauthenticated",

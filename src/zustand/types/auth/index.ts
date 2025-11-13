@@ -73,6 +73,8 @@ export interface SessionSlice {
   loading: boolean
   error: string | null
   user?: User | null
+  // Đã đồng bộ vai trò từ /me, an toàn để điều hướng
+  userHydrated?: boolean
   
   setSession: (token: string | null, refreshToken?: string | null) => void
   clearSession: () => void

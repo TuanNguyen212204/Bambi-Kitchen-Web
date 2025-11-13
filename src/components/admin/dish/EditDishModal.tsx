@@ -12,7 +12,14 @@ interface Props { open: boolean; onClose: () => void; dish: { id: number; name: 
 
 export default function EditDishModal({ open, onClose, dish }: Props) {
   const { createOrUpdate, toggleActive, togglePublic } = useDishStore()
-  const ingStore = useIngredientStore()
+  const fetchIngredients = useIngredientStore((state) => state.fetchAll)
+  const fetchIngredientCategories = useIngredientStore((state) =>
+    "fetchCategories" in state ? (state as typeof state & { fetchCategories?: () => Promise<void> }).fetchCategories : undefined
+  )
+  const ingredientListState = useIngredientStore((state) => state.items)
+  const ingredientCategoriesState = useIngredientStore((state) =>
+    "categories" in state ? (state as typeof state & { categories?: Array<{ id: number; name: string }> }).categories : undefined
+  )
 
   const [name, setName] = useState(dish?.name ?? "")
   const [description, setDescription] = useState(dish?.description ?? "")
@@ -26,34 +33,41 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>("")
+  const activeDirtyRef = useRef(false)
+  const publicDirtyRef = useRef(false)
 
   const fetchedOnceRef = useRef(false)
   const justSubmittedRef = useRef(false)
   const fetchIngredientsOnce = useCallback(() => {
     if (!fetchedOnceRef.current) {
       fetchedOnceRef.current = true
-      ingStore.fetchAll()
-      if (typeof ingStore.fetchCategories === 'function') ingStore.fetchCategories()
+      void fetchIngredients()
+      if (typeof fetchIngredientCategories === "function") {
+        void fetchIngredientCategories()
+      }
     }
-  }, [ingStore])
+  }, [fetchIngredients, fetchIngredientCategories])
   useEffect(() => { if (open) fetchIngredientsOnce() }, [open, fetchIngredientsOnce])
   useEffect(() => {
     if (open) {
       // Reset flag khi mở modal
       justSubmittedRef.current = false
-      fetchedOnceRef.current = false
       setName(dish?.name ?? "")
       setDescription(dish?.description ?? "")
       setPrice(dish?.price != null ? String(dish.price) : "")
       setDishType("PRESET")
       // Không set ingredients từ dish prop vì sẽ được load từ API trong fetchRecipe
       // setIngredients(dish?.ingredients ?? {})
-      setIsActive(dish?.active ?? true)
-      setIsPublic(dish?.public ?? true)
+      if (!activeDirtyRef.current) setIsActive(dish?.active ?? true)
+      if (!publicDirtyRef.current) setIsPublic(dish?.public ?? true)
       setFile(undefined)
       setExistingImageUrl(undefined)
       setLoading(false)
       setError("")
+    } else {
+      fetchedOnceRef.current = false
+      activeDirtyRef.current = false
+      publicDirtyRef.current = false
     }
   }, [open, dish])
 
@@ -68,8 +82,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
           setName(d.name || "")
           setDescription(d.description || "")
           setPrice(d.price != null ? String(d.price) : "")
-          setIsActive(d.active ?? true)
-          setIsPublic(d.public ?? true)
+          if (!activeDirtyRef.current) setIsActive(d.active ?? true)
+          if (!publicDirtyRef.current) setIsPublic(d.public ?? true)
           setExistingImageUrl(d.imageUrl)
         }
       } catch { return }
@@ -91,7 +105,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
           const recipe: Record<number, number> = {}
           
           // Trường hợp 1: Response là array trực tiếp (array of Recipe với ingredient và quantity)
-          // Đây là format đúng: mỗi item có ingredient object và quantity trong recipe
+          // Đây là format legacy: mỗi item có ingredient object và quantity trong recipe
           if (Array.isArray(res.data)) {
             res.data.forEach((r: any) => {
               if (r.ingredient?.id && typeof r.quantity === 'number') {
@@ -100,18 +114,32 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
             })
             setIngredients(recipe)
           }
-          // Trường hợp 2: Response là object có ingredients array (IngredientsGetByDishResponse)
-          // LƯU Ý: IngredientsGetByDishResponse.ingredients là array of Ingredient
-          // Ingredient.quantity là tổng số lượng trong kho, KHÔNG phải quantity trong recipe
-          // Cần lấy từ Recipe entity riêng, không parse từ đây
-          // Nếu API chỉ trả về IngredientsGetByDishResponse (không có quantity trong recipe),
-          // thì không set ingredients từ đây (giữ nguyên state hiện tại hoặc dùng props)
+          // Trường hợp 2: Response là IngredientsGetByDishResponse object (API v3)
+          // Theo API docs: ingredients là array of IngredientDetail
+          // IngredientDetail có: id, name, storedQuantity, neededQuantity, category, imageUrl
+          // Cần lấy neededQuantity (số lượng cần để làm món) để set vào ingredients state
           else if (res.data && typeof res.data === 'object' && 'ingredients' in res.data && Array.isArray((res.data as any).ingredients)) {
-            // KHÔNG lấy quantity từ Ingredient vì đó là quantity trong kho, không phải trong recipe
-            // Chỉ set ingredients nếu có quantity từ recipe (nhưng IngredientsGetByDishResponse không có)
-            // Giữ nguyên state hiện tại hoặc dùng từ dish?.ingredients prop
-            console.warn("API returned IngredientsGetByDishResponse but it doesn't contain recipe quantities. Keeping current ingredients state.")
-            // Không set ingredients từ đây vì không có quantity trong recipe
+            const responseData = res.data as {
+              ingredients?: Array<{
+                id: number
+                name?: string
+                storedQuantity?: number
+                neededQuantity?: number
+                category?: {
+                  id?: number
+                  name?: string
+                }
+                imageUrl?: string
+              }>
+            }
+            
+            const ingArray = responseData.ingredients || []
+            ingArray.forEach((ing) => {
+              if (ing.id && typeof ing.neededQuantity === 'number') {
+                recipe[ing.id] = ing.neededQuantity
+              }
+            })
+            setIngredients(recipe)
           }
         } catch (error) {
           console.error("Error fetching recipe:", error)
@@ -123,7 +151,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, dish?.id])
 
-  const ingredientList = useMemo(() => ingStore.items, [ingStore.items])
+  const ingredientList = useMemo(() => ingredientListState, [ingredientListState])
   const ingredientById = useMemo(() => {
     const m = new Map<number, (typeof ingredientList)[number]>()
     ingredientList.forEach(i => m.set(i.id, i))
@@ -133,7 +161,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
   const [catFilter, setCatFilter] = useState<string>("all")
   const categories = useMemo(() => {
     const options: { key: string; id?: number; name: string; count: number }[] = []
-    const rawCats = (ingStore as unknown as { categories?: Array<{ id: number; name: string }> }).categories
+    const rawCats = Array.isArray(ingredientCategoriesState) ? ingredientCategoriesState : []
     const catList: Array<{ id: number; name: string }> = Array.isArray(rawCats) ? rawCats : []
     catList.forEach((cat) => {
       const count = ingredientList.filter(i => i.categoryId === cat.id).length
@@ -142,7 +170,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
     const uncategorizedCount = ingredientList.filter(i => i.categoryId == null).length
     if (uncategorizedCount > 0) options.push({ key: "__uncat__", name: "Khác", count: uncategorizedCount })
     return options.sort((a,b) => b.count - a.count || a.name.localeCompare(b.name, "vi"))
-  }, [ingStore, ingredientList])
+  }, [ingredientCategoriesState, ingredientList])
   useEffect(() => {
     if (catFilter !== "all" && !categories.some(c => c.key === catFilter)) setCatFilter("all")
   }, [categories, catFilter])
@@ -298,20 +326,16 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
                 onCheckedChange={async (checked) => {
                   if (!dish?.id) return
                   const originalValue = isActive
+                  activeDirtyRef.current = true
                   setIsActive(checked) // Optimistic update
                   try {
-                    await toggleActive(dish.id)
-                    // Load lại dish details để sync state từ API
-                    const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
-                    const res = await bambiApi.get<{ id: number; name: string; description?: string; price?: number; imageUrl?: string; public?: boolean; active?: boolean }>(API_ENDPOINTS.API_DISH_BY_ID(dish.id))
-                    if (res.data) {
-                      setIsActive(res.data.active ?? true)
-                      setIsPublic(res.data.public ?? true)
-                    }
+                    const updatedActive = await toggleActive(dish.id)
+                    setIsActive(typeof updatedActive === "boolean" ? updatedActive : checked)
                     // Refresh để đồng bộ với store
                     const currentFilter = useDishStore.getState().statusFilter || "all"
                     await useDishStore.getState().fetchAll(currentFilter).catch(() => undefined)
                   } catch (error) {
+                    activeDirtyRef.current = false
                     setIsActive(originalValue) // Revert on error
                     const { toast } = await import("sonner")
                     const { extractErrorMessage } = await import("@utils/errors")
@@ -331,20 +355,16 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
                 onCheckedChange={async (checked) => {
                   if (!dish?.id) return
                   const originalValue = isPublic
+                  publicDirtyRef.current = true
                   setIsPublic(checked) // Optimistic update
                   try {
-                    await togglePublic(dish.id)
-                    // Load lại dish details để sync state từ API
-                    const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
-                    const res = await bambiApi.get<{ id: number; name: string; description?: string; price?: number; imageUrl?: string; public?: boolean; active?: boolean }>(API_ENDPOINTS.API_DISH_BY_ID(dish.id))
-                    if (res.data) {
-                      setIsActive(res.data.active ?? true)
-                      setIsPublic(res.data.public ?? true)
-                    }
+                    const updatedPublic = await togglePublic(dish.id)
+                    setIsPublic(typeof updatedPublic === "boolean" ? updatedPublic : checked)
                     // Refresh để đồng bộ với store
                     const currentFilter = useDishStore.getState().statusFilter || "all"
                     await useDishStore.getState().fetchAll(currentFilter).catch(() => undefined)
                   } catch (error) {
+                    publicDirtyRef.current = false
                     setIsPublic(originalValue) // Revert on error
                     const { toast } = await import("sonner")
                     const { extractErrorMessage } = await import("@utils/errors")

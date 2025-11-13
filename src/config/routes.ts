@@ -7,16 +7,19 @@ const ConfirmationPage = lazy(() => import("@pages/Auth/ConfirmationPage/Confirm
 const ResetPassword = lazy(() => import("@pages/Auth/ResetPassword"))
 const OAuthCallback = lazy(() => import("@pages/Auth/OAuthCallback"))
 const Success = lazy(() => import("@pages/success"))
+const OrderStatusPage = lazy(() => import("@pages/customerPage/checkout/OrderStatusPage"))
 const ErrorPage = lazy(() => import("@pages/error/ErrorPage"))
 const OrdersPage = lazy(() => import("@pages/customerPage/orders/OrdersPage"))
 const ProfilePage = lazy(() => import("@pages/customerPage/profile/ProfilePage"))
+const CheckoutPage = lazy(() => import("@pages/customerPage/checkout/CheckoutPage"))
 
 const Home = lazy(() => import("@pages/customerPage/home/HomePage"))
 const MenuPage = lazy(() => import("@pages/customerPage/menu/MenuPage"))
+const DishDetailPage = lazy(() => import("@pages/customerPage/menu/DishDetailPage"))
 const AboutPage = lazy(() => import("@pages/customerPage/about/AboutPage"))
 const ContactPage = lazy(() => import("@pages/customerPage/contact/ContactPage"))
 const AdminDashboard = lazy(() => import("@pages/adminPage/dashboard"))
-const AdminOrders = lazy(() => import("@pages/adminPage/orders"))
+const AdminOrders = lazy(() => import("@pages/adminPage/orderManagement"))
 const AdminMenu = lazy(() => import("@pages/adminPage/dish"))
 const AdminIngredients = lazy(() => import("@pages/adminPage/ingredientManagement/ingredient/ingredient"))
 const AdminFeedback = lazy(() => import("@pages/adminPage/feedback"))
@@ -30,6 +33,7 @@ const AdminStaff = lazy(() => import("@pages/adminPage/accountManagement/StaffMa
 const AdminDishTemplate = lazy(() => import("@pages/adminPage/dishTemplate"))
 const AdminIngredientCategory = lazy(() => import("@pages/adminPage/ingredientCategory"))
 const AdminNotifications = lazy(() => import("@pages/adminPage/notificationManagement"))
+const AdminFeatures = lazy(() => import("@pages/adminPage/features/FeaturesManagement"))
 // const OrderBuilder = lazy(() => import("@/pages/customer/OrderBuilder"))
 // const OrderHistory = lazy(() => import("@/pages/customer/OrderHistory"))
 // const QuickOrder = lazy(() => import("@/pages/customer/QuickOrder"))
@@ -120,6 +124,13 @@ export const AUTH_PUBLIC_ROUTES: RouteConfig[] = [
     role: [],
   },
   {
+    path: PATHS.ORDER_STATUS,
+    component: OrderStatusPage,
+    label: "Kết quả thanh toán",
+    protected: false,
+    role: [],
+  },
+  {
     path: PATHS.ERROR,
     component: ErrorPage,
     label: "Lỗi",
@@ -144,6 +155,13 @@ export const CUSTOMER_PUBLIC_ROUTES: RouteConfig[] = [
     role: [],
   },
   {
+    path: PATHS.DISH_DETAIL,
+    component: DishDetailPage,
+    label: "Chi tiết món",
+    protected: false,
+    role: [],
+  },
+  {
     path: PATHS.ABOUT,
     component: AboutPage,
     label: "Giới thiệu",
@@ -160,6 +178,13 @@ export const CUSTOMER_PUBLIC_ROUTES: RouteConfig[] = [
 ]
 
 export const CUSTOMER_PRIVATE_ROUTES: RouteConfig[] = [
+  {
+    path: PATHS.ORDER,
+    component: CheckoutPage,
+    label: "Thanh toán",
+    protected: true,
+    role: [ROLES.CUSTOMER],
+  },
   {
     path: PATHS.ORDERS,
     component: OrdersPage,
@@ -215,7 +240,15 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminOrders,
     label: "Orders",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
+    layout: "admin",
+  },
+  {
+    path: "features",
+    component: AdminFeatures,
+    label: "Chuẩn bị đơn hàng",
+    protected: true,
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {
@@ -223,7 +256,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminMenu,
     label: "Menu",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   // Ẩn tạm thời - giữ code để sử dụng trong tương lai
@@ -240,7 +273,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminIngredientCategory,
     label: "Ingredient Categories",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {
@@ -248,7 +281,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminDishTemplate,
     label: "Dish Templates",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {
@@ -256,7 +289,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminIngredients,
     label: "Ingredients",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {
@@ -264,7 +297,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminFeedback,
     label: "Feedback",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {
@@ -296,7 +329,7 @@ export const PRIVATE_ROUTES: RouteConfig[] = [
     component: AdminNotifications,
     label: "Quản lý Thông báo",
     protected: true,
-    role: [ROLES.ADMIN],
+    role: [ROLES.STAFF],
     layout: "admin",
   },
   {

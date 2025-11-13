@@ -84,7 +84,7 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
           const current = useIngredientStore.getState().sessionCreatedIds || []
           useIngredientStore.setState({ sessionCreatedIds: Array.from(new Set([...current, id])) })
         }
-      } catch { }
+      } catch { /* ignore optional session id tracking */ }
       await useIngredientStore.getState().fetchAll()
 
       const { toast } = await import("sonner")
@@ -115,9 +115,17 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
       if (typeof payload.reserve === 'number') {
         formData.append('reserve', String(payload.reserve))
       }
-      if (payload.pricePerUnit !== undefined && payload.pricePerUnit !== null) {
+      // Always send pricePerUnit if it's a valid number, including 0
+      // Nếu pricePerUnit là undefined, không gửi (để backend giữ nguyên giá trị cũ)
+      // Nếu pricePerUnit là null hoặc rỗng, gửi empty string để clear
+      // Nếu pricePerUnit là số (kể cả 0), gửi giá trị đó
+      if (typeof payload.pricePerUnit === 'number' && !isNaN(payload.pricePerUnit)) {
         formData.append('pricePerUnit', payload.pricePerUnit.toString())
+      } else if (payload.pricePerUnit === null) {
+        // Explicitly send empty string to clear the price
+        formData.append('pricePerUnit', '')
       }
+      // Nếu undefined, không gửi field này để backend giữ nguyên giá trị hiện tại
 
       if (payload.file) {
         if (!validateFileSize(payload.file)) {
@@ -149,7 +157,14 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
         ...(typeof payload.quantity === 'number' ? { quantity: payload.quantity } : {}),
         ...(typeof payload.available === 'number' ? { available: payload.available } : {}),
         ...(typeof payload.reserve === 'number' ? { reserve: payload.reserve } : {}),
-        ...(typeof payload.pricePerUnit === 'number' ? { pricePerUnit: payload.pricePerUnit } : {}),
+        // Include pricePerUnit if it's a valid number (including 0)
+        // Nếu undefined, không gửi trong query params để backend giữ nguyên
+        // Nếu null, gửi null để clear
+        ...(typeof payload.pricePerUnit === 'number' && !isNaN(payload.pricePerUnit) 
+          ? { pricePerUnit: payload.pricePerUnit } 
+          : payload.pricePerUnit === null
+          ? { pricePerUnit: null }
+          : {}),
       }
       await bambiApi.put(API_ENDPOINTS.API_INGREDIENTS, formData, {
         params: { ingredient: ingredientParams },
@@ -158,7 +173,7 @@ export const createIngredientFormSlice: StateCreator<IngredientFormSlice, [], []
       
       // Refresh the ingredient list after updating
       const { useIngredientStore } = await import("@zustand/stores/ingredients")
-      useIngredientStore.getState().fetchAll()
+      await useIngredientStore.getState().fetchAll()
       
       if (!payload.silent) {
         const { toast } = await import("sonner")

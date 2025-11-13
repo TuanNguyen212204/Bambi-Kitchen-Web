@@ -4,6 +4,7 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select";
 import { useState, useEffect } from "react";
+import { isValidPhone } from "@/utils/auth-validation";
 import { Save, X } from "lucide-react";
 import { useAuthStore } from "@zustand/stores/auth";
 
@@ -21,6 +22,7 @@ interface ProfileUpdateRequest {
   phone?: string;
   role: "USER" | "STAFF" | "ADMIN";
   active: boolean;
+  password?: string;
 }
 
 export function EditProfileModal({ open, onClose, user, onSuccess }: EditProfileModalProps) {
@@ -50,13 +52,20 @@ export function EditProfileModal({ open, onClose, user, onSuccess }: EditProfile
     setLoading(true);
     
     try {
+      // Basic phone validation (optional field)
+      const phoneValue = (formData.phone || "").trim();
+      if (phoneValue && !isValidPhone(phoneValue)) {
+        throw new Error("Số điện thoại không hợp lệ. Vui lòng kiểm tra lại.");
+      }
       const profileData: ProfileUpdateRequest = {
         id: user?.id,
         name: formData.name,
-        mail: formData.email,
-        phone: formData.phone,
+        mail: user?.email,
+        phone: phoneValue || undefined,
         role: formData.role,
-        active: user?.status === 'active'
+        active: user?.status === 'active',
+        // Backend hiện đang null-pointer khi password vắng mặt => gửi chuỗi rỗng để tránh NPE
+        password: ""
       };
       
       await updateProfile(profileData as any);
@@ -98,9 +107,7 @@ export function EditProfileModal({ open, onClose, user, onSuccess }: EditProfile
                 placeholder="Nhập họ và tên"
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
-                className="[font-family:'Arial-Narrow',Helvetica] font-normal text-sm bg-gray-100"
-                disabled
-                readOnly
+                className="[font-family:'Arial-Narrow',Helvetica] font-normal text-sm"
               />
             </div>
 
@@ -113,9 +120,9 @@ export function EditProfileModal({ open, onClose, user, onSuccess }: EditProfile
                 type="email"
                 placeholder="Nhập email"
                 value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                className="[font-family:'Arial-Narrow',Helvetica] font-normal text-sm"
-                required
+                readOnly
+                disabled
+                className="[font-family:'Arial-Narrow',Helvetica] font-normal text-sm bg-gray-100"
               />
             </div>
 
@@ -156,9 +163,8 @@ export function EditProfileModal({ open, onClose, user, onSuccess }: EditProfile
             </h4>
             <ul className="[font-family:'Inter-Regular',Helvetica] font-normal text-blue-700 text-sm space-y-1">
               <li>• Thông tin có dấu * là bắt buộc</li>
-              <li>• Email sẽ được sử dụng để đăng nhập</li>
-              <li>• Số điện thoại giúp hỗ trợ tốt hơn</li>
-              <li>• Họ và tên và Vai trò không thể chỉnh sửa</li>
+              <li>• Email dùng để đăng nhập (đổi qua OTP ở trang hồ sơ)</li>
+              <li>• Bạn có thể đổi Họ và tên và Số điện thoại tại đây</li>
             </ul>
           </div>
 

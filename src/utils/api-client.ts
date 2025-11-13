@@ -19,7 +19,7 @@ export interface RequestOptions extends Omit<AxiosRequestConfig, "baseURL" | "ur
   skipAuth?: boolean
 }
 
-let redirectingToLogin = false
+const redirectingToLogin = false
 
 export class BambiApiClient {
   private client: AxiosInstance
@@ -27,6 +27,26 @@ export class BambiApiClient {
   constructor(client: AxiosInstance = http) {
     this.client = client
     this.setupInterceptors()
+  }
+
+  // Lightweight type for safely extracting fields from Axios-like errors without using 'any'
+  private static toHttpError(err: unknown): {
+    request?: { responseURL?: string }
+    config?: { url?: string; baseURL?: string }
+    response?: { status?: number; data?: { error?: string; message?: string } }
+    message?: string
+  } {
+    return (err as {
+      request?: { responseURL?: string }
+      config?: { url?: string; baseURL?: string }
+      response?: { status?: number; data?: { error?: string; message?: string } }
+      message?: string
+    }) || {}
+  }
+
+  private static getErrorMessage(err: unknown): string {
+    const e = BambiApiClient.toHttpError(err)
+    return e.response?.data?.error || e.response?.data?.message || e.message || ""
   }
 
   private setupInterceptors() {
@@ -42,10 +62,9 @@ export class BambiApiClient {
           ;(config.headers as AxiosRequestHeaders).Authorization = `Bearer ${token}`
         }
 
-        config.withCredentials = true
-        if (import.meta.env.DEV) {
-          console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`)
-        }
+        // Không gửi cookie kèm theo để tránh server ưu tiên session cookie cũ (VD: phiên admin)
+        // Thay vào đó luôn ưu tiên Authorization Bearer token hiện tại
+        config.withCredentials = false
 
         return config
       },
@@ -54,14 +73,12 @@ export class BambiApiClient {
 
     this.client.interceptors.response.use(
       (response) => {
-        if (import.meta.env.DEV) {
-          console.log(`[API] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`)
-        }
         return response
       },
       async (error) => {
-        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: number; skipAuth?: boolean }
-        const status = error.response?.status
+        const httpErr = BambiApiClient.toHttpError(error)
+        const originalRequest = (error.config as InternalAxiosRequestConfig & { _retry?: number; skipAuth?: boolean })
+        const status = httpErr.response?.status
         
         // Lấy URL từ nhiều nguồn khác nhau vì có thể config.url là empty
         let url = (originalRequest?.url || "") as string
@@ -69,13 +86,13 @@ export class BambiApiClient {
           // Nếu không có url, thử lấy từ baseURL
           url = originalRequest.baseURL
         }
-        if (!url && (error as any).request?.responseURL) {
+        if (!url && httpErr.request?.responseURL) {
           // Thử lấy từ responseURL
-          url = (error as any).request.responseURL
+          url = httpErr.request.responseURL as string
         }
-        if (!url && (error as any).config?.url) {
+        if (!url && httpErr.config?.url) {
           // Fallback: thử lấy trực tiếp từ error.config
-          url = (error as any).config.url
+          url = httpErr.config.url as string
         }
         
         // Thêm cách khác để nhận diện auth request: check skipAuth flag
@@ -93,44 +110,45 @@ export class BambiApiClient {
         const hasToken = !!useAuthStore.getState().token
         const hadSession = hasToken || useAuthStore.getState().isAuthenticated
         
-        if (status === 401 && !isLoginRequest && !isMeRequest) {
-          this.logout()
-          redirectingToLogin = true
-          
+        if (status === 401) {
+          // Nếu là /me thì để verifyAuth tự xử lý (store sẽ clear session)
+          if (isMeRequest) {
+            return Promise.reject(new ApiError(error))
+          }
+          // Với các API khác: KHÔNG tự logout. Chỉ báo lỗi và giữ phiên để người dùng tiếp tục thao tác phần cho phép
           if (hadSession) {
             try {
               const { toast } = await import("sonner")
-              if (shouldToast("session_expired")) {
-                toast.error("Phiên đăng nhập đã hết hạn", {
-                  description: "Vui lòng đăng nhập lại để tiếp tục.",
+              if (shouldToast("api_401")) {
+                toast.error("Không được phép hoặc phiên đã hết hạn cho tác vụ này", {
+                  description: "Bạn vẫn đang đăng nhập. Vui lòng thử lại hoặc tải lại trang.",
                 })
               }
             } catch { void 0 }
-            setTimeout(() => {
-              if (typeof window !== "undefined") window.location.href = "/login"
-            }, 50)
           }
           return Promise.reject(new ApiError(error))
         }
         const looksLikeProtectedApi = url.startsWith("/api/")
-        if ((status === 403 && hasToken && looksLikeProtectedApi && !isLoginRequest) ||
-            (status === 500 && hasToken && /\/api\/notification\/to-account\//.test(url))) {
-          this.logout()
-          redirectingToLogin = true
-          
-          if (hadSession) {
+        // 403: không tự động đăng xuất (thường do không đủ quyền). Chỉ điều hướng sang trang unauthorized
+        // Tuy nhiên, với notification check-read, có thể là lỗi CORS nên không redirect
+        const isNotificationCheckRead = normalizedUrl.includes("/notification/") && normalizedUrl.includes("/check-read")
+        if (status === 403 && hasToken && looksLikeProtectedApi && !isLoginRequest && !isNotificationCheckRead) {
             try {
               const { toast } = await import("sonner")
-              if (shouldToast("session_expired_fallback")) {
-                toast.error("Phiên làm việc không còn hiệu lực", {
-                  description: "Vui lòng đăng nhập lại.",
-                })
+            if (shouldToast("unauthorized_route")) {
+              toast.error(BambiApiClient.getErrorMessage(error), { description: "Bạn không có quyền truy cập tài nguyên này." })
               }
             } catch { void 0 }
-            setTimeout(() => {
-              if (typeof window !== "undefined") window.location.href = "/login"
-            }, 50)
+          if (typeof window !== "undefined") {
+            window.location.href = "/unauthorized"
           }
+          return Promise.reject(new ApiError(error))
+        }
+        
+        // Xử lý riêng cho notification check-read: có thể là lỗi CORS
+        if (status === 403 && isNotificationCheckRead) {
+          // Không redirect, chỉ log và để component tự xử lý
+          console.warn("403 Forbidden on notification check-read - có thể là lỗi CORS từ backend")
           return Promise.reject(new ApiError(error))
         }
 
@@ -204,9 +222,7 @@ export class BambiApiClient {
     }
   }
 
-  private logout() {
-    useAuthStore.getState().logout()
-  }
+  // logout helper removed (no longer auto-logs users out inside the interceptor)
 
   async get<T>(url: string, options?: RequestOptions): Promise<ApiResponse<T>> {
     const response = await this.client.get<T>(url, options)
@@ -236,4 +252,23 @@ export class BambiApiClient {
 
 export const bambiApi = new BambiApiClient()
 
+
+// Public client helpers: always skip auth header and avoid auth redirection side-effects
+export const bambiPublicApi = {
+  get: async function <T>(url: string, options?: RequestOptions) {
+    return bambiApi.get<T>(url, { ...(options || {}), skipAuth: true })
+  },
+  post: async function <T, D = unknown>(url: string, data?: D, options?: RequestOptions) {
+    return bambiApi.post<T, D>(url, data, { ...(options || {}), skipAuth: true })
+  },
+  put: async function <T, D = unknown>(url: string, data?: D, options?: RequestOptions) {
+    return bambiApi.put<T, D>(url, data, { ...(options || {}), skipAuth: true })
+  },
+  patch: async function <T, D = unknown>(url: string, data?: D, options?: RequestOptions) {
+    return bambiApi.patch<T, D>(url, data, { ...(options || {}), skipAuth: true })
+  },
+  delete: async function <T>(url: string, options?: RequestOptions) {
+    return bambiApi.delete<T>(url, { ...(options || {}), skipAuth: true })
+  }
+}
 

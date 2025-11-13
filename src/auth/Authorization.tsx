@@ -20,8 +20,8 @@ export default function Authorization({ children, role_id }: AuthorizationProps)
 
   useEffect(() => {
     if (!loading && user) {
-      const userRole = user.role_id || ROLES.CUSTOMER
-      const allowedRoles = Array.isArray(role_id) ? role_id : [role_id]
+      const userRole: number = user.role_id || ROLES.CUSTOMER
+      const allowedRoles: number[] = Array.isArray(role_id) ? role_id as number[] : [role_id as number]
 
       if (!allowedRoles.includes(userRole)) {
         toast.error("Bạn không có quyền truy cập trang này", {

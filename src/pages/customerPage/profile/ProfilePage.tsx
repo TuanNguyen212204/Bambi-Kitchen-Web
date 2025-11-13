@@ -9,7 +9,6 @@ import {
   Edit3, 
   Lock, 
   Utensils,
-  Heart,
   Clock,
   Gift,
   Settings
@@ -19,7 +18,8 @@ import { useAuthStore } from "@zustand/stores/auth";
 import { bambiApi } from "@utils/api";
 import { ProfileDetailModal } from "../../../components/customer/profile/ProfileDetailModal";
 import { EditProfileModal } from "../../../components/customer/profile/EditProfileModal";
-import { ChangePasswordModal } from "../../../components/customer/profile/ChangePasswordModal";
+import { ChangeEmailOtpModal } from "../../../components/customer/profile/ChangeEmailOtpModal";
+import { ChangePasswordOtpModal } from "../../../components/customer/profile/ChangePasswordOtpModal";
 
 interface Notification {
   title?: string;
@@ -42,6 +42,7 @@ export default function ProfilePage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showChangeEmailModal, setShowChangeEmailModal] = useState(false);
   
   // Real data states
   const [recentActivity, setRecentActivity] = useState<Notification[]>([]);
@@ -191,16 +192,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                    <Heart className="w-5 h-5 mr-2 text-red-500" />
-                    Món ăn yêu thích
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="text-gray-500">Chưa có món ăn yêu thích</div>
-                  </div>
-                </div>
-
               </div>
 
               <div className="space-y-6">
@@ -260,6 +251,15 @@ export default function ProfilePage() {
                         <Lock className="w-4 h-4 mr-2" />
                         Đổi mật khẩu
                       </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full justify-start text-orange-600 border-orange-300 hover:bg-orange-50"
+                        onClick={() => setShowChangeEmailModal(true)}
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Đổi email (OTP)
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -314,13 +314,18 @@ export default function ProfilePage() {
         }}
       />
 
-      <ChangePasswordModal
+      <ChangePasswordOtpModal
         open={showChangePasswordModal}
         onClose={() => setShowChangePasswordModal(false)}
+        email={user?.email || ""}
+      />
+
+      <ChangeEmailOtpModal
+        open={showChangeEmailModal}
+        onClose={() => setShowChangeEmailModal(false)}
+        user={{ id: user?.id, name: user?.name, email: user?.email }}
         onSuccess={() => {
-          if (user?.id) {
-            fetchUserAccount(user.id);
-          }
+          if (user?.id) fetchUserAccount(user.id)
         }}
       />
     </div>

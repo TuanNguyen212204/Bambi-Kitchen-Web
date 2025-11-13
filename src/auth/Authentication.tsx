@@ -14,20 +14,21 @@ interface AuthenticationProps {
 }
 
 export default function Authentication({ children, fallback }: AuthenticationProps) {
-  const { user, verifyAuth, loading } = useAuthStore()
+  const { user, token, verifyAuth, loading } = useAuthStore()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!user) {
+    // Nếu chưa có user hoặc thiếu token, luôn verify để đồng bộ trạng thái phiên
+    if (!user || !token) {
       const timer = setTimeout(() => {
         verifyAuth()
-      }, 500)
-      
+      }, 200)
       return () => clearTimeout(timer)
     }
-  }, [user, verifyAuth])
+  }, [user, token, verifyAuth])
 
-  if (loading) {
+  // Chỉ hiển thị loading khi chưa có user và đang xác thực
+  if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2">

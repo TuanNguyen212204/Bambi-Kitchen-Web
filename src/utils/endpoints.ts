@@ -14,8 +14,18 @@ export const API_ENDPOINTS = {
   ORDER_CREATE: "/orders",
   ORDER_DETAIL: (id: string) => `/orders/${id}`,
   API_ORDERS: "/api/order",
-  API_ORDER_BY_ACCOUNT: (accountId: number) => `/api/order?userId=${accountId}`,
+  // API v3: lấy đơn hàng theo userId: /api/order/user/{userId}
+  API_ORDERS_BY_USER: (userId: number) => `/api/order/user/${userId}`,
+  API_ORDER_BY_ID: (id: number) => `/api/order/${id}`,
+  // Order status updates
+  API_ORDER_PREPARE: (id: number) => `/api/order/${id}/prepare`,
+  API_ORDER_COMPLETE: (id: number) => `/api/order/${id}/complete`,
+  // Order feedbacks & update feedback
   API_ORDER_FEEDBACKS: "/api/order/getFeedbacks",
+  API_ORDER_FEEDBACK_UPDATE: "/api/order/feedback",
+  // Order details
+  API_ORDER_DETAILS: "/api/order-detail",
+  API_ORDER_DETAILS_BY_ORDER: (orderId: number) => `/api/order-detail/by-order/${orderId}`,
   FAVORITES: "/favorites",
   PROFILE: "/api/account",
   
@@ -23,6 +33,13 @@ export const API_ENDPOINTS = {
   API_NOTIFICATION_BY_ID: (id: number) => `/api/notification/${id}`,
   API_NOTIFICATION_BY_ACCOUNT: (id: number) => `/api/notification/to-account/${id}`,
   API_NOTIFICATION_MARK_READ: (id: number) => `/api/notification/${id}/check-read`,
+  API_NOTIFICATION_SEND: "/api/notification/send",
+  API_NOTIFICATION_SEND_TO_EXACT: "/api/notification/send-to-exact",
+  API_NOTIFICATION_SEND_TO_ALL: "/api/notification/send-to-all",
+  API_NOTIFICATION_DEVICE: "/api/notification/device",
+
+  // Payments
+  API_PAYMENTS_BY_ACCOUNT: (accountId: number) => `/api/payment/to-account/${accountId}`,
 
   API_INGREDIENTS: "/api/ingredient",
   API_INGREDIENT_BY_ID: (id: number) => `/api/ingredient/${id}`,
@@ -37,18 +54,38 @@ export const API_ENDPOINTS = {
   API_DISH_TOGGLE_PUBLIC: (id: number) => `/api/dish/toggle-public/${id}`,
   API_DISH_TOGGLE_ACTIVE: (id: number) => `/api/dish/toggle-active/${id}`,
   API_DISH_SAVE_CUSTOM: "/api/dish/save-custom-dish",
+  API_DISH_TEMPLATES: "/api/dish-template",
+  API_DISH_TEMPLATE_BY_SIZE: (size: "S"|"M"|"L") => `/api/dish-template/${size}`,
   API_DISH_CATEGORIES: "/api/dish-category",
   API_DISH_CATEGORY_BY_ID: (id: number) => `/api/dish-category/${id}`,
-  API_DISH_TEMPLATES: "/api/dish-template",
-  API_DISH_TEMPLATE_BY_SIZE: (sizeCode: "S"|"M"|"L") => `/api/dish-template/${sizeCode}`,
+  // Recipes & Ingredients for stock checking
+  API_RECIPES: "/api/recipe",
+  API_RECIPE_BY_DISH: (id: number) => `/api/recipe/by-dish/${id}`,
+  // NOTE: API_INGREDIENTS đã được khai báo ở trên
 
   API_DISCOUNTS: "/api/discount",
   API_DISCOUNT_BY_ID: (id: number) => `/api/discount/${id}`,
   
   API_INVENTORY_TRANSACTIONS: "/api/inventory-transaction",
   
+  // Admin Dashboard (API v3)
+  API_ADMIN_TOTAL_REVENUE: "/api/admin/payments/total-revenue",
+  API_ADMIN_ORDERS: "/api/admin/order",
+  API_ADMIN_LOW_STOCK: "/api/admin/ingredients/low-stock",
+  API_ADMIN_MOST_POPULAR_DISHES: "/api/admin/dishes/most-popular",
+  
   AI_ANALYZE: "/ai/analyze",
   AI_SUGGESTIONS: "/ai/suggestions",
+  
+  // AI Chat
+  API_CHAT: "/chat", // tạm giữ nếu backend duy trì endpoint này
+  API_GEMINI_CHAT: "/api/gemini/chat",
+  
+  // Nutrition & health
+  API_NUTRITION: "/api/nutrition",
+  API_NUTRITION_BY_ID: (id: number) => `/api/nutrition?id=${id}`,
+  API_NUTRITION_BY_INGREDIENT: (ingredientId: number) => `/api/nutrition/${ingredientId}/ingredient`,
+  API_MAIL_CALCULATE_CALORIES: "/api/mail/calculate-calories",
   
   ACTIVE_ORDERS: "/staff/orders/active",
   ORDER_STATUS: (id: string) => `/staff/orders/${id}/status`,
@@ -60,7 +97,7 @@ export const API_ENDPOINTS = {
   MENU: "/admin/menu",
   FEEDBACK: "/admin/feedback",
   INGREDIENT_STOCK: "/admin/ingredients/stock",
-  API_RECIPE_BY_DISH: (dishId: number) => `/api/recipe/by-dish/${dishId}`,
+  // NOTE: API_RECIPE_BY_DISH đã được khai báo ở trên
 } as const
 
 

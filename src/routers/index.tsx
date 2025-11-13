@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom"
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import { Suspense, lazy, memo } from "react"
 import Authentication from "@/auth/Authentication"
 import Authorization from "@/auth/Authorization"
@@ -8,6 +8,7 @@ import { AUTH_PUBLIC_ROUTES, CUSTOMER_PUBLIC_ROUTES, CUSTOMER_PRIVATE_ROUTES, PR
 import { PATHS } from "@config/path"
 import ErrorPage from "@pages/error/ErrorPage"
 import { HTTP_STATUS } from "@config/httpStatus"
+import { useAuthStore } from "@zustand/stores/auth"
 
 
 const Unauthenticated = lazy(() => import("@/auth/Unauthenticated"))
@@ -24,6 +25,17 @@ const LoadingFallback = (<div className="p-4 text-center">Đang tải...</div>)
 const ErrorFallback = <ErrorPage />
 
 export const AppRoute = memo(() => {
+  // Thành phần redirect động cho trang index của /admin
+  const AdminIndex = () => {
+    const { user } = useAuthStore()
+    const roleId = user?.role_id
+    // Admin -> dashboard, Staff -> orders
+    if (roleId === ROLES.STAFF) {
+      return <Navigate to="orders" replace />
+    }
+    return <Navigate to="dashboard" replace />
+  }
+
   const router = createBrowserRouter([
     ...AUTH_PUBLIC_ROUTES.map((route) => ({
       path: route.path,
@@ -59,25 +71,32 @@ export const AppRoute = memo(() => {
       path: "/admin",
       element: (
         <Authentication fallback={<Unauthenticated />}>
-          <Authorization role_id={ROLES.ADMIN}>
+          <Authorization role_id={[ROLES.ADMIN, ROLES.STAFF]}>
             <AdminLayout />
           </Authorization>
         </Authentication>
       ),
       errorElement: ErrorFallback,
-      children: PRIVATE_ROUTES
+      children: [
+        // Khi truy cập /admin, điều hướng theo role: Admin -> dashboard, Staff -> orders
+        { index: true, element: createRouteElement(AdminIndex, LoadingFallback) },
+        ...PRIVATE_ROUTES
         .filter((r) => {
           // Ẩn các routes bị disable (giữ code để sử dụng trong tương lai)
           const HIDDEN_ROUTES = ["dish-categories", "sold-ingredients"];
           const isHidden = HIDDEN_ROUTES.includes(r.path);
-          return r.protected && r.role?.includes(ROLES.ADMIN) && r.layout === "admin" && !isHidden;
+          // Hiển thị route nếu được bảo vệ, thuộc layout admin, không hidden, và role của route bao gồm ADMIN hoặc STAFF
+          const allowRoles: number[] = [ROLES.ADMIN, ROLES.STAFF]
+          const canSee = r.protected && r.layout === "admin" && !isHidden && r.role?.some((role) => allowRoles.includes(role))
+          return canSee
         })
         .map((route) => ({
-          index: route.path === "dashboard",
-          path: route.path === "dashboard" ? undefined : route.path,
+          // Không auto-index dashboard nữa; luôn dùng đường dẫn tường minh
+          path: route.path,
           element: createRouteElement(route.component, LoadingFallback),
           errorElement: ErrorFallback,
         })),
+      ],
     },
     ...CUSTOMER_PRIVATE_ROUTES.map((route) => ({
       path: route.path,

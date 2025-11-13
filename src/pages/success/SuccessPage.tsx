@@ -1,7 +1,10 @@
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@components/ui/card/card";
 import { Button } from "@components/ui/button/index";
 import { CheckCircle, Home } from "lucide-react";
+import { PATHS } from "@config/path";
+import { useCartStore } from "@zustand/stores/cart";
 
 interface SuccessPageProps {
   title?: string;
@@ -10,14 +13,53 @@ interface SuccessPageProps {
 }
 
 export const SuccessPage = ({ 
-  title = "Thành công!", 
-  message = "Hành động đã được thực hiện thành công.",
+  title: propTitle,
+  message: propMessage,
   showHomeButton = true 
 }: SuccessPageProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const clearCart = useCartStore((state) => state.clearCart);
+  const hasClearedRef = useRef(false);
+  
+  useEffect(() => {
+    const shouldClearFromState = Boolean(location.state?.clearCart);
+    const shouldClearFromStorage = sessionStorage.getItem("bambi-clear-cart-after-payment") === "true";
+    
+    // Đảm bảo clear cart khi thanh toán thành công
+    if ((shouldClearFromState || shouldClearFromStorage) && !hasClearedRef.current) {
+      // Clear cart ngay lập tức
+      clearCart();
+      hasClearedRef.current = true;
+      
+      // Cleanup sessionStorage
+      try {
+        sessionStorage.removeItem("bambi-clear-cart-after-payment");
+        sessionStorage.removeItem("bambi-ordered-item-ids");
+        sessionStorage.removeItem("bambi-payment-redirecting");
+      } catch {
+        // ignore storage errors
+      }
+    }
+    
+    // Clear payment redirecting flag khi đã quay lại từ payment gateway
+    try {
+      sessionStorage.removeItem("bambi-payment-redirecting");
+    } catch {
+      // ignore storage errors
+    }
+  }, [location.state, clearCart]);
+  
+  // Lấy title và message từ location state hoặc props
+  const title = location.state?.title || propTitle || "Thành công!";
+  const message = location.state?.message || propMessage || "Hành động đã được thực hiện thành công.";
 
   const handleGoHome = () => {
-    navigate("/");
+    navigate(PATHS.HOME);
+  };
+  
+  const handleGoToOrders = () => {
+    navigate(PATHS.ORDERS);
   };
 
   return (
@@ -38,24 +80,19 @@ export const SuccessPage = ({
           {showHomeButton && (
             <div className="flex flex-col gap-3 pt-2">
               <Button
-                onClick={handleGoHome}
+                onClick={handleGoToOrders}
                 className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-lg h-11 flex items-center justify-center gap-2"
               >
-                <Home className="w-5 h-5" />
-                Về trang chủ
+                Xem đơn hàng
               </Button>
               
               <Button
+                onClick={handleGoHome}
                 variant="outline"
-                asChild
                 className="w-full border-orange-300 hover:bg-orange-50"
               >
-                <a 
-                  href="/" 
-                  className="inline-flex items-center justify-center gap-2"
-                >
-                  Truy cập Homepage
-                </a>
+                <Home className="w-5 h-5 mr-2" />
+                Về trang chủ
               </Button>
             </div>
           )}

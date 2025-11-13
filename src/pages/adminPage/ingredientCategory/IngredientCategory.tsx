@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from "react"
-import { Card, CardContent } from "@components/ui/card/card"
 import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
@@ -8,7 +7,7 @@ import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/mod
 import { DeleteConfirmationModal } from "@components/ui/modal/DeleteConfirmationModal"
 import { useIngredientStore } from "@zustand/stores/ingredients"
 import { toast } from "sonner"
-import { Box, Package, Plus, MoreVertical, Eye, Trash2, Search, TrendingUp, CheckCircle } from "lucide-react"
+import { Box, Package, Plus, MoreVertical, Eye, Trash2, Search } from "lucide-react"
 import type { IngredientCategory } from "@models/category/category"
 import type { StoreIngredient } from "@/zustand/types"
 
@@ -40,6 +39,8 @@ export default function AdminIngredientCategoryPage() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [priority, setPriority] = useState<number | undefined>(undefined)
+  const [priorityInput, setPriorityInput] = useState<string>("")
   const [editingId, setEditingId] = useState<number | null>(null)
   const [confirm, setConfirm] = useState<{ id: number; name: string } | null>(null)
 
@@ -88,60 +89,6 @@ export default function AdminIngredientCategoryPage() {
     return filtered
   }, [allIngredients, selectedCategory, ingredientSearchQuery])
 
-  // Stats calculations
-  const totalCategories = useMemo(() => categories.length, [categories])
-  const totalIngredients = useMemo(() => allIngredients.length, [allIngredients])
-  const activeIngredients = useMemo(() => allIngredients.filter(ing => ing.active !== false).length, [allIngredients])
-  const categoriesWithIngredients = useMemo(() => {
-    return categories.filter(cat => {
-      const hasIngredients = allIngredients.some((ing) => {
-        const catId = (ing as unknown as { categoryId?: number; ingredient_category_id?: number }).categoryId
-          ?? (ing as unknown as { ingredient_category_id?: number }).ingredient_category_id
-        return catId === cat.id
-      })
-      return hasIngredients
-    }).length
-  }, [categories, allIngredients])
-
-  const statsData = [
-    {
-      title: "Tổng danh mục",
-      value: totalCategories.toString(),
-      subtitle: `${categoriesWithIngredients} danh mục có nguyên liệu`,
-      icon: Box,
-      bgColor: "bg-blue-100",
-      iconColor: "text-blue-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Tổng nguyên liệu",
-      value: totalIngredients.toString(),
-      subtitle: `${activeIngredients} nguyên liệu đang hoạt động`,
-      icon: Package,
-      bgColor: "bg-green-100",
-      iconColor: "text-green-600",
-      subtitleColor: "text-green-600",
-    },
-    {
-      title: "Nguyên liệu hoạt động",
-      value: activeIngredients.toString(),
-      subtitle: `${totalIngredients > 0 ? Math.round((activeIngredients / totalIngredients) * 100) : 0}% tổng nguyên liệu`,
-      icon: CheckCircle,
-      bgColor: "bg-amber-100",
-      iconColor: "text-amber-600",
-      subtitleColor: "text-gray-600",
-    },
-    {
-      title: "Danh mục đã dùng",
-      value: categoriesWithIngredients.toString(),
-      subtitle: `${totalCategories > 0 ? Math.round((categoriesWithIngredients / totalCategories) * 100) : 0}% tổng danh mục`,
-      icon: TrendingUp,
-      bgColor: "bg-pink-100",
-      iconColor: "text-pink-500",
-      subtitleColor: "text-green-600",
-    },
-  ];
-
   const submit = async () => {
     if (!name.trim()) {
       toast.error("Vui lòng nhập tên danh mục")
@@ -157,17 +104,25 @@ export default function AdminIngredientCategoryPage() {
       return
     }
     
+    // Validate priority: phải trong khoảng 1-4 hoặc undefined
+    if (priority !== undefined && (priority < 1 || priority > 4)) {
+      toast.error("Độ ưu tiên phải trong khoảng 1-4")
+      return
+    }
+    
     setLoading(true)
     try {
       if (editingId) {
-        await updateCategory({ id: editingId, name: name.trim(), description: description.trim() || undefined })
+        await updateCategory({ id: editingId, name: name.trim(), description: description.trim() || undefined, priority: priority })
       } else {
-        await createCategory({ name: name.trim(), description: description.trim() || undefined })
+        await createCategory({ name: name.trim(), description: description.trim() || undefined, priority: priority })
       }
       setOpen(false)
       setEditingId(null)
       setName("")
       setDescription("")
+      setPriority(undefined)
+      setPriorityInput("")
       await fetchCategories()
     } finally {
       setLoading(false)
@@ -178,6 +133,8 @@ export default function AdminIngredientCategoryPage() {
     setEditingId(category.id)
     setName(category.name)
     setDescription(category.description || "")
+    setPriority(category.priority)
+    setPriorityInput(category.priority !== undefined ? category.priority.toString() : "")
     setOpen(true)
   }
 
@@ -255,33 +212,6 @@ export default function AdminIngredientCategoryPage() {
         </div>
       </section>
 
-      {/* Stats Cards */}
-      <section>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statsData.map((stat, index) => (
-            <Card key={index} className="border border-solid shadow-[0px_1px_3px_#0000001a]">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="[font-family:'Inter-Medium',Helvetica] font-medium text-gray-500 text-sm leading-[21px] mb-4">
-                      {stat.title}
-                    </div>
-                    <div className="[font-family:'Inter-Bold',Helvetica] font-bold text-gray-800 text-[32px] leading-[48px] mb-2">
-                      {stat.value}
-                    </div>
-                    <div className={`[font-family:'Inter-Medium',Helvetica] font-medium text-sm leading-[21px] ${stat.subtitleColor}`}>
-                      {stat.subtitle}
-                    </div>
-                  </div>
-                  <div className={`w-10 h-10 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                    <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
 
       {/* Main Management Section with Two Columns */}
       <section className="w-full bg-white rounded-xl border border-solid border-gray-200 shadow-[0px_1px_3px_#0000001a] overflow-hidden">
@@ -292,7 +222,7 @@ export default function AdminIngredientCategoryPage() {
             </h2>
             <Button 
               className="bg-orange-600 hover:bg-orange-700 h-auto px-3 py-2"
-              onClick={() => { setOpen(true); setEditingId(null); setName(""); setDescription("") }}
+              onClick={() => { setOpen(true); setEditingId(null); setName(""); setDescription(""); setPriority(undefined); setPriorityInput("") }}
               disabled={loading}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -531,7 +461,7 @@ export default function AdminIngredientCategoryPage() {
 
       <ReusableModal 
         open={open} 
-        onClose={() => { setOpen(false); setEditingId(null); setName(""); setDescription("") }} 
+        onClose={() => { setOpen(false); setEditingId(null); setName(""); setDescription(""); setPriority(undefined); setPriorityInput("") }} 
         title={editingId ? "Sửa danh mục" : "Thêm danh mục"}
         size="xl"
         contentClassName="sm:max-w-[480px] md:max-w-[640px] lg:max-w-[800px] max-h-[80vh] overflow-y-auto"
@@ -567,10 +497,67 @@ export default function AdminIngredientCategoryPage() {
               />
               <p className="text-xs text-gray-500 mt-1">{description.length}/500 ký tự</p>
             </div>
+            <div>
+              <Label className="mb-2 block text-sm font-medium text-gray-700">
+                Độ ưu tiên (Priority)
+              </Label>
+              <Input 
+                type="number"
+                value={priorityInput} 
+                onChange={(e) => {
+                  const value = e.target.value.trim()
+                  setPriorityInput(value)
+                  
+                  if (value === "") {
+                    setPriority(undefined)
+                    return
+                  }
+                  
+                  const numValue = parseInt(value, 10)
+                  // Chỉ cập nhật priority state nếu giá trị hợp lệ (1-4)
+                  if (!isNaN(numValue) && numValue >= 1 && numValue <= 4) {
+                    setPriority(numValue)
+                  } else if (!isNaN(numValue)) {
+                    // Nếu nhập số ngoài 1-4, không cập nhật priority state
+                    // Nhưng vẫn cho phép nhập trong input để người dùng có thể sửa
+                    setPriority(undefined)
+                  }
+                }}
+                onBlur={(e) => {
+                  // Khi blur, validate và reset input nếu không hợp lệ
+                  const value = e.target.value.trim()
+                  if (value === "") {
+                    setPriority(undefined)
+                    setPriorityInput("")
+                    return
+                  }
+                  
+                  const numValue = parseInt(value, 10)
+                  if (isNaN(numValue) || numValue < 1 || numValue > 4) {
+                    // Reset về giá trị priority hợp lệ (nếu có) hoặc rỗng
+                    setPriorityInput(priority !== undefined ? priority.toString() : "")
+                    setPriority(undefined)
+                    toast.error("Độ ưu tiên phải trong khoảng 1-4 (1: Tinh Bột, 2: Protein, 3: Rau, 4: Món Kèm)")
+                  } else {
+                    // Đảm bảo input hiển thị đúng giá trị hợp lệ
+                    setPriorityInput(numValue.toString())
+                    setPriority(numValue)
+                  }
+                }}
+                placeholder="Nhập độ ưu tiên (1-4)..."
+                disabled={loading}
+                className="w-full"
+                min={1}
+                max={4}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                1: Tinh Bột, 2: Protein, 3: Rau, 4: Món Kèm
+              </p>
+            </div>
           </div>
         </ModalForm>
         <ModalActions 
-          onCancel={() => { setOpen(false); setEditingId(null); setName(""); setDescription("") }} 
+          onCancel={() => { setOpen(false); setEditingId(null); setName(""); setDescription(""); setPriority(undefined); setPriorityInput("") }} 
           onConfirm={submit}
           confirmText={editingId ? "Lưu thay đổi" : "Tạo danh mục"}
           cancelText="Hủy"

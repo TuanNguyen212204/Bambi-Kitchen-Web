@@ -2,14 +2,22 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useDishStore } from "@/zustand/stores/dish"
 import { Input } from "@components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
+import { Button } from "@components/ui/button"
 import type { DishListSlice } from "@/zustand/slices/dish/list.slice"
 import type { DishCategory } from "@/models/category/category"
+import { Plus } from "lucide-react"
+import { useAuthStore } from "@zustand/stores/auth"
+import { Link, useLocation, useNavigate } from "react-router-dom"
+import { PATHS } from "@config/path"
+import { toast } from "sonner"
 
 import TunaImg from "@assets/Menu/tuna.png"
 import PorkImg from "@assets/Menu/pork.png"
 import BeefImg from "@assets/Menu/beef.png"
 import ShrimpsImg from "@assets/Menu/shrimps.png"
 import BackgroundMenu from "@assets/Menu/backgroundMenu.png"
+import CustomBowlModal from "@/components/customer/menu/CustomBowlModal"
+import PresetDishModal from "@/components/customer/menu/PresetDishModal"
 
 const fallbackImages = [TunaImg, PorkImg, BeefImg, ShrimpsImg]
 const getFallbackImage = (idx: number) => fallbackImages[idx % fallbackImages.length]
@@ -38,44 +46,123 @@ type LocalDishStore = {
   setSelectedCategoryId?: (id?: number) => void
 }
 
-const MenuCard: React.FC<{ dish: MenuDish, idx: number }>
-  = ({ dish, idx }) => (
-  <div className="bg-white rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center text-center relative">
-    <div className="relative mb-4">
-      <div className="w-44 h-44 rounded-full overflow-hidden bg-gray-100">
-        <img src={dish.imageUrl || getFallbackImage(idx)} alt={dish.name} className="w-full h-full object-cover" />
+const MenuCard: React.FC<{ 
+  dish: MenuDish
+  idx: number
+  onAddToCart: (dish: MenuDish) => void
+}>
+  = ({ dish, idx, onAddToCart }) => {
+  const { isAuthenticated } = useAuthStore()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const detailPath = PATHS.DISH_DETAIL.replace(":id", String(dish.id))
+
+  const handleAddToCart = () => {
+    if (!isAuthenticated) {
+      toast.info("Vui lòng đăng nhập để thêm món vào giỏ", {
+        action: { label: "Đăng nhập", onClick: () => navigate(PATHS.LOGIN, { state: { from: location.pathname } }) },
+      })
+      return
+    }
+    onAddToCart(dish)
+  }
+  
+  return (
+    <div className="bg-white rounded-3xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center text-center relative">
+      <Link
+        to={detailPath}
+        state={{ from: location.pathname }}
+        className="relative mb-4 block focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500 rounded-full"
+      >
+        <div className="w-44 h-44 rounded-full overflow-hidden bg-gray-100">
+          <img src={dish.imageUrl || getFallbackImage(idx)} alt={dish.name} className="w-full h-full object-cover" />
+        </div>
+        <div className="absolute top-2 right-2 bg-gray-800 text-white px-3 py-2 rounded-full text-sm font-bold shadow-lg">
+          {priceFormat(dish.price)}
+        </div>
+      </Link>
+      <div className="px-2 flex-1">
+        <Link
+          to={detailPath}
+          state={{ from: location.pathname }}
+          className="text-lg font-bold text-gray-900 mb-2 block hover:text-orange-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500 rounded"
+        >
+          {dish.name}
+        </Link>
       </div>
-      <div className="absolute top-2 right-2 bg-gray-800 text-white px-3 py-2 rounded-full text-sm font-bold shadow-lg">
-        {priceFormat(dish.price)}
-      </div>
+      <Button 
+        onClick={handleAddToCart}
+        className="w-full bg-[#ea6d27] hover:bg-[#d85f1f] text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2"
+      >
+        <Plus size={18} />
+        Thêm
+      </Button>
     </div>
-    <div className="px-2">
-      <h3 className="text-lg font-bold text-gray-900 mb-2">{dish.name}</h3>
-      {dish.description ? (
-        <p className="text-gray-500 text-sm leading-relaxed line-clamp-3">{dish.description}</p>
-      ) : null}
-    </div>
-  </div>
-)
+  )
+}
 
 const MenuPage: React.FC = () => {
   const store = useDishStore() as unknown as LocalDishStore
-  const { fetchAll, items, loading, categories, fetchCategories, query, setQuery, selectedCategoryId, setSelectedCategoryId } = store
+  const { fetchAll, items, loading, categories, query, setQuery, selectedCategoryId, setSelectedCategoryId } = store
+  const { isAuthenticated } = useAuthStore()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const resolvedCategories = useMemo<DishCategory[]>(() => {
+    if (Array.isArray(categories) && categories.length > 0) {
+      return categories
+    }
+
+    const map = new Map<number, DishCategory>()
+    ;(items as MenuDish[]).forEach((dish) => {
+      const cat = (dish as unknown as { category?: DishCategory })?.category
+      if (cat?.id && !map.has(cat.id)) {
+        map.set(cat.id, {
+          id: cat.id,
+          name: cat.name ?? `Danh mục ${cat.id}`,
+          description: cat.description,
+        })
+      }
+    })
+    return Array.from(map.values())
+  }, [categories, items])
 
   const anchors = useMemo(() => (["Signature Poké Bowls","Aloha Bowls","Make your own bowl","Drinks"] as const)
-    .filter(label => (categories as DishCategory[]).some(c => c.name?.toLowerCase() === label.toLowerCase()))
-    .map(label => ({ label, id: slugify(label) })), [categories])
+    .filter(label => (resolvedCategories as DishCategory[]).some(c => c.name?.toLowerCase() === label.toLowerCase()))
+    .map(label => ({ label, id: slugify(label) })), [resolvedCategories])
 
   const [activeAnchorId, setActiveAnchorId] = useState<string | undefined>(anchors[0]?.id)
+  const [showAllDishes, setShowAllDishes] = useState(false)
+  const [customBowlModalOpen, setCustomBowlModalOpen] = useState(false)
+  const [presetDishModalOpen, setPresetDishModalOpen] = useState(false)
+  const [selectedDish, setSelectedDish] = useState<MenuDish | null>(null)
+
+  const handlePresetDishAdd = (dish: MenuDish) => {
+    setSelectedDish(dish)
+    setPresetDishModalOpen(true)
+  }
+  
+  // Số lượng dishes hiển thị ban đầu (hầu hết nhưng không phải tất cả)
+  const INITIAL_DISHES_COUNT = 12
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "auto" })
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
-  useEffect(() => { fetchCategories?.() }, [fetchCategories])
-
-  const visible = useMemo(() => (items as MenuDish[]).filter((d) => (d.public === true) && (d.active ?? true)), [items])
+  const visible = useMemo(() => {
+    // Lọc bỏ "Make your own bowl" category khỏi preset dishes
+    const makeYourOwnBowlCategory = (resolvedCategories as DishCategory[]).find(
+      c => c.name?.toLowerCase() === "make your own bowl"
+    )
+    return (items as MenuDish[]).filter((d) => {
+      const isPublicAndActive = (d.public === true) && (d.active ?? true)
+      // Loại bỏ dishes thuộc "Make your own bowl" category
+      const isNotCustomBowl = !makeYourOwnBowlCategory || d.categoryId !== makeYourOwnBowlCategory.id
+      return isPublicAndActive && isNotCustomBowl
+    })
+  }, [items, categories])
+  
   const filtered = useMemo(() => {
     const q = (query || "").toLowerCase()
     return visible.filter((d) => {
@@ -84,6 +171,7 @@ const MenuPage: React.FC = () => {
       return byQ && byCat
     })
   }, [visible, query, selectedCategoryId])
+  
 
   return (
     <main className="min-h-screen bg-white">
@@ -101,6 +189,17 @@ const MenuPage: React.FC = () => {
 
       
       <section className="max-w-[1200px] mx-auto px-6 py-12">
+        {!isAuthenticated && (
+          <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800 flex items-center justify-between">
+            <span>Bạn cần đăng nhập để thêm món hoặc tạo tô tùy chỉnh.</span>
+            <Button
+              onClick={() => navigate(PATHS.LOGIN, { state: { from: location.pathname } })}
+              className="bg-[#ea6d27] hover:bg-[#d85f1f] text-white font-semibold h-8 px-3"
+            >
+              Đăng nhập
+            </Button>
+          </div>
+        )}
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-6">
           <div className="space-y-2">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Tất cả món</h2>
@@ -120,7 +219,7 @@ const MenuPage: React.FC = () => {
                 <SelectTrigger className="bg-white"><SelectValue placeholder="Tất cả danh mục" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả danh mục</SelectItem>
-                  {(categories as DishCategory[] || []).map((c) => (
+                  {(resolvedCategories as DishCategory[] || []).map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -159,7 +258,7 @@ const MenuPage: React.FC = () => {
             <div className="col-span-12 md:col-span-9 lg:col-span-10 space-y-12">
               {(() => {
                 const catMap = new Map<number, string>()
-                ;(categories as DishCategory[]).forEach(c => catMap.set(c.id, c.name))
+                ;(resolvedCategories as DishCategory[]).forEach(c => catMap.set(c.id, c.name))
                 const grouped = new Map<string, MenuDish[]>()
                 ;(filtered as MenuDish[]).forEach(d => {
                   const catName = d.categoryId ? (catMap.get(d.categoryId) || "Others") : "Others"
@@ -188,21 +287,128 @@ const MenuPage: React.FC = () => {
                   })
                 }, 0)
 
-                return ordered.map((cat) => (
-                  <section key={cat} id={slugify(cat)} className="scroll-mt-28">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4">{cat}</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-7">
-                      {grouped.get(cat)!.map((dish, idx) => (
-                        <MenuCard key={dish.id} dish={dish} idx={idx} />
-                      ))}
+                // Tính tổng số dishes từ tất cả categories
+                const totalDishes = ordered.reduce((sum, cat) => sum + (grouped.get(cat)?.length || 0), 0)
+                
+                // Tính số dishes đã hiển thị khi chưa mở rộng
+                let displayedCountWhenCollapsed = 0
+                ordered.forEach((cat) => {
+                  const dishes = grouped.get(cat) || []
+                  if (displayedCountWhenCollapsed < INITIAL_DISHES_COUNT) {
+                    const remaining = INITIAL_DISHES_COUNT - displayedCountWhenCollapsed
+                    displayedCountWhenCollapsed += Math.min(dishes.length, remaining)
+                  }
+                })
+                
+                const sections = ordered.map((cat) => {
+                  const dishes = grouped.get(cat) || []
+                  const dishesToDisplay = showAllDishes 
+                    ? dishes // Hiển thị tất cả khi đã mở rộng
+                    : (() => {
+                        // Tính số dishes đã hiển thị trước category này
+                        let countBeforeThis = 0
+                        for (const c of ordered) {
+                          if (c === cat) break
+                          const ds = grouped.get(c) || []
+                          if (countBeforeThis < INITIAL_DISHES_COUNT) {
+                            const remaining = INITIAL_DISHES_COUNT - countBeforeThis
+                            countBeforeThis += Math.min(ds.length, remaining)
+                          } else {
+                            break
+                          }
+                        }
+                        // Hiển thị dishes của category này
+                        if (countBeforeThis >= INITIAL_DISHES_COUNT) {
+                          return [] // Đã hiển thị đủ, không hiển thị category này
+                        }
+                        const remaining = INITIAL_DISHES_COUNT - countBeforeThis
+                        return dishes.slice(0, Math.min(dishes.length, remaining))
+                      })()
+                  
+                  if (dishesToDisplay.length === 0 && !showAllDishes) return null
+                  
+                  return (
+                    <section key={cat} id={slugify(cat)} className="scroll-mt-28">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4">{cat}</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-7">
+                        {dishesToDisplay.map((dish, idx) => (
+                          <MenuCard key={dish.id} dish={dish} idx={idx} onAddToCart={handlePresetDishAdd} />
+                        ))}
+                      </div>
+                    </section>
+                  )
+                }).filter(Boolean)
+                
+                // Thêm nút "Xem thêm"/"Thu gọn" sau section cuối cùng nếu cần
+                const showMoreButton = totalDishes > INITIAL_DISHES_COUNT ? (
+                  <div key="show-more" className="text-center mt-8">
+                    <Button
+                      onClick={() => setShowAllDishes(!showAllDishes)}
+                      variant="outline"
+                      className="px-6 py-2 border-2 border-orange-500 text-orange-500 hover:bg-orange-50"
+                    >
+                      {showAllDishes ? "Thu gọn" : `Xem thêm (${totalDishes - displayedCountWhenCollapsed} món)`}
+                    </Button>
+                  </div>
+                ) : null
+                
+                // Thêm phần "Make your own bowl"
+                const makeYourOwnBowlSection = (
+                  <section key="make-your-own-bowl" id="make-your-own-bowl" className="scroll-mt-28">
+                    <div className="mb-6">
+                      <h2 className="text-3xl font-bold text-gray-900 mb-2">Make your own bowl</h2>
+                      <p className="text-gray-600">Build your own poke bowl! (Best consumed within an hour of preparation)</p>
+                    </div>
+                    <div 
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          toast.info("Vui lòng đăng nhập để tạo tô tùy chỉnh", {
+                            action: { label: "Đăng nhập", onClick: () => navigate(PATHS.LOGIN, { state: { from: location.pathname } }) },
+                          })
+                          return
+                        }
+                        setCustomBowlModalOpen(true)
+                      }}
+                      className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-8 cursor-pointer hover:shadow-xl transition-all duration-300 border-2 border-orange-200 hover:border-orange-400"
+                    >
+                      <div className="flex flex-col items-center text-center">
+                        <div className="w-32 h-32 mb-4 flex items-center justify-center">
+                          <svg className="w-full h-full text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                        </div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2 uppercase">Make your own bowl</h3>
+                        <p className="text-gray-600 mb-4">Tự tạo tô poke bowl theo sở thích của bạn</p>
+                        <div className="flex items-center justify-between w-full max-w-xs mt-4">
+                          <span className="text-lg font-bold text-gray-900">Từ 16.500đ</span>
+                          <Button className="bg-[#ea6d27] hover:bg-[#d85f1f] text-white font-semibold">
+                            Tạo ngay
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </section>
-                ))
+                )
+                
+                return [...sections, showMoreButton, makeYourOwnBowlSection].filter(Boolean)
               })()}
             </div>
           </div>
         )}
       </section>
+      
+      <CustomBowlModal 
+        open={customBowlModalOpen}
+        onClose={() => setCustomBowlModalOpen(false)}
+      />
+      <PresetDishModal
+        open={presetDishModalOpen}
+        onClose={() => {
+          setPresetDishModalOpen(false)
+          setSelectedDish(null)
+        }}
+        dish={selectedDish}
+      />
     </main>
   )
 }

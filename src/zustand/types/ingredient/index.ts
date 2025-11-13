@@ -12,6 +12,9 @@ export type StoreIngredient = Omit<Ingredient, "category"> & {
   available?: number
   reserve?: number
   pricePerUnit?: number
+  imgUrl?: string
+  publicId?: string
+  lastReserveAt?: string
 }
 
 export interface InventoryTransaction {
@@ -38,8 +41,8 @@ export interface IngredientCategorySlice {
   categories: IngredientCategory[]
   
   fetchCategories: () => Promise<void>
-  createCategory: (payload: { name: string; description?: string }) => Promise<IngredientCategory | undefined>
-  updateCategory: (payload: { id: number; name: string; description?: string }) => Promise<void>
+  createCategory: (payload: { name: string; description?: string; priority?: number }) => Promise<IngredientCategory | undefined>
+  updateCategory: (payload: { id: number; name: string; description?: string; priority?: number }) => Promise<void>
   removeCategory: (id: number) => Promise<void>
 }
 

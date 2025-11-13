@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react"
-import { Bell, CheckCircle, Clock, User } from "lucide-react"
-import { useNotificationStore } from "@zustand/stores/notification"
+import { API_ENDPOINTS, bambiApi } from "@/utils/api"
 import { useAuthStore } from "@zustand/stores/auth"
-import { bambiApi, API_ENDPOINTS } from "@/utils/api"
+import { useNotificationStore } from "@zustand/stores/notification"
 import { formatDistanceToNow } from "date-fns"
 import { vi } from "date-fns/locale"
+import { Bell, CheckCircle, Clock, User } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 interface NotificationDropdownProps {
   isOpen: boolean
@@ -39,19 +39,54 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
     account: n.account,
   });
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (signal?: AbortSignal) => {
     if (!user?.id) return;
+    
+    // Không gọi API nếu đang redirect đến payment gateway
+    try {
+      if (sessionStorage.getItem("bambi-payment-redirecting") === "true") {
+        return;
+      }
+    } catch {
+      // ignore storage errors
+    }
+    
     setIsLoading(true);
     try {
       if (user.role_id === 1) {
-        setNotifications(adminNotifications.map(normalizeField));
+        // Admin: fetch từ API để lấy tất cả notifications
+        const { fetchAll } = useNotificationStore.getState();
+        await fetchAll();
+        // Sau khi fetch, lấy từ store
+        const { items } = useNotificationStore.getState();
+        setNotifications(items.map(normalizeField));
       } else {
-        const response = await bambiApi.get(API_ENDPOINTS.API_NOTIFICATION_BY_ACCOUNT(user.id));
+        // User thường: fetch notifications của user đó
+        const response = await bambiApi.get(API_ENDPOINTS.API_NOTIFICATION_BY_ACCOUNT(user.id), {
+          signal,
+        });
         if (response.data && Array.isArray(response.data)) {
           setNotifications(response.data.map(normalizeField));
         }
       }
     } catch (error) {
+      // Ignore abort/canceled errors - không cần log vì đây là behavior bình thường
+      if (error && typeof error === 'object') {
+        // Check nhiều cách để detect canceled/aborted request
+        const errorName = 'name' in error ? error.name : undefined
+        const errorCode = 'code' in error ? error.code : undefined
+        const errorMessage = 'message' in error ? String(error.message) : ''
+        
+        if (
+          errorName === 'AbortError' || 
+          errorName === 'CanceledError' ||
+          errorCode === 'ERR_CANCELED' ||
+          errorMessage.toLowerCase().includes('canceled') ||
+          errorMessage.toLowerCase().includes('aborted')
+        ) {
+          return // Ignore canceled errors silently
+        }
+      }
       console.error("Error fetching notifications:", error);
     } finally {
       setIsLoading(false);
@@ -59,9 +94,45 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   };
 
   useEffect(() => {
-    if (isOpen) {
-      fetchNotifications()
+    if (!isOpen || !user?.id) return;
+    
+    const controller = new AbortController();
+    fetchNotifications(controller.signal);
+    
+    // Polling để refresh notifications khi dropdown đang mở (mỗi 10 giây)
+    const interval = setInterval(() => {
+      if (!controller.signal.aborted) {
+        fetchNotifications(controller.signal);
+      }
+    }, 10000); // 10 giây
+    
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
+  }, [isOpen, user?.id])
+
+  // Khi admin notifications thay đổi, cập nhật local state
+  useEffect(() => {
+    if (isOpen && user?.role_id === 1 && adminNotifications.length > 0) {
+      setNotifications(adminNotifications.map(normalizeField));
     }
+  }, [isOpen, user?.role_id, adminNotifications])
+
+  // Lắng nghe event khi có notification mới để refresh
+  useEffect(() => {
+    if (!isOpen || !user?.id) return;
+
+    const handleNewNotification = () => {
+      // Refresh lại notifications khi có thông báo mới
+      fetchNotifications();
+    };
+
+    window.addEventListener('new-notification', handleNewNotification);
+    
+    return () => {
+      window.removeEventListener('new-notification', handleNewNotification);
+    };
   }, [isOpen, user?.id])
 
   useEffect(() => {
@@ -83,22 +154,58 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   const handleMarkAsRead = async (notificationId: number) => {
     try {
       if (user?.role_id === 1) {
+        // Admin: dùng store method
         await markAsRead(notificationId);
+        // Dispatch event để NotificationIcon cập nhật unread count
+        window.dispatchEvent(new CustomEvent('notification-marked-read'));
       } else {
-        await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(notificationId));
+        // User thường: gọi API trực tiếp
+        // PATCH với empty body - Authorization header sẽ được thêm tự động bởi interceptor
+        try {
+          await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(notificationId), {});
+          // Cập nhật state local ngay lập tức để UX tốt hơn
+          setNotifications((prev) =>
+            prev.map((notif) =>
+              notif.id === notificationId ? { ...notif, read: true, is_read: true } : notif
+            )
+          );
+          // Dispatch event để NotificationIcon cập nhật unread count
+          window.dispatchEvent(new CustomEvent('notification-marked-read'));
+          // Refresh lại danh sách để đảm bảo đồng bộ
+          await fetchNotifications();
+        } catch (patchError: any) {
+          const status = patchError?.response?.status;
+          if (status === 403) {
+            // Lỗi 403: có thể là CORS hoặc không có quyền
+            const { toast } = await import("sonner");
+            toast.error("Không thể đánh dấu đã đọc. Vui lòng kiểm tra lại quyền truy cập hoặc liên hệ admin.", {
+              description: "Lỗi: 403 Forbidden. Có thể là vấn đề CORS hoặc quyền truy cập.",
+            });
+          } else {
+            throw patchError; // Re-throw để xử lý ở catch bên ngoài
+          }
+        }
       }
-      setNotifications((prev) =>
-        prev.map((notif) =>
-          notif.id === notificationId ? { ...notif, read: true, is_read: true } : notif
-        )
-      );
     } catch (error) {
       console.error("Error marking notification as read:", error);
+      // Đã xử lý lỗi ở trên, không cần làm gì thêm
     }
   };
 
+  // Sort notifications theo thời gian mới nhất trước, unread ưu tiên
+  const sortedNotifications = [...notifications].sort((a, b) => {
+    // Unread notifications ưu tiên hiển thị trước
+    if (a.read !== b.read) {
+      return a.read ? 1 : -1
+    }
+    // Sau đó sort theo thời gian mới nhất
+    const timeA = new Date(a.createdAt).getTime()
+    const timeB = new Date(b.createdAt).getTime()
+    return timeB - timeA
+  })
+  
   const unreadCount = notifications.filter(n => !n.read).length
-  const recentNotifications = notifications.slice(0, 5)
+  const recentNotifications = sortedNotifications.slice(0, 5)
 
   if (!isOpen) return null
 
