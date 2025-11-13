@@ -12,7 +12,6 @@ interface ChatButtonProps {
 export default function ChatButton({ className }: ChatButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [unreadChatCount, setUnreadChatCount] = useState(0)
-  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
   const canUseChat = useAuthStore(
     (state) => state.isAuthenticated || Boolean(state.token)
   )
@@ -22,27 +21,6 @@ export default function ChatButton({ className }: ChatButtonProps) {
       setUnreadChatCount((prev) => Math.min(prev + 1, 99))
     }
   }, [isOpen])
-
-  useEffect(() => {
-    const handleNotificationUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent<number>
-      const detail = customEvent.detail
-      setNotificationUnreadCount(
-        typeof detail === "number" && !Number.isNaN(detail) ? detail : 0
-      )
-    }
-
-    window.addEventListener(
-      "notifications:update-unread",
-      handleNotificationUpdate as EventListener
-    )
-    return () => {
-      window.removeEventListener(
-        "notifications:update-unread",
-        handleNotificationUpdate as EventListener
-      )
-    }
-  }, [])
 
   useEffect(() => {
     if (isOpen) {
@@ -62,8 +40,6 @@ export default function ChatButton({ className }: ChatButtonProps) {
     window.localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY)
     setUnreadChatCount(0)
   }, [canUseChat])
-
-  const totalBadgeCount = notificationUnreadCount + unreadChatCount
 
   const fixedStyle: React.CSSProperties = {
     position: "fixed",
@@ -90,9 +66,9 @@ export default function ChatButton({ className }: ChatButtonProps) {
           aria-label="Mở BambiKitchen AI"
         >
           <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />
-          {totalBadgeCount > 0 && (
+          {unreadChatCount > 0 && (
             <Badge className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-white p-0 flex items-center justify-center text-[10px] font-bold shadow-md">
-              {totalBadgeCount > 99 ? "99+" : totalBadgeCount}
+              {unreadChatCount > 99 ? "99+" : unreadChatCount}
             </Badge>
           )}
         </button>
