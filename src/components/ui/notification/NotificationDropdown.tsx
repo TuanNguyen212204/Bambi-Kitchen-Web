@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react"
-import { Bell, CheckCircle, Clock, User } from "lucide-react"
-import { useNotificationStore } from "@zustand/stores/notification"
+import { API_ENDPOINTS, bambiApi } from "@/utils/api"
 import { useAuthStore } from "@zustand/stores/auth"
-import { bambiApi, API_ENDPOINTS } from "@/utils/api"
+import { useNotificationStore } from "@zustand/stores/notification"
 import { formatDistanceToNow } from "date-fns"
 import { vi } from "date-fns/locale"
+import { Bell, CheckCircle, Clock, User } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 interface NotificationDropdownProps {
   isOpen: boolean
@@ -134,9 +134,9 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
         await markAsRead(notificationId);
       } else {
         // User thường: gọi API trực tiếp
-        // PATCH không cần body theo API v3 docs
+        // PATCH với empty body - Authorization header sẽ được thêm tự động bởi interceptor
         try {
-          await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(notificationId));
+          await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(notificationId), {});
           // Cập nhật state local ngay lập tức để UX tốt hơn
           setNotifications((prev) =>
             prev.map((notif) =>
