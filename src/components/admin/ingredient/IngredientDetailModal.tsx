@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
-import { Button } from "@components/ui/button";
 import { Badge } from "@components/ui/badge";
-import { Image as ImageIcon, Edit3, Trash2, Package, DollarSign, Box } from "lucide-react";
+import { Button } from "@components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { useIngredientStore } from "@zustand/stores/ingredients";
+import { Box, DollarSign, Edit3, Image as ImageIcon, Package } from "lucide-react";
+import { useEffect, useState } from "react";
 import EditIngredientModal from "./EditIngredientModal";
-import { ConfirmationModal } from "@components/ui/modal/modal";
 
 interface IngredientDetailModalProps {
   open: boolean;
@@ -262,15 +261,7 @@ export function IngredientDetailModal({
 
           {/* Action Buttons */}
           <div className="flex items-center justify-between pt-6 border-t">
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="flex items-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              {isDeleting ? "Đang xóa..." : "Xóa nguyên liệu"}
-            </Button>
+
 
             <div className="flex items-center gap-3">
               <Button onClick={() => setIsEditing(true)}>
@@ -310,17 +301,7 @@ export function IngredientDetailModal({
         />
       )}
 
-      <ConfirmationModal
-        open={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={confirmDelete}
-        title="Xác nhận xóa nguyên liệu"
-        description={`Bạn có chắc chắn muốn xóa nguyên liệu "${ingredient?.name || displayDetails?.name || ''}" không? Hành động này không thể hoàn tác.`}
-        confirmText="Xóa nguyên liệu"
-        cancelText="Hủy"
-        variant="destructive"
-        loading={isDeleting}
-      />
+
     </>
   );
 }

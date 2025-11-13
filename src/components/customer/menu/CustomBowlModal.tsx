@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useMemo, useRef } from "react"
-import { createPortal } from "react-dom"
-import { X, ChevronLeft, ChevronRight, Check, Plus, Minus } from "lucide-react"
-import { Button } from "@components/ui/button"
-import { toast } from "sonner"
+import type { DishTemplateItem } from "@/zustand/slices/dish/template.slice"
+import { useCartStore } from "@/zustand/stores/cart"
 import { useDishStore } from "@/zustand/stores/dish"
 import { useIngredientStore } from "@/zustand/stores/ingredients"
-import { useCartStore } from "@/zustand/stores/cart"
-import type { DishTemplateItem } from "@/zustand/slices/dish/template.slice"
 import type { StoreIngredient } from "@/zustand/types"
+import { Button } from "@components/ui/button"
 import type { Dish } from "@models/dish/dish"
+import { Check, ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
+import { toast } from "sonner"
 
 interface CustomBowlModalProps {
   open: boolean
@@ -1024,13 +1024,7 @@ const getStepAmount = (unit?: string): number => {
                               <span className="text-sm font-semibold text-orange-600 whitespace-nowrap">
                                 {formatQuantityDisplay(selected.quantity)}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
                               </span>
-                              <button
-                                onClick={() => handleIngredientToggle(ingredient)}
-                                className="p-1 hover:bg-red-50 rounded transition-colors flex-shrink-0"
-                                title="Xóa nguyên liệu"
-                              >
-                                <X size={14} className="text-gray-400 hover:text-red-600" />
-                              </button>
+\
                             </div>
                           </div>
                         )
