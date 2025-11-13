@@ -3,6 +3,7 @@ import { X, Send, Bot, User, Loader2, AlertCircle, RotateCcw } from "lucide-reac
 import { cn } from "@lib/utils"
 import type { ChatMessageMetadata, ChatMessageNutritionMetadata } from "@models/chat"
 import { chatWithAI, ChatError } from "@services/chat.service"
+import { getNutritionAdviceForDishes, NutritionError } from "@services/nutrition.service"
 import { Button } from "@components/ui/button"
 import { Textarea } from "@components/ui/textarea"
 import { extractErrorMessage } from "@utils/errors"
@@ -18,10 +19,21 @@ interface Message {
   metadata?: ChatMessageMetadata | null
 }
 
+export interface NutritionChatRequest {
+  dishIds: number[]
+  dishNames?: string[]
+  orderId?: number | string
+  query?: string
+  introMessage?: string
+  appendUserMessage?: boolean
+}
+
 interface ChatBoxProps {
   isOpen: boolean
   onClose: () => void
   onAssistantMessage?: (message: Message) => void
+  nutritionRequest?: NutritionChatRequest | null
+  onNutritionRequestConsumed?: () => void
 }
 
 type PersistedMessage = Omit<Message, "timestamp"> & { timestamp: string }
@@ -116,6 +128,21 @@ const generateMessageId = (): string => {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+const removeDiacritics = (value: string): string =>
+  value.normalize("NFD").replace(/\p{Diacritic}/gu, "")
+
+const extractNutritionDishIds = (content: string): number[] => {
+  const normalized = removeDiacritics(content).toLowerCase()
+  if (!normalized.includes("dinh duong") && !normalized.includes("nutrition")) {
+    return []
+  }
+  const matches = content.match(/\d+/g)
+  if (!matches) return []
+  return matches
+    .map((item) => Number(item))
+    .filter((value) => Number.isFinite(value) && value > 0)
+}
+
 const createDefaultMessages = (): Message[] => [
   {
     id: generateMessageId(),
@@ -149,12 +176,19 @@ const loadInitialMessages = (): Message[] => {
   }
 }
 
-export default function ChatBox({ isOpen, onClose, onAssistantMessage }: ChatBoxProps) {
+export default function ChatBox({
+  isOpen,
+  onClose,
+  onAssistantMessage,
+  nutritionRequest,
+  onNutritionRequestConsumed,
+}: ChatBoxProps) {
   const [messages, setMessages] = useState<Message[]>(loadInitialMessages)
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [lastError, setLastError] = useState<{ message: string; canRetry: boolean } | null>(null)
   const [lastUserMessage, setLastUserMessage] = useState<string>("")
+  const [isProcessingNutrition, setIsProcessingNutrition] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const isAuthenticated = useAuthStore(
@@ -192,9 +226,132 @@ export default function ChatBox({ isOpen, onClose, onAssistantMessage }: ChatBox
     setMessages(createDefaultMessages())
   }, [isAuthenticated])
 
+  const handleNutritionAdviceRequest = async (request: NutritionChatRequest) => {
+    const uniqueIds = Array.from(
+      new Set(
+        (request.dishIds || [])
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id) && id > 0)
+      )
+    )
+
+    if (!uniqueIds.length) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: generateMessageId(),
+          role: "assistant",
+          content: "⚠️ Không có món ăn hợp lệ để phân tích dinh dưỡng.",
+          timestamp: new Date(),
+          isError: true,
+        },
+      ])
+      return
+    }
+
+    if (isProcessingNutrition) {
+      return
+    }
+
+    setIsProcessingNutrition(true)
+    const contextLabel = request.orderId
+      ? ` cho đơn #${request.orderId}`
+      : request.dishNames && request.dishNames.length
+      ? ` cho ${request.dishNames.slice(0, 3).join(", ")}${request.dishNames.length > 3 ? "..." : ""}`
+      : ""
+
+    const placeholderId = generateMessageId()
+    const placeholderMessage: Message = {
+      id: placeholderId,
+      role: "assistant",
+      content: `Đang phân tích dinh dưỡng${contextLabel}...`,
+      timestamp: new Date(),
+      metadata: null,
+    }
+
+    setMessages((prev) => [...prev, placeholderMessage])
+
+    try {
+      const response = await getNutritionAdviceForDishes(uniqueIds, {
+        query: request.query,
+        dishNames: request.dishNames,
+      })
+
+      const derivedMetadata =
+        response.metadata ?? tryDeriveNutritionMetadataFromContent(response.message)
+
+      const finalMessage: Message = {
+        id: placeholderId,
+        role: "assistant",
+        content: response.message?.trim()
+          ? response.message
+          : "Mình đã phân tích nhưng không nhận được nội dung cụ thể từ AI.",
+        timestamp: new Date(),
+        metadata: derivedMetadata ?? null,
+      }
+
+      setMessages((prev) =>
+        prev.map((message) => (message.id === placeholderId ? finalMessage : message))
+      )
+      setLastError(null)
+      onAssistantMessage?.(finalMessage)
+    } catch (error) {
+      const nutritionError = error instanceof NutritionError
+        ? error
+        : new NutritionError("Không thể lấy lời khuyên dinh dưỡng từ AI.", error)
+
+      const errorMessage: Message = {
+        id: placeholderId,
+        role: "assistant",
+        content: `⚠️ ${nutritionError.message}`,
+        timestamp: new Date(),
+        isError: true,
+      }
+
+      setMessages((prev) =>
+        prev.map((message) => (message.id === placeholderId ? errorMessage : message))
+      )
+      setLastError({ message: nutritionError.message, canRetry: false })
+    } finally {
+      setIsProcessingNutrition(false)
+      onNutritionRequestConsumed?.()
+    }
+  }
+
+  useEffect(() => {
+    if (!isOpen || !nutritionRequest) {
+      return
+    }
+
+    const shouldAppendUserMessage = nutritionRequest.appendUserMessage !== false
+    if (shouldAppendUserMessage) {
+      const userContent =
+        nutritionRequest.introMessage?.trim() ||
+        (nutritionRequest.orderId
+          ? `Phân tích dinh dưỡng cho đơn #${nutritionRequest.orderId}`
+          : nutritionRequest.query?.trim() ||
+            (nutritionRequest.dishNames?.length
+              ? `Phân tích dinh dưỡng cho ${nutritionRequest.dishNames.join(", ")}`
+              : "Phân tích dinh dưỡng"))
+
+      if (userContent) {
+        const syntheticUserMessage: Message = {
+          id: generateMessageId(),
+          role: "user",
+          content: userContent,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, syntheticUserMessage])
+      }
+    }
+
+    void handleNutritionAdviceRequest(nutritionRequest)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nutritionRequest, isOpen])
+
   const handleSend = async (retryMessage?: string) => {
     const messageToSend = retryMessage || input.trim()
-    if (!messageToSend || isLoading) return
+    if (!messageToSend || isLoading || isProcessingNutrition) return
 
     // Nếu đang retry, xóa message lỗi cuối cùng (nếu có)
     if (retryMessage) {
@@ -224,8 +381,21 @@ export default function ChatBox({ isOpen, onClose, onAssistantMessage }: ChatBox
       setInput("")
       setLastUserMessage(messageToSend)
     }
-    setIsLoading(true)
     setLastError(null)
+
+    const nutritionDishIds = extractNutritionDishIds(messageToSend)
+    if (nutritionDishIds.length > 0) {
+      await handleNutritionAdviceRequest({
+        dishIds: nutritionDishIds,
+        query: messageToSend,
+      })
+      if (!retryMessage) {
+        setInput("")
+      }
+      return
+    }
+
+    setIsLoading(true)
 
     try {
       const response = await chatWithAI(userMessage.content)
@@ -441,11 +611,11 @@ export default function ChatBox({ isOpen, onClose, onAssistantMessage }: ChatBox
               onKeyDown={handleKeyDown}
               placeholder="Nhập tin nhắn của bạn..."
               className="min-h-[60px] max-h-[120px] resize-none"
-              disabled={isLoading}
+              disabled={isLoading || isProcessingNutrition}
             />
             <Button
               onClick={() => handleSend()}
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || isProcessingNutrition}
               className="self-end"
               size="icon"
             >

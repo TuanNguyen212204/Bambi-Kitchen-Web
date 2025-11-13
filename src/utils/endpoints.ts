@@ -80,6 +80,7 @@ export const API_ENDPOINTS = {
   // AI Chat
   API_CHAT: "/chat", // tạm giữ nếu backend duy trì endpoint này
   API_GEMINI_CHAT: "/api/gemini/chat",
+  API_GEMINI_CALCULATE_CALORIES: "/api/gemini/calculate-calories",
   
   // Nutrition & health
   API_NUTRITION: "/api/nutrition",
