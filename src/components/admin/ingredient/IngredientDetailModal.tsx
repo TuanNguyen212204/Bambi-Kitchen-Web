@@ -1,9 +1,8 @@
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
-import { useIngredientStore } from "@zustand/stores/ingredients";
 import { Box, DollarSign, Edit3, Image as ImageIcon, Package } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import EditIngredientModal from "./EditIngredientModal";
 
 interface IngredientDetailModalProps {
@@ -17,12 +16,51 @@ export function IngredientDetailModal({
   onClose, 
   ingredient 
 }: IngredientDetailModalProps) {
-  const [ingredientDetails, setIngredientDetails] = useState<any>(null);
+  const [ingredientDetails, setIngredientDetails] = useState<{
+    id: number;
+    name: string;
+    unit?: string;
+    imgUrl?: string;
+    active?: boolean;
+    stock?: number;
+    quantity?: number;
+    available?: number;
+    reserve?: number;
+    stockStatus?: 'out'|'low'|'normal';
+    category?: unknown;
+    pricePerUnit?: number;
+  } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const { remove } = useIngredientStore();
+
+  const loadIngredientDetails = useCallback(async () => {
+    if (!ingredient?.id) return;
+    setIsLoading(true);
+    try {
+      const { bambiApi, API_ENDPOINTS } = await import("@/utils/api");
+      
+      // Load ingredient details
+      const ingredientRes = await bambiApi.get(API_ENDPOINTS.API_INGREDIENT_BY_ID(ingredient.id));
+      setIngredientDetails(ingredientRes.data as {
+        id: number;
+        name: string;
+        unit?: string;
+        imgUrl?: string;
+        active?: boolean;
+        stock?: number;
+        quantity?: number;
+        available?: number;
+        reserve?: number;
+        stockStatus?: 'out'|'low'|'normal';
+        category?: unknown;
+        pricePerUnit?: number;
+      });
+    } catch (error) {
+      console.error("Error loading ingredient details:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [ingredient?.id]);
 
   useEffect(() => {
     if (open && ingredient?.id) {
@@ -31,51 +69,8 @@ export function IngredientDetailModal({
       setIngredientDetails(null);
       setIsEditing(false);
     }
-  }, [open, ingredient?.id]);
+  }, [open, ingredient?.id, loadIngredientDetails]);
 
-  // Refresh dữ liệu khi ingredient prop thay đổi (sau khi update)
-  // Loại bỏ dependency để tránh infinite loop - chỉ refresh khi modal đóng rồi mở lại
-  // useEffect(() => {
-  //   if (open && ingredient?.id && !isEditing) {
-  //     loadIngredientDetails();
-  //   }
-  // }, [ingredient?.quantity, ingredient?.available, ingredient?.stock, ingredient?.imgUrl]);
-
-  const loadIngredientDetails = async () => {
-    if (!ingredient?.id) return;
-    setIsLoading(true);
-    try {
-      const { bambiApi, API_ENDPOINTS } = await import("@/utils/api");
-      
-      // Load ingredient details
-      const ingredientRes = await bambiApi.get(API_ENDPOINTS.API_INGREDIENT_BY_ID(ingredient.id));
-      setIngredientDetails(ingredientRes.data);
-    } catch (error) {
-      console.error("Error loading ingredient details:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDelete = () => {
-    // Mở modal xác nhận thay vì xóa trực tiếp
-    setShowDeleteConfirm(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!ingredient || !ingredient.id) return;
-    
-    setIsDeleting(true);
-    setShowDeleteConfirm(false);
-    try {
-      await remove(ingredient.id);
-      onClose();
-    } catch (error) {
-      console.error("Error deleting ingredient:", error);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
   const getActiveBadge = (isActive: boolean) => {
     return {
@@ -228,7 +223,7 @@ export function IngredientDetailModal({
               </div>
 
               {/* Category Information */}
-              {displayDetails.category && (
+              {displayDetails.category != null && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Danh mục</h3>
                   
@@ -238,7 +233,9 @@ export function IngredientDetailModal({
                       <span className="text-gray-700">
                         {typeof displayDetails.category === 'object' && displayDetails.category !== null && 'name' in displayDetails.category
                           ? String((displayDetails.category as { name?: string }).name || '—')
-                          : String(displayDetails.category || '—')}
+                          : typeof displayDetails.category === 'string' || typeof displayDetails.category === 'number'
+                          ? String(displayDetails.category)
+                          : '—'}
                       </span>
                     </div>
                   </div>

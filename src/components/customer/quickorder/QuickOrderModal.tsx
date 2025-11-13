@@ -109,7 +109,7 @@ export default function QuickOrderModal({ open, onClose }: QuickOrderModalProps)
             img_url: detail.dish.imageUrl || "",
             account_id: 0,
             dish_category_id: 0,
-            type: "preset",
+            type: "single",
             description: "",
             is_public: true,
             used: 0,

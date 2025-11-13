@@ -99,8 +99,16 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
     const controller = new AbortController();
     fetchNotifications(controller.signal);
     
+    // Polling để refresh notifications khi dropdown đang mở (mỗi 10 giây)
+    const interval = setInterval(() => {
+      if (!controller.signal.aborted) {
+        fetchNotifications(controller.signal);
+      }
+    }, 10000); // 10 giây
+    
     return () => {
       controller.abort();
+      clearInterval(interval);
     };
   }, [isOpen, user?.id])
 
@@ -110,6 +118,22 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
       setNotifications(adminNotifications.map(normalizeField));
     }
   }, [isOpen, user?.role_id, adminNotifications])
+
+  // Lắng nghe event khi có notification mới để refresh
+  useEffect(() => {
+    if (!isOpen || !user?.id) return;
+
+    const handleNewNotification = () => {
+      // Refresh lại notifications khi có thông báo mới
+      fetchNotifications();
+    };
+
+    window.addEventListener('new-notification', handleNewNotification);
+    
+    return () => {
+      window.removeEventListener('new-notification', handleNewNotification);
+    };
+  }, [isOpen, user?.id])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -168,8 +192,20 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
     }
   };
 
+  // Sort notifications theo thời gian mới nhất trước, unread ưu tiên
+  const sortedNotifications = [...notifications].sort((a, b) => {
+    // Unread notifications ưu tiên hiển thị trước
+    if (a.read !== b.read) {
+      return a.read ? 1 : -1
+    }
+    // Sau đó sort theo thời gian mới nhất
+    const timeA = new Date(a.createdAt).getTime()
+    const timeB = new Date(b.createdAt).getTime()
+    return timeB - timeA
+  })
+  
   const unreadCount = notifications.filter(n => !n.read).length
-  const recentNotifications = notifications.slice(0, 5)
+  const recentNotifications = sortedNotifications.slice(0, 5)
 
   if (!isOpen) return null
 
