@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react"
 import { MessageCircle } from "lucide-react"
 import { cn } from "@lib/utils"
 import { Badge } from "@components/ui/badge"
-import ChatBox from "./ChatBox"
+import ChatBox, { CHAT_HISTORY_STORAGE_KEY } from "./ChatBox"
+import { useAuthStore } from "@zustand/stores/auth"
 
 interface ChatButtonProps {
   className?: string
@@ -12,6 +13,9 @@ export default function ChatButton({ className }: ChatButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [unreadChatCount, setUnreadChatCount] = useState(0)
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
+  const canUseChat = useAuthStore(
+    (state) => state.isAuthenticated || Boolean(state.token)
+  )
 
   const handleAssistantMessage = useCallback(() => {
     if (!isOpen) {
@@ -46,6 +50,18 @@ export default function ChatButton({ className }: ChatButtonProps) {
     }
   }, [isOpen])
 
+  useEffect(() => {
+    if (!canUseChat && isOpen) {
+      setIsOpen(false)
+    }
+  }, [canUseChat, isOpen])
+
+  useEffect(() => {
+    if (canUseChat) return
+    if (typeof window === "undefined") return
+    window.localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY)
+  }, [canUseChat])
+
   const totalBadgeCount = notificationUnreadCount + unreadChatCount
 
   const fixedStyle: React.CSSProperties = {
@@ -56,6 +72,10 @@ export default function ChatButton({ className }: ChatButtonProps) {
     zIndex: 2147483642,
   }
 
+  if (!canUseChat) {
+    return null
+  }
+
   return (
     <>
       {!isOpen && (
@@ -63,10 +83,10 @@ export default function ChatButton({ className }: ChatButtonProps) {
           onClick={() => setIsOpen(true)}
           style={fixedStyle}
           className={cn(
-            "flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 active:scale-95 relative",
+            "flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg transition-all hover:scale-110 hover:bg-orange-600 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 active:scale-95 relative",
             className
           )}
-          aria-label="Mở chat AI"
+          aria-label="Mở BambiKitchen AI"
         >
           <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />
           {totalBadgeCount > 0 && (
