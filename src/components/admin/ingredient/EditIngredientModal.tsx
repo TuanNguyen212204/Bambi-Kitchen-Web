@@ -4,9 +4,16 @@ import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import { Switch } from "@components/ui/switch"
 import { useIngredientStore } from "@zustand/stores/ingredients"
-import { Upload, X } from "lucide-react"
+import { Loader2, Upload, X } from "lucide-react"
 import { toast } from "sonner"
 import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/modal"
+import type { Nutrition } from "@models/nutrition"
+import {
+  fetchIngredientNutrition,
+  saveIngredientNutrition,
+  type IngredientNutritionData,
+} from "@services/nutrition.service"
+import { extractErrorMessage } from "@utils/errors"
 
 interface Props { 
   open: boolean; 
@@ -24,10 +31,82 @@ interface Props {
     available?: number;
     reserve?: number;
     stock?: number;
-  } 
+  };
+  nutrition?: Nutrition | null;
 }
 
-export default function EditIngredientModal({ open, onClose, ingredient }: Props) {
+interface NutritionFormState {
+  id?: number
+  perUnit: string
+  calories: string
+  protein: string
+  carb: string
+  fat: string
+  fiber: string
+  sugar: string
+  sodium: string
+  calcium: string
+  iron: string
+}
+
+const toInputString = (value?: number | null): string => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return ""
+  }
+  return value.toString()
+}
+
+const mapNutritionToFormState = (nutrition?: Nutrition | null): NutritionFormState => ({
+  id: nutrition?.id,
+  perUnit: nutrition?.per_unit?.trim() || "",
+  calories: toInputString(nutrition?.calories),
+  protein: toInputString(nutrition?.protein),
+  carb: toInputString(nutrition?.carb),
+  fat: toInputString((nutrition?.fat ?? nutrition?.sat_fat) ?? undefined),
+  fiber: toInputString(nutrition?.fiber),
+  sugar: toInputString(nutrition?.sugar),
+  sodium: toInputString(nutrition?.sodium),
+  calcium: toInputString(nutrition?.calcium),
+  iron: toInputString(nutrition?.iron),
+})
+
+const normalizeFormState = (state: NutritionFormState): NutritionFormState => ({
+  id: state.id,
+  perUnit: state.perUnit.trim(),
+  calories: state.calories.trim(),
+  protein: state.protein.trim(),
+  carb: state.carb.trim(),
+  fat: state.fat.trim(),
+  fiber: state.fiber.trim(),
+  sugar: state.sugar.trim(),
+  sodium: state.sodium.trim(),
+  calcium: state.calcium.trim(),
+  iron: state.iron.trim(),
+})
+
+const parseInputNumber = (value: string): number | undefined => {
+  const trimmed = value.trim()
+  if (trimmed === "") return undefined
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+const nutritionFieldLabels: Record<
+  Exclude<keyof NutritionFormState, "id" | "perUnit">,
+  string
+> = {
+  calories: "Calories (kcal)",
+  protein: "Protein (g)",
+  carb: "Carb (g)",
+  fat: "Fat (g)",
+  fiber: "Fiber (g)",
+  sugar: "Sugar (g)",
+  sodium: "Sodium (mg)",
+  calcium: "Calcium (mg)",
+  iron: "Iron (mg)",
+}
+
+export default function EditIngredientModal({ open, onClose, ingredient, nutrition }: Props) {
   const { categories, fetchCategories, update, adjustStock, toggleActive } = useIngredientStore()
   const [delta, setDelta] = useState<string>("0")
   const [name, setName] = useState(ingredient?.name ?? "")
@@ -47,6 +126,14 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
   const [nameError, setNameError] = useState<string>("")
   const [deltaError, setDeltaError] = useState<string>("")
   const [loading, setLoading] = useState(false)
+  const [nutritionForm, setNutritionForm] = useState<NutritionFormState>(
+    mapNutritionToFormState(nutrition)
+  )
+  const [nutritionLoading, setNutritionLoading] = useState(false)
+  const [nutritionError, setNutritionError] = useState<string | null>(null)
+  const nutritionInitialRef = useRef<NutritionFormState | null>(
+    normalizeFormState(mapNutritionToFormState(nutrition))
+  )
 
   const initializedRef = useRef(false)
   useEffect(() => {
@@ -77,8 +164,55 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       setNameError("")
       setDeltaError("")
       setLoading(false)
+      const initialNutrition = mapNutritionToFormState(nutrition)
+      setNutritionForm(initialNutrition)
+      nutritionInitialRef.current = normalizeFormState(initialNutrition)
+      setNutritionError(null)
+      setNutritionLoading(false)
     }
-  }, [open, ingredient?.id]) // Thêm ingredient?.id vào dependency để reset khi ingredient thay đổi
+  }, [open, ingredient, nutrition, fetchCategories]) // reset khi ingredient hoặc dữ liệu dinh dưỡng thay đổi
+
+  useEffect(() => {
+    if (!open || !ingredient?.id) {
+      return
+    }
+    let active = true
+    const loadNutrition = async () => {
+      setNutritionLoading(true)
+      try {
+        const data = await fetchIngredientNutrition(ingredient.id)
+        if (!active) return
+        const mapped = mapNutritionToFormState(data ?? nutrition ?? null)
+        setNutritionForm(mapped)
+        nutritionInitialRef.current = normalizeFormState(mapped)
+        setNutritionError(null)
+      } catch (error) {
+        if (!active) return
+        setNutritionError(
+          extractErrorMessage(error) || "Không thể tải thông tin dinh dưỡng của nguyên liệu."
+        )
+        if (!nutrition) {
+          const emptyState = mapNutritionToFormState(null)
+          setNutritionForm(emptyState)
+          nutritionInitialRef.current = normalizeFormState(emptyState)
+        }
+      } finally {
+        if (active) setNutritionLoading(false)
+      }
+    }
+    loadNutrition()
+    return () => {
+      active = false
+    }
+  }, [open, ingredient?.id, nutrition])
+
+  const handleNutritionChange = (field: keyof NutritionFormState, value: string) => {
+    setNutritionForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+    setNutritionError(null)
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -110,12 +244,12 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
   const submit = async () => {
     if (!ingredient?.id) return
     const currentPricePerUnit = ingredient.pricePerUnit ?? undefined
-    // Parse pricePerUnit: handle empty string as undefined, but allow 0 as valid value
     const priceValue = pricePerUnit.trim()
     const parsedPrice = priceValue === "" ? undefined : parseFloat(priceValue)
-    const newPricePerUnit = (parsedPrice !== undefined && !isNaN(parsedPrice)) ? parsedPrice : undefined
+    const newPricePerUnit =
+      parsedPrice !== undefined && !Number.isNaN(parsedPrice) ? parsedPrice : undefined
     const priceChanged = currentPricePerUnit !== newPricePerUnit
-    
+
     const changedInfo =
       name !== (ingredient.name ?? "") ||
       unit !== (ingredient.unit ?? "GRAM") ||
@@ -125,80 +259,174 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
       removeCurrentImage ||
       priceChanged
 
+    setNameError("")
+    setDeltaError("")
+    setNutritionError(null)
+
+    const NAME_RE = /^[\p{L}\p{N} ]+$/u
+    if (!name.trim()) {
+      setNameError("Tên nguyên liệu là bắt buộc")
+      return
+    }
+    if (!NAME_RE.test(name.trim())) {
+      setNameError("Tên chỉ gồm chữ/số và khoảng trắng")
+      return
+    }
+    const DELTA_RE = /^-?\d+$/
+    if (delta.trim() !== "" && !DELTA_RE.test(delta.trim())) {
+      setDeltaError("Số điều chỉnh chỉ là số nguyên, có thể có 1 dấu trừ ở đầu")
+      return
+    }
+    const deltaNum = Number(delta || 0)
+
+    const normalizedNutrition = normalizeFormState(nutritionForm)
+    const numericValues = {
+      calories: parseInputNumber(normalizedNutrition.calories),
+      protein: parseInputNumber(normalizedNutrition.protein),
+      carb: parseInputNumber(normalizedNutrition.carb),
+      fat: parseInputNumber(normalizedNutrition.fat),
+      fiber: parseInputNumber(normalizedNutrition.fiber),
+      sugar: parseInputNumber(normalizedNutrition.sugar),
+      sodium: parseInputNumber(normalizedNutrition.sodium),
+      calcium: parseInputNumber(normalizedNutrition.calcium),
+      iron: parseInputNumber(normalizedNutrition.iron),
+    }
+
+    const numericKeys = Object.keys(numericValues) as Array<
+      Exclude<keyof NutritionFormState, "id" | "perUnit">
+    >
+    const hasAnyNutritionValue =
+      normalizedNutrition.perUnit !== "" ||
+      numericKeys.some((key) => typeof numericValues[key] === "number")
+
+    if (hasAnyNutritionValue && normalizedNutrition.perUnit === "") {
+      setNutritionError("Vui lòng nhập đơn vị tham chiếu (ví dụ: per 100g) khi khai báo dinh dưỡng.")
+      return
+    }
+
+    for (const key of numericKeys) {
+      const raw = nutritionForm[key].trim()
+      if (raw !== "" && typeof numericValues[key] !== "number") {
+        setNutritionError(`${nutritionFieldLabels[key]} phải là số hợp lệ.`)
+        return
+      }
+      if (typeof numericValues[key] === "number" && numericValues[key]! < 0) {
+        setNutritionError(`${nutritionFieldLabels[key]} không được nhỏ hơn 0.`)
+        return
+      }
+    }
+
+    const normalizedInitial = nutritionInitialRef.current
+    const nutritionChanged =
+      hasAnyNutritionValue &&
+      (!normalizedInitial ||
+        JSON.stringify(normalizedNutrition) !== JSON.stringify(normalizedInitial))
+    const shouldSaveNutrition = nutritionChanged
+
+    setLoading(true)
     try {
-      setNameError("")
-      setDeltaError("")
-      const NAME_RE = /^[\p{L}\p{N} ]+$/u
-      if (!name.trim()) { setNameError("Tên nguyên liệu là bắt buộc"); return }
-      if (!NAME_RE.test(name.trim())) { setNameError("Tên chỉ gồm chữ/số và khoảng trắng"); return }
-      const DELTA_RE = /^-?\d+$/
-      if (delta.trim() !== "" && !DELTA_RE.test(delta.trim())) { setDeltaError("Số điều chỉnh chỉ là số nguyên, có thể có 1 dấu trừ ở đầu"); return }
-      const deltaNum = Number(delta || 0)
-      
-      setLoading(true)
       if (changedInfo) {
-        // Fetch giá trị hiện tại từ API để đảm bảo có quantity, available, reserve, pricePerUnit chính xác
-        // Tránh trường hợp prop ingredient không có đầy đủ dữ liệu tồn kho
         const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
         let currentQuantity: number | undefined = undefined
         let currentReserve: number | undefined = undefined
-        let currentPricePerUnit: number | undefined = undefined
-        
+        let currentPricePerUnitFromApi: number | undefined = undefined
+
         try {
           const currentRes = await bambiApi.get(API_ENDPOINTS.API_INGREDIENT_BY_ID(ingredient.id))
           const currentData = currentRes.data || {}
-          currentQuantity = typeof (currentData as { quantity?: number }).quantity === 'number' 
-            ? (currentData as { quantity?: number }).quantity!
-            : undefined
-          currentReserve = typeof (currentData as { reserve?: number }).reserve === 'number'
-            ? (currentData as { reserve?: number }).reserve!
-            : undefined
-          // Fetch pricePerUnit từ API để giữ nguyên nếu không thay đổi
-          currentPricePerUnit = typeof (currentData as { pricePerUnit?: number }).pricePerUnit === 'number'
-            ? (currentData as { pricePerUnit?: number }).pricePerUnit!
-            : undefined
+          currentQuantity =
+            typeof (currentData as { quantity?: number }).quantity === "number"
+              ? (currentData as { quantity?: number }).quantity!
+              : undefined
+          currentReserve =
+            typeof (currentData as { reserve?: number }).reserve === "number"
+              ? (currentData as { reserve?: number }).reserve!
+              : undefined
+          currentPricePerUnitFromApi =
+            typeof (currentData as { pricePerUnit?: number }).pricePerUnit === "number"
+              ? (currentData as { pricePerUnit?: number }).pricePerUnit!
+              : undefined
         } catch (error) {
           console.error("Error fetching current ingredient:", error)
-          // Fallback về prop nếu API fail
-          currentQuantity = typeof ingredient.quantity === 'number' ? ingredient.quantity : (typeof ingredient.stock === 'number' ? ingredient.stock : undefined)
-          currentReserve = typeof ingredient.reserve === 'number' ? ingredient.reserve : undefined
-          currentPricePerUnit = typeof ingredient.pricePerUnit === 'number' ? ingredient.pricePerUnit : undefined
+          currentQuantity =
+            typeof ingredient.quantity === "number"
+              ? ingredient.quantity
+              : typeof ingredient.stock === "number"
+              ? ingredient.stock
+              : undefined
+          currentReserve =
+            typeof ingredient.reserve === "number" ? ingredient.reserve : undefined
+          currentPricePerUnitFromApi =
+            typeof ingredient.pricePerUnit === "number" ? ingredient.pricePerUnit : undefined
         }
-        
-        // Tính lại available = quantity - reserve để đảm bảo tính nhất quán
-        // Lưu ý: Nếu reserve âm (ví dụ: -16), available = quantity - (-16) = quantity + 16
-        // Điều này có thể đúng nếu backend cho phép reserve âm (có thể là logic đặc biệt)
-        const calculatedAvailable = (typeof currentQuantity === 'number' && typeof currentReserve === 'number')
-          ? Math.max(0, currentQuantity - currentReserve) // Giữ nguyên công thức toán học
-          : (typeof currentQuantity === 'number' && currentQuantity >= 0)
-          ? currentQuantity // Nếu không có reserve, available = quantity
-          : undefined
-        
-        // Đảm bảo giữ nguyên quantity, reserve, pricePerUnit khi chỉ update ảnh hoặc thông tin khác
-        // Tính lại available để đảm bảo tính nhất quán
-        // Nếu newPricePerUnit là undefined (user không thay đổi), giữ nguyên giá trị hiện tại từ API
-        const finalPricePerUnit = newPricePerUnit !== undefined ? newPricePerUnit : currentPricePerUnit
-        
-        await update({ 
-          id: ingredient.id, 
-          name, 
-          unit, 
-          active, 
-          categoryId: typeof categoryId === 'number' ? categoryId : originalCategoryId, 
+
+        const calculatedAvailable =
+          typeof currentQuantity === "number" && typeof currentReserve === "number"
+            ? Math.max(0, currentQuantity - currentReserve)
+            : typeof currentQuantity === "number" && currentQuantity >= 0
+            ? currentQuantity
+            : undefined
+
+        const finalPricePerUnit =
+          newPricePerUnit !== undefined ? newPricePerUnit : currentPricePerUnitFromApi
+
+        await update({
+          id: ingredient.id,
+          name,
+          unit,
+          active,
+          categoryId: typeof categoryId === "number" ? categoryId : originalCategoryId,
           file: selectedFile || undefined,
           removeImage: removeCurrentImage,
-          pricePerUnit: finalPricePerUnit, // Luôn gửi pricePerUnit (mới hoặc giữ nguyên từ API)
-          // Sử dụng giá trị từ API (hoặc fallback về prop)
+          pricePerUnit: finalPricePerUnit,
           quantity: currentQuantity,
-          available: calculatedAvailable, // Tính lại available thay vì giữ nguyên giá trị cũ
-          reserve: currentReserve
+          available: calculatedAvailable,
+          reserve: currentReserve,
         })
       }
+
       if (deltaNum) {
         await adjustStock(ingredient.id, deltaNum)
       }
+
+      let nutritionUpdated = false
+      if (shouldSaveNutrition) {
+        const payload: IngredientNutritionData = {
+          id: nutritionForm.id,
+          per_unit: normalizedNutrition.perUnit || undefined,
+          calories: numericValues.calories,
+          protein: numericValues.protein,
+          carb: numericValues.carb,
+          fiber: numericValues.fiber,
+          sugar: numericValues.sugar,
+          sodium: numericValues.sodium,
+          calcium: numericValues.calcium,
+          iron: numericValues.iron,
+          fat: numericValues.fat,
+          sat_fat: numericValues.fat,
+        }
+
+        try {
+          const saved = await saveIngredientNutrition(ingredient.id, payload)
+          const mapped = mapNutritionToFormState(saved)
+          setNutritionForm(mapped)
+          nutritionInitialRef.current = normalizeFormState(mapped)
+          setNutritionError(null)
+          nutritionUpdated = true
+        } catch (error) {
+          const message =
+            extractErrorMessage(error) || "Cập nhật dinh dưỡng thất bại. Vui lòng thử lại."
+          setNutritionError(message)
+          toast.error(message)
+          return
+        }
+      }
+
+      if (!changedInfo && nutritionUpdated && !deltaNum) {
+        toast.success("Đã cập nhật dinh dưỡng nguyên liệu")
+      }
+
       onClose()
-    } catch {
     } finally {
       setLoading(false)
     }
@@ -345,6 +573,145 @@ export default function EditIngredientModal({ open, onClose, ingredient }: Props
           </div>
         </div>
         
+        <div className="border-t pt-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">Thông tin dinh dưỡng</div>
+              <p className="text-xs text-gray-500">
+                Dùng cho việc tính calories và phân tích sức khỏe món ăn.
+              </p>
+            </div>
+            {nutritionLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-orange-600" />
+            ) : null}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label className="mb-1 block">Per (ví dụ: per 100g)</Label>
+              <Input
+                value={nutritionForm.perUnit}
+                onChange={(e) => handleNutritionChange("perUnit", e.target.value)}
+                placeholder="per 100g"
+                disabled={nutritionLoading || loading}
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block">Calories (kcal)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={nutritionForm.calories}
+                onChange={(e) => handleNutritionChange("calories", e.target.value)}
+                placeholder="Ví dụ: 250"
+                disabled={nutritionLoading || loading}
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block">Protein (g)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={nutritionForm.protein}
+                onChange={(e) => handleNutritionChange("protein", e.target.value)}
+                placeholder="Ví dụ: 12.5"
+                disabled={nutritionLoading || loading}
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block">Carb (g)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={nutritionForm.carb}
+                onChange={(e) => handleNutritionChange("carb", e.target.value)}
+                placeholder="Ví dụ: 30"
+                disabled={nutritionLoading || loading}
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block">Fat (g)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={nutritionForm.fat}
+                onChange={(e) => handleNutritionChange("fat", e.target.value)}
+                placeholder="Ví dụ: 7.5"
+                disabled={nutritionLoading || loading}
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block">Fiber (g)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={nutritionForm.fiber}
+                onChange={(e) => handleNutritionChange("fiber", e.target.value)}
+                placeholder="Ví dụ: 4"
+                disabled={nutritionLoading || loading}
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block">Sugar (g)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={nutritionForm.sugar}
+                onChange={(e) => handleNutritionChange("sugar", e.target.value)}
+                placeholder="Tùy chọn"
+                disabled={nutritionLoading || loading}
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block">Sodium (mg)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={nutritionForm.sodium}
+                onChange={(e) => handleNutritionChange("sodium", e.target.value)}
+                placeholder="Tùy chọn"
+                disabled={nutritionLoading || loading}
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block">Calcium (mg)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={nutritionForm.calcium}
+                onChange={(e) => handleNutritionChange("calcium", e.target.value)}
+                placeholder="Tùy chọn"
+                disabled={nutritionLoading || loading}
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block">Iron (mg)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={nutritionForm.iron}
+                onChange={(e) => handleNutritionChange("iron", e.target.value)}
+                placeholder="Tùy chọn"
+                disabled={nutritionLoading || loading}
+              />
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">
+            Để trống các trường không áp dụng. Hệ thống sẽ coi giá trị trống là 0.
+          </p>
+          {nutritionError ? (
+            <div className="text-sm text-red-600">{nutritionError}</div>
+          ) : null}
+        </div>
+
         <div className="border-t pt-3 space-y-2">
           <div className="font-medium">Điều chỉnh tồn kho</div>
           <div className="flex items-center gap-2">

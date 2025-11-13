@@ -8,6 +8,7 @@ export interface Nutrition {
   protein: number
   carb: number
   fiber: number
+  fat?: number
   iron: number
   sodium: number
   calcium: number

@@ -38,6 +38,21 @@ export interface DishNutritionComputationResult
   analysis: DishNutritionAnalysis
 }
 
+export interface IngredientNutritionData {
+  id?: number
+  per_unit?: string | null
+  calories?: number | null
+  protein?: number | null
+  carb?: number | null
+  fiber?: number | null
+  fat?: number | null
+  sat_fat?: number | null
+  sugar?: number | null
+  sodium?: number | null
+  calcium?: number | null
+  iron?: number | null
+}
+
 const toHttpStatus = (error: unknown): number | undefined => {
   return (error as { response?: { status?: number } })?.response?.status
 }
@@ -124,6 +139,20 @@ const calculateScalingRatio = (
     return 1
   }
   return ingredientAmount / baseAmount
+}
+
+const resolveFatValue = (nutrition?: Nutrition | null): number => {
+  if (!nutrition) return 0
+  const possible = [
+    (nutrition as unknown as { fat?: unknown }).fat,
+    nutrition.sat_fat,
+  ]
+  for (const value of possible) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value
+    }
+  }
+  return 0
 }
 
 const normalizeRecipeIngredients = (
@@ -269,17 +298,18 @@ export async function prepareDishNutritionPayload(
         normalizedUnit,
         nutrition
       )
+      const fatValue = resolveFatValue(nutrition)
 
       const baseContribution: NutritionIngredientContribution = {
         ingredientId: ingredient.id,
         name: ingredient.name,
         amount: ingredient.amount,
         unit: normalizedUnit,
-        per: nutrition?.per_unit ?? `per ${normalizedUnit}`,
+        per: nutrition?.per_unit ?? `per 1 ${normalizedUnit}`,
         cal: (nutrition?.calories ?? 0) * ratio,
         pro: (nutrition?.protein ?? 0) * ratio,
         carb: (nutrition?.carb ?? 0) * ratio,
-        fat: (nutrition?.fat ?? 0) * ratio,
+        fat: fatValue * ratio,
         fiber: (nutrition?.fiber ?? 0) * ratio,
       }
 
@@ -357,6 +387,115 @@ export async function calculateDishNutrition(
   return {
     ...prepared,
     analysis,
+  }
+}
+
+export async function fetchIngredientNutrition(
+  ingredientId: number
+): Promise<Nutrition | null> {
+  try {
+    const response = await bambiApi.get<Nutrition>(
+      API_ENDPOINTS.API_NUTRITION_BY_INGREDIENT(ingredientId)
+    )
+    return response.data ?? null
+  } catch (error) {
+    const status = toHttpStatus(error)
+    if (status === 404) {
+      return null
+    }
+    throw new NutritionError(
+      `Không thể lấy thông tin dinh dưỡng cho nguyên liệu #${ingredientId}.`,
+      error
+    )
+  }
+}
+
+const toNumberIfFinite = (value: unknown): number | undefined => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value
+  }
+  return undefined
+}
+
+export async function saveIngredientNutrition(
+  ingredientId: number,
+  data: IngredientNutritionData
+): Promise<Nutrition> {
+  try {
+    const payload: Partial<Nutrition> & { ingredient: { id: number } } = {
+      ingredient: { id: ingredientId },
+      ingredient_id: ingredientId,
+    }
+
+    if (typeof data.id === "number") {
+      payload.id = data.id
+    }
+    if (typeof data.per_unit === "string") {
+      payload.per_unit = data.per_unit.trim()
+    }
+
+    const calories = toNumberIfFinite(data.calories ?? undefined)
+    if (typeof calories === "number") {
+      payload.calories = calories
+    }
+
+    const protein = toNumberIfFinite(data.protein ?? undefined)
+    if (typeof protein === "number") {
+      payload.protein = protein
+    }
+
+    const carb = toNumberIfFinite(data.carb ?? undefined)
+    if (typeof carb === "number") {
+      payload.carb = carb
+    }
+
+    const fiber = toNumberIfFinite(data.fiber ?? undefined)
+    if (typeof fiber === "number") {
+      payload.fiber = fiber
+    }
+
+    const sugar = toNumberIfFinite(data.sugar ?? undefined)
+    if (typeof sugar === "number") {
+      payload.sugar = sugar
+    }
+
+    const sodium = toNumberIfFinite(data.sodium ?? undefined)
+    if (typeof sodium === "number") {
+      payload.sodium = sodium
+    }
+
+    const calcium = toNumberIfFinite(data.calcium ?? undefined)
+    if (typeof calcium === "number") {
+      payload.calcium = calcium
+    }
+
+    const iron = toNumberIfFinite(data.iron ?? undefined)
+    if (typeof iron === "number") {
+      payload.iron = iron
+    }
+
+    const satFat = toNumberIfFinite(data.sat_fat ?? undefined)
+    const fat = toNumberIfFinite(data.fat ?? undefined)
+    if (typeof fat === "number") {
+      payload.fat = fat
+    }
+    if (typeof satFat === "number") {
+      payload.sat_fat = satFat
+    } else if (typeof fat === "number") {
+      payload.sat_fat = fat
+    }
+
+    const requester = data.id
+      ? bambiApi.put<Nutrition>(API_ENDPOINTS.API_NUTRITION, payload)
+      : bambiApi.post<Nutrition>(API_ENDPOINTS.API_NUTRITION, payload)
+
+    const response = await requester
+    return response.data
+  } catch (error) {
+    throw new NutritionError(
+      "Không thể lưu thông tin dinh dưỡng nguyên liệu.",
+      error
+    )
   }
 }
 
