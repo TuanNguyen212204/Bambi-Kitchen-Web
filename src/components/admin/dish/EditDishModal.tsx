@@ -33,6 +33,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>("")
+  const activeDirtyRef = useRef(false)
+  const publicDirtyRef = useRef(false)
 
   const fetchedOnceRef = useRef(false)
   const justSubmittedRef = useRef(false)
@@ -56,14 +58,16 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
       setDishType("PRESET")
       // Không set ingredients từ dish prop vì sẽ được load từ API trong fetchRecipe
       // setIngredients(dish?.ingredients ?? {})
-      setIsActive(dish?.active ?? true)
-      setIsPublic(dish?.public ?? true)
+      if (!activeDirtyRef.current) setIsActive(dish?.active ?? true)
+      if (!publicDirtyRef.current) setIsPublic(dish?.public ?? true)
       setFile(undefined)
       setExistingImageUrl(undefined)
       setLoading(false)
       setError("")
     } else {
       fetchedOnceRef.current = false
+      activeDirtyRef.current = false
+      publicDirtyRef.current = false
     }
   }, [open, dish])
 
@@ -78,8 +82,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
           setName(d.name || "")
           setDescription(d.description || "")
           setPrice(d.price != null ? String(d.price) : "")
-          setIsActive(d.active ?? true)
-          setIsPublic(d.public ?? true)
+          if (!activeDirtyRef.current) setIsActive(d.active ?? true)
+          if (!publicDirtyRef.current) setIsPublic(d.public ?? true)
           setExistingImageUrl(d.imageUrl)
         }
       } catch { return }
@@ -322,6 +326,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
                 onCheckedChange={async (checked) => {
                   if (!dish?.id) return
                   const originalValue = isActive
+                  activeDirtyRef.current = true
                   setIsActive(checked) // Optimistic update
                   try {
                     const updatedActive = await toggleActive(dish.id)
@@ -330,6 +335,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
                     const currentFilter = useDishStore.getState().statusFilter || "all"
                     await useDishStore.getState().fetchAll(currentFilter).catch(() => undefined)
                   } catch (error) {
+                    activeDirtyRef.current = false
                     setIsActive(originalValue) // Revert on error
                     const { toast } = await import("sonner")
                     const { extractErrorMessage } = await import("@utils/errors")
@@ -349,6 +355,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
                 onCheckedChange={async (checked) => {
                   if (!dish?.id) return
                   const originalValue = isPublic
+                  publicDirtyRef.current = true
                   setIsPublic(checked) // Optimistic update
                   try {
                     const updatedPublic = await togglePublic(dish.id)
@@ -357,6 +364,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
                     const currentFilter = useDishStore.getState().statusFilter || "all"
                     await useDishStore.getState().fetchAll(currentFilter).catch(() => undefined)
                   } catch (error) {
+                    publicDirtyRef.current = false
                     setIsPublic(originalValue) // Revert on error
                     const { toast } = await import("sonner")
                     const { extractErrorMessage } = await import("@utils/errors")
