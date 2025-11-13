@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { X, Clock, Package, Loader2 } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { bambiApi, API_ENDPOINTS } from "@/utils/api"
 import { useAuthStore } from "@zustand/stores/auth"
+import { normalizeImageUrl } from "@/utils/file"
 import { useCartStore } from "@/zustand/stores/cart"
 import { toast } from "sonner"
 import type { Dish } from "@models/dish/dish"
@@ -36,6 +37,7 @@ export default function QuickOrderModal({ open, onClose }: QuickOrderModalProps)
   const [orders, setOrders] = useState<OrderForQuickOrder[]>([])
   const [loading, setLoading] = useState(false)
   const [addingToCart, setAddingToCart] = useState<number | null>(null)
+  const dishCacheRef = useRef<Map<number, Dish>>(new Map())
 
   useEffect(() => {
     if (open && user?.id) {
@@ -90,6 +92,61 @@ export default function QuickOrderModal({ open, onClose }: QuickOrderModalProps)
     }
   }
 
+  const normalizePrice = (value: unknown): number => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value
+    }
+    if (typeof value === "string") {
+      const cleaned = value.replace(/[^\d.-]/g, "")
+      if (!cleaned) return 0
+      const parsed = Number(cleaned)
+      return Number.isNaN(parsed) ? 0 : parsed
+    }
+    return 0
+  }
+
+  const normalizeDishData = (data: any, fallbackId: number): Dish => {
+    const rawType = typeof data?.dishType === "string" ? data.dishType.toLowerCase() : undefined
+    const allowedTypes: Dish["type"][] = ["combo", "single", "custom", "quick", "signature"]
+    const type = allowedTypes.includes(rawType as Dish["type"]) ? (rawType as Dish["type"]) : "single"
+
+    return {
+      id: typeof data?.id === "number" ? data.id : fallbackId,
+      name: typeof data?.name === "string" ? data.name : `Món #${fallbackId}`,
+      price: normalizePrice(data?.price),
+      img_url: normalizeImageUrl(data?.imageUrl || data?.imgUrl) || "",
+      account_id: data?.account?.id ?? data?.accountId ?? 0,
+      dish_category_id: data?.dishCategory?.id ?? data?.dishCategoryId ?? 0,
+      type,
+      description: typeof data?.description === "string" ? data.description : "",
+      is_public: typeof data?.public === "boolean" ? data.public : true,
+      used: typeof data?.usedQuantity === "number" ? data.usedQuantity : data?.used ?? 0,
+    }
+  }
+
+  const ensureDishCache = async (dishIds: number[]) => {
+    const idsToFetch = dishIds.filter((id) => !dishCacheRef.current.has(id))
+    if (!idsToFetch.length) return
+
+    await Promise.all(
+      idsToFetch.map(async (id) => {
+        try {
+          const { data } = await bambiApi.get(
+            API_ENDPOINTS.API_DISH_BY_ID(id),
+            { headers: { "x-silent-error": "1" } }
+          )
+          dishCacheRef.current.set(id, normalizeDishData(data, id))
+        } catch (error) {
+          console.error(`Không thể lấy thông tin món #${id}:`, error)
+          // Vẫn lưu placeholder để tránh fetch lại nhiều lần
+          if (!dishCacheRef.current.has(id)) {
+            dishCacheRef.current.set(id, normalizeDishData({}, id))
+          }
+        }
+      })
+    )
+  }
+
   const handleQuickOrder = async (order: OrderForQuickOrder) => {
     if (!order.details || order.details.length === 0) {
       toast.error("Đơn hàng này không có chi tiết")
@@ -98,21 +155,51 @@ export default function QuickOrderModal({ open, onClose }: QuickOrderModalProps)
 
     setAddingToCart(order.id)
     try {
+      const dishIds = order.details
+        .map((detail) => detail.dish?.id)
+        .filter((id): id is number => typeof id === "number" && id > 0)
+
+      if (dishIds.length) {
+        await ensureDishCache(dishIds)
+      }
+
       // Thêm từng món từ đơn hàng vào giỏ hàng
       let addedCount = 0
       for (const detail of order.details) {
         if (detail.dish?.id && detail.dish?.name) {
+          const cachedDish = dishCacheRef.current.get(detail.dish.id)
+          let price = detail.dish.price !== undefined && detail.dish.price !== null
+            ? normalizePrice(detail.dish.price)
+            : 0
+
+          if (!price || price <= 0) {
+            price = normalizePrice(cachedDish?.price)
+          }
+
+          if (!price || price <= 0) {
+            const averagePrice = order.totalPrice && order.details.length
+              ? normalizePrice(order.totalPrice) / Math.max(order.details.length, 1)
+              : 0
+            price = Math.max(0, averagePrice)
+          }
+
+          if (!Number.isFinite(price) || price < 0) {
+            price = 0
+          }
+
+          price = Math.round(price)
+
           const dish: Dish = {
             id: detail.dish.id,
-            name: detail.dish.name,
-            price: detail.dish.price || 0,
-            img_url: detail.dish.imageUrl || "",
-            account_id: 0,
-            dish_category_id: 0,
-            type: "single",
-            description: "",
-            is_public: true,
-            used: 0,
+            name: detail.dish.name || cachedDish?.name || `Món #${detail.dish.id}`,
+            price,
+            img_url: normalizeImageUrl(detail.dish.imageUrl) || cachedDish?.img_url || "",
+            account_id: cachedDish?.account_id ?? 0,
+            dish_category_id: cachedDish?.dish_category_id ?? 0,
+            type: cachedDish?.type ?? "single",
+            description: cachedDish?.description ?? "",
+            is_public: cachedDish?.is_public ?? true,
+            used: cachedDish?.used ?? 0,
           }
 
           // Parse notes để lấy thông tin custom bowl nếu có

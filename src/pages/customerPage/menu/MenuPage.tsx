@@ -75,7 +75,17 @@ const MenuCard: React.FC<{
         className="relative mb-4 block focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500 rounded-full"
       >
         <div className="w-44 h-44 rounded-full overflow-hidden bg-gray-100">
-          <img src={dish.imageUrl || getFallbackImage(idx)} alt={dish.name} className="w-full h-full object-cover" />
+          <img 
+            src={dish.imageUrl || getFallbackImage(idx)} 
+            alt={dish.name} 
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.src !== getFallbackImage(idx)) {
+                target.src = getFallbackImage(idx);
+              }
+            }}
+          />
         </div>
         <div className="absolute top-2 right-2 bg-gray-800 text-white px-3 py-2 rounded-full text-sm font-bold shadow-lg">
           {priceFormat(dish.price)}
@@ -379,8 +389,7 @@ const MenuPage: React.FC = () => {
                         </div>
                         <h3 className="text-2xl font-bold text-gray-900 mb-2 uppercase">Make your own bowl</h3>
                         <p className="text-gray-600 mb-4">Tự tạo tô poke bowl theo sở thích của bạn</p>
-                        <div className="flex items-center justify-between w-full max-w-xs mt-4">
-                          <span className="text-lg font-bold text-gray-900">Từ 16.500đ</span>
+                        <div className="flex justify-center w-full max-w-xs mt-4">
                           <Button className="bg-[#ea6d27] hover:bg-[#d85f1f] text-white font-semibold">
                             Tạo ngay
                           </Button>

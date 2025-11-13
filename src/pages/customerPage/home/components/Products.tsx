@@ -40,6 +40,12 @@ const ProductCard: React.FC<{ product: HomeDish; idx: number }> = ({ product, id
             src={product.imageUrl || getFallbackImage(idx)}
             alt={product.name}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.src !== getFallbackImage(idx)) {
+                target.src = getFallbackImage(idx);
+              }
+            }}
           />
         </div>
         <div className="absolute top-2 right-2 bg-gray-800 text-white px-3 py-2 rounded-full text-sm font-bold shadow-lg">

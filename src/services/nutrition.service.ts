@@ -6,6 +6,7 @@ import type {
 } from "@models/nutrition/calculate"
 import type { Nutrition } from "@models/nutrition/nutrition"
 import type { NutritionIngredientContribution } from "@models/chat"
+import type { ChatServiceResponse } from "@services/chat.service"
 import { bambiApi } from "@utils/api"
 import { API_ENDPOINTS } from "@utils/endpoints"
 
@@ -388,6 +389,170 @@ export async function calculateDishNutrition(
   return {
     ...prepared,
     analysis,
+  }
+}
+
+interface DishNutritionResponseItem {
+  dishId: number
+  response: {
+    score: number
+    title: string
+    roast: string
+    totals: {
+      calories: number
+      protein: number
+      carb: number
+      fat: number
+      fiber: number
+    }
+    suggest: string
+  }
+}
+
+export async function getNutritionAdviceForDishes(
+  dishIds: number[],
+  options?: { query?: string; dishNames?: string[] }
+): Promise<ChatServiceResponse> {
+  const uniqueIds = Array.from(
+    new Set(
+      (dishIds || []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0)
+    )
+  )
+
+  if (!uniqueIds.length) {
+    throw new NutritionError("Không có món ăn hợp lệ để phân tích dinh dưỡng.")
+  }
+
+  try {
+    // POST với body là array dish ids
+    const response = await bambiApi.post<DishNutritionResponseItem[]>(
+      API_ENDPOINTS.API_GEMINI_CALCULATE_CALORIES,
+      uniqueIds,
+      {
+        headers: { "x-silent-error": "1" },
+      }
+    )
+
+    const data = response.data
+
+    // Xử lý response là array of objects
+    if (Array.isArray(data) && data.length > 0) {
+      // Tạo map dishId -> dishName để dễ tra cứu
+      const dishNameMap = new Map<number, string>()
+      if (options?.dishNames && options.dishNames.length > 0) {
+        uniqueIds.forEach((id, idx) => {
+          if (options.dishNames && options.dishNames[idx]) {
+            dishNameMap.set(id, options.dishNames[idx])
+          }
+        })
+      }
+      
+      // Format message cho từng dish
+      const messages: string[] = []
+      
+      for (const item of data) {
+        const analysis = item.response
+        const dishName = dishNameMap.get(item.dishId) || `Món #${item.dishId}`
+        
+        let dishMessage = `🍽️ **${dishName}**\n\n`
+        dishMessage += `📊 **${analysis.title}**\n\n`
+        dishMessage += `${analysis.roast}\n\n`
+        dishMessage += `📈 **Thông tin dinh dưỡng:**\n`
+        dishMessage += `• Calories: ${analysis.totals.calories} kcal\n`
+        dishMessage += `• Protein: ${analysis.totals.protein}g\n`
+        dishMessage += `• Carb: ${analysis.totals.carb}g\n`
+        dishMessage += `• Fat: ${analysis.totals.fat}g\n`
+        dishMessage += `• Fiber: ${analysis.totals.fiber}g\n\n`
+        
+        if (analysis.suggest) {
+          dishMessage += `💡 **Gợi ý:** ${analysis.suggest}\n`
+        }
+        
+        messages.push(dishMessage)
+      }
+
+      const combinedMessage = messages.join("\n---\n\n")
+
+      // Nếu chỉ có 1 dish, tạo metadata để hiển thị card
+      if (data.length === 1) {
+        const item = data[0]
+        const analysis = item.response
+        const dishName = dishNameMap.get(item.dishId) || `Món #${item.dishId}`
+        
+        const metadata: ChatServiceResponse["metadata"] = {
+          type: "nutrition-analysis",
+          dishId: item.dishId,
+          dishName,
+          payload: {
+            name: dishName,
+            ingredients: [],
+          },
+          generatedAt: new Date().toISOString(),
+          contributions: [],
+          analysis: {
+            score: analysis.score,
+            title: analysis.title,
+            roast: analysis.roast,
+            totals: {
+              calories: analysis.totals.calories,
+              protein: analysis.totals.protein,
+              carb: analysis.totals.carb,
+              fat: analysis.totals.fat,
+              fiber: analysis.totals.fiber,
+            },
+            suggest: analysis.suggest,
+          },
+        }
+
+        return {
+          message: combinedMessage,
+          metadata,
+          raw: data,
+        }
+      }
+
+      // Nếu có nhiều dishes, chỉ trả về message
+      return {
+        message: combinedMessage,
+        raw: data,
+      }
+    }
+
+    // Fallback: nếu response không phải array
+    if (typeof data === "string") {
+      return { message: data, raw: data }
+    }
+
+    if (data && typeof data === "object") {
+      const payload = data as {
+        message?: string
+        reply?: string
+        content?: string
+        metadata?: unknown
+      }
+
+      const resolvedMessage =
+        payload.message ??
+        payload.reply ??
+        payload.content ??
+        JSON.stringify(data)
+
+      return {
+        message: resolvedMessage,
+        metadata: (payload.metadata as ChatServiceResponse["metadata"]) ?? null,
+        raw: data,
+      }
+    }
+
+    return {
+      message: typeof data === "undefined" || data === null ? "" : String(data),
+      raw: data,
+    }
+  } catch (error) {
+    throw new NutritionError(
+      "Không thể lấy lời khuyên dinh dưỡng từ AI.",
+      error
+    )
   }
 }
 

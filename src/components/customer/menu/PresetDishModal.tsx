@@ -11,6 +11,7 @@ import type { StoreIngredient } from "@/zustand/types"
 import type { Dish } from "@models/dish/dish"
 import type { DishTemplateItem } from "@/zustand/slices/dish/template.slice"
 import { bambiApi, API_ENDPOINTS } from "@/utils/api"
+import { normalizeImageUrl } from "@/utils/file"
 
 interface PresetDishModalProps {
   open: boolean
@@ -55,13 +56,49 @@ interface RecipeModification {
 
 const formatUnit = (unit?: string): string => {
   if (!unit) return ""
+  const unitUpper = unit.toUpperCase()
+  // KILOGRAM: ẩn không hiển thị gì
+  if (unitUpper === "KILOGRAM") return ""
+  // LITER: hiển thị ml
+  if (unitUpper === "LITER") return "ml"
   const unitMap: Record<string, string> = {
     GRAM: "g",
-    KILOGRAM: "kg",
-    LITER: "L",
     PCS: "phần",
   }
-  return unitMap[unit.toUpperCase()] || unit
+  return unitMap[unitUpper] || unit
+}
+
+const normalizeQuantity = (value: number): number => {
+  if (!Number.isFinite(value)) return 0
+  if (value === 0) return 0
+  const abs = Math.abs(value)
+  const precision = abs < 1 ? 3 : abs < 10 ? 2 : 1
+  return Number(value.toFixed(precision))
+}
+
+const convertQuantityForDisplay = (value: number, unit?: string): number => {
+  if (!Number.isFinite(value)) return 0
+  if (!unit) return normalizeQuantity(value)
+
+  const unitUpper = unit.toUpperCase()
+  if (unitUpper === "LITER") {
+    return normalizeQuantity(value * 1000)
+  }
+  if (unitUpper === "KILOGRAM") {
+    return normalizeQuantity(value * 1000)
+  }
+  return normalizeQuantity(value)
+}
+
+const formatQuantityDisplay = (value: number, unit?: string): string => {
+  const displayValue = convertQuantityForDisplay(value, unit)
+  return Number.isInteger(displayValue) ? displayValue.toString() : displayValue.toString()
+}
+
+const formatQuantityWithUnit = (value: number, unit?: string): string => {
+  const unitLabel = formatUnit(unit)
+  const quantityText = formatQuantityDisplay(value, unit)
+  return unitLabel ? `${quantityText} ${unitLabel}` : quantityText
 }
 
 export default function PresetDishModal({ open, onClose, dish, editingItemId, initialData, onSave }: PresetDishModalProps) {
@@ -196,7 +233,7 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
                 name: dishDataFromApi.name || '',
                 description: dishDataFromApi.description,
                 price: dishDataFromApi.price || 0,
-                imageUrl: dishDataFromApi.imageUrl,
+                imageUrl: normalizeImageUrl(dishDataFromApi.imageUrl),
                 ingredients,
               }
               
@@ -478,10 +515,10 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
       
       // Kiểm tra số lượng mặc định không vượt quá giới hạn
       if (defaultQuantity > maxQuantity) {
-        if (defaultQuantity > maxAvailable) {
-          toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
-        } else {
-          toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
+      if (defaultQuantity > maxAvailable) {
+        toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${formatQuantityWithUnit(maxAvailable, ingredient.unit)}`)
+      } else {
+        toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${formatQuantityWithUnit(maxQuantityByUnit, ingredient.unit)}`)
         }
         return
       }
@@ -539,9 +576,9 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
     // Nếu đang tăng số lượng (delta > 0), kiểm tra số lượng có sẵn trong kho và giới hạn tối đa theo đơn vị
     if (delta > 0 && newQty > maxQuantity) {
       if (newQty > maxAvailable) {
-        toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
+        toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${formatQuantityWithUnit(maxAvailable, ingredient.unit)}`)
       } else {
-        toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
+        toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${formatQuantityWithUnit(maxQuantityByUnit, ingredient.unit)}`)
       }
       return
     }
@@ -633,7 +670,7 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
       id: dish.id,
       name: dishName,
       price: Math.round(finalPrice), // Price per unit with modifications
-      img_url: dishDetails.imageUrl || dish.imageUrl || "",
+      img_url: normalizeImageUrl(dishDetails.imageUrl || dish.imageUrl) || "",
       account_id: 0,
       dish_category_id: dish.categoryId || 0,
       type: "single",
@@ -943,7 +980,7 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
                               
                               {/* Hiển thị khẩu phần với đơn vị - luôn hiển thị */}
                               <p className="text-xs text-gray-600 mb-2 font-medium">
-                                Khẩu phần: {ing.neededQuantity} {ing.unit ? formatUnit(ing.unit) : ""}
+                                Khẩu phần: {formatQuantityDisplay(ing.neededQuantity, ing.unit)} {ing.unit ? formatUnit(ing.unit) : ""}
                               </p>
                               
                               {/* Nút giảm theo % */}
@@ -988,13 +1025,13 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
                                     }}
                                     className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
                                     disabled={removedQty >= ing.neededQuantity}
-                                    title={`Trừ ${getStepAmount(ing.unit)} ${formatUnit(ing.unit)}`}
+                                    title={`Trừ ${formatQuantityWithUnit(getStepAmount(ing.unit), ing.unit)}`}
                                   >
                                     <Minus size={14} className="mr-1" />
-                                    <span>{getStepAmount(ing.unit)}</span>
+                                    <span>{formatQuantityDisplay(getStepAmount(ing.unit), ing.unit)}</span>
                                   </button>
                                   <span className="flex-1 text-center text-xs text-gray-700 font-medium">
-                                    {remainingQty} {ing.unit ? formatUnit(ing.unit) : ""}
+                                    {formatQuantityDisplay(remainingQty, ing.unit)} {ing.unit ? formatUnit(ing.unit) : ""}
                                   </span>
                                   <button
                                     onClick={(e) => {
@@ -1004,22 +1041,22 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
                                     }}
                                     className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs"
                                     disabled={removedQty <= 0}
-                                    title={`Thêm lại ${getStepAmount(ing.unit)} ${formatUnit(ing.unit)}`}
+                                    title={`Thêm lại ${formatQuantityWithUnit(getStepAmount(ing.unit), ing.unit)}`}
                                   >
                                     <Plus size={14} className="mr-1" />
-                                    <span>{getStepAmount(ing.unit)}</span>
+                                    <span>{formatQuantityDisplay(getStepAmount(ing.unit), ing.unit)}</span>
                                   </button>
                                 </div>
                                 
                                 {/* Hiển thị thông tin */}
                                 {removedQty > 0 && (
                                   <p className="text-xs text-gray-600 text-center pt-1 border-t border-gray-200">
-                                    Đã bỏ: {removedQty} {ing.unit ? formatUnit(ing.unit) : ""} • Còn lại: {remainingQty} {ing.unit ? formatUnit(ing.unit) : ""}
+                                    Đã bỏ: {formatQuantityDisplay(removedQty, ing.unit)} {ing.unit ? formatUnit(ing.unit) : ""} • Còn lại: {formatQuantityDisplay(remainingQty, ing.unit)} {ing.unit ? formatUnit(ing.unit) : ""}
                                   </p>
                                 )}
                                 {removedQty === 0 && (
                                   <p className="text-xs text-gray-500 text-center">
-                                    Còn nguyên: {ing.neededQuantity} {ing.unit ? formatUnit(ing.unit) : ""}
+                                    Còn nguyên: {formatQuantityDisplay(ing.neededQuantity, ing.unit)} {ing.unit ? formatUnit(ing.unit) : ""}
                                   </p>
                                 )}
                               </div>
@@ -1224,13 +1261,13 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
                                             }}
                                             className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs disabled:opacity-50"
                                             disabled={!isAdded}
-                                            title={`Giảm ${stepAmount} ${formatUnit(ingredient.unit)}`}
+                                            title={`Giảm ${formatQuantityWithUnit(stepAmount, ingredient.unit)}`}
                                           >
                                             <Minus size={14} className="mr-1" />
-                                            <span>{stepAmount}</span>
+                                            <span>{formatQuantityDisplay(stepAmount, ingredient.unit)}</span>
                                           </button>
                                           <span className="flex-1 text-center text-xs text-gray-700 font-medium">
-                                            {displayQuantity} {formatUnit(ingredient.unit)}
+                                            {formatQuantityDisplay(displayQuantity, ingredient.unit)} {formatUnit(ingredient.unit)}
                                           </span>
                                           <button
                                             onClick={(e) => {
@@ -1239,10 +1276,10 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
                                             }}
                                             className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs disabled:opacity-50"
                                             disabled={!canIncrease}
-                                            title={`Thêm ${stepAmount} ${formatUnit(ingredient.unit)}`}
+                                            title={`Thêm ${formatQuantityWithUnit(stepAmount, ingredient.unit)}`}
                                           >
                                             <Plus size={14} className="mr-1" />
-                                            <span>{stepAmount}</span>
+                                            <span>{formatQuantityDisplay(stepAmount, ingredient.unit)}</span>
                                           </button>
                                         </div>
                                         {isAdded && addedIng && ingredient.pricePerUnit && (
@@ -1318,7 +1355,7 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
                               return (
                                 <li key={mod.ingredientId} className="flex items-center justify-between p-2 bg-white rounded-md border border-gray-200 hover:border-red-300 transition-colors">
                                   <span className="text-gray-700 text-sm">
-                                    {ing.name}: {mod.quantity} {ing.unit ? formatUnit(ing.unit) : ""}
+                                    {ing.name}: {formatQuantityDisplay(mod.quantity, ing.unit)} {ing.unit ? formatUnit(ing.unit) : ""}
                                   </span>
                                   <button
                                     onClick={() => {
@@ -1349,7 +1386,7 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
                               <li key={added.id} className="flex items-center justify-between p-2 bg-white rounded-md border border-gray-200 hover:border-orange-300 transition-colors">
                                 <div className="flex-1 min-w-0">
                                   <span className="text-gray-700 text-sm">
-                                    {ingredient.name}: {added.quantity} {formatUnit(ingredient.unit)}
+                                    {ingredient.name}: {formatQuantityDisplay(added.quantity, ingredient.unit)} {formatUnit(ingredient.unit)}
                                   </span>
                                   {addedPrice > 0 && (
                                     <span className="text-orange-600 ml-1 text-sm font-semibold">

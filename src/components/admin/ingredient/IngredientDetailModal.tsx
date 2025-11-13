@@ -1,17 +1,40 @@
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
-import { Box, DollarSign, Edit3, Image as ImageIcon, Loader2, Package } from "lucide-react";
+import { Box, DollarSign, Edit3, Image as ImageIcon, Package } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import EditIngredientModal from "./EditIngredientModal";
-import type { Nutrition } from "@models/nutrition";
-import { extractErrorMessage } from "@utils/errors";
 
 interface IngredientDetailModalProps {
   open: boolean;
   onClose: () => void;
   ingredient: { id: number; name: string; unit?: string; imgUrl?: string; active?: boolean; stock?: number; quantity?: number; available?: number; reserve?: number; stockStatus?: 'out'|'low'|'normal'; category?: unknown; pricePerUnit?: number } | null;
 }
+
+const formatUnitLabel = (unit?: string): string => {
+  if (!unit) return "";
+  const normalized = unit.toUpperCase();
+  if (normalized === "KILOGRAM") return "";
+  if (normalized === "LITER") return "ml";
+  const map: Record<string, string> = {
+    GRAM: "g",
+    PCS: "phần",
+    ML: "ml",
+  };
+  return map[normalized] || unit.toLowerCase();
+};
+
+const formatQuantityValue = (value?: number, unit?: string): string => {
+  if (typeof value !== "number" || Number.isNaN(value)) return "—";
+  let converted = value;
+  if (unit) {
+    const normalized = unit.toUpperCase();
+    if (normalized === "LITER" || normalized === "KILOGRAM") {
+      converted = Math.round(value * 1000);
+    }
+  }
+  return Number.isInteger(converted) ? converted.toString() : converted.toString();
+};
 
 export function IngredientDetailModal({ 
   open, 
@@ -34,49 +57,10 @@ export function IngredientDetailModal({
   } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [nutritionDetails, setNutritionDetails] = useState<Nutrition | null>(null);
-  const [isNutritionLoading, setIsNutritionLoading] = useState(false);
-  const [nutritionError, setNutritionError] = useState<string | null>(null);
-
-  const formatNutritionValue = (value?: number | null, digits = 1): string => {
-    if (typeof value !== "number" || Number.isNaN(value)) return "0";
-    if (digits === 0 || Math.abs(value) >= 100 || Number.isInteger(value)) {
-      return value.toFixed(0);
-    }
-    return value.toFixed(digits);
-  };
-
-  const macroItems = nutritionDetails
-    ? [
-        { label: "Calories", value: nutritionDetails.calories, unit: "kcal", digits: 0 },
-        { label: "Protein", value: nutritionDetails.protein, unit: "g", digits: 1 },
-        { label: "Carb", value: nutritionDetails.carb, unit: "g", digits: 1 },
-        {
-          label: "Fat",
-          value:
-            typeof nutritionDetails.fat === "number"
-              ? nutritionDetails.fat
-              : nutritionDetails.sat_fat,
-          unit: "g",
-          digits: 1,
-        },
-        { label: "Fiber", value: nutritionDetails.fiber, unit: "g", digits: 1 },
-      ]
-    : [];
-
-  const microItems = nutritionDetails
-    ? [
-        { label: "Sugar", value: nutritionDetails.sugar, unit: "g" },
-        { label: "Sodium", value: nutritionDetails.sodium, unit: "mg" },
-        { label: "Calcium", value: nutritionDetails.calcium, unit: "mg" },
-        { label: "Iron", value: nutritionDetails.iron, unit: "mg" },
-      ].filter((item) => typeof item.value === "number" && !Number.isNaN(item.value))
-    : [];
 
   const loadIngredientDetails = useCallback(async () => {
     if (!ingredient?.id) return;
     setIsLoading(true);
-    setIsNutritionLoading(true);
     try {
       const { bambiApi, API_ENDPOINTS } = await import("@/utils/api");
       
@@ -101,19 +85,6 @@ export function IngredientDetailModal({
     } finally {
       setIsLoading(false);
     }
-
-    try {
-      const { fetchIngredientNutrition } = await import("@services/nutrition.service");
-      const data = await fetchIngredientNutrition(ingredient.id);
-      setNutritionDetails(data ?? null);
-      setNutritionError(null);
-    } catch (error) {
-      console.error("Error loading ingredient nutrition:", error);
-      setNutritionDetails(null);
-      setNutritionError(extractErrorMessage(error) || "Không thể tải thông tin dinh dưỡng.");
-    } finally {
-      setIsNutritionLoading(false);
-    }
   }, [ingredient?.id]);
 
   useEffect(() => {
@@ -122,9 +93,6 @@ export function IngredientDetailModal({
     } else {
       setIngredientDetails(null);
       setIsEditing(false);
-      setNutritionDetails(null);
-      setNutritionError(null);
-      setIsNutritionLoading(false);
     }
   }, [open, ingredient?.id, loadIngredientDetails]);
 
@@ -178,8 +146,8 @@ export function IngredientDetailModal({
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">{displayDetails.name}</h2>
-                {displayDetails.unit && (
-                  <p className="text-gray-600">Đơn vị: {displayDetails.unit}</p>
+                {formatUnitLabel(displayDetails.unit) && (
+                  <p className="text-gray-600">Đơn vị: {formatUnitLabel(displayDetails.unit)}</p>
                 )}
                 <div className="flex gap-2 mt-1">
                   <Badge className={`${activeBadge.bgColor} ${activeBadge.textColor}`}>
@@ -216,7 +184,7 @@ export function IngredientDetailModal({
                     <label className="text-sm font-medium text-gray-700">Đơn vị</label>
                     <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
                       <Box className="w-4 h-4 text-gray-500" />
-                      <span>{displayDetails.unit || '—'}</span>
+                    <span>{formatUnitLabel(displayDetails.unit) || '—'}</span>
                     </div>
                   </div>
                 </div>
@@ -240,10 +208,10 @@ export function IngredientDetailModal({
                   <label className="text-sm font-medium text-gray-700">Tồn kho hiện tại (quantity)</label>
                   <div className="p-3 bg-gray-50 rounded-md">
                     <span className="text-gray-700 font-medium">
-                      {(displayDetails.quantity != null ? displayDetails.quantity : (displayDetails.stock != null ? displayDetails.stock : '—'))}
+                      {formatQuantityValue(displayDetails.quantity ?? displayDetails.stock, displayDetails.unit)}
                     </span>
-                    {displayDetails.unit && (
-                      <span className="text-gray-500 ml-2">{displayDetails.unit}</span>
+                    {formatUnitLabel(displayDetails.unit) && (
+                      <span className="text-gray-500 ml-2">{formatUnitLabel(displayDetails.unit)}</span>
                     )}
                   </div>
                 </div>
@@ -253,9 +221,9 @@ export function IngredientDetailModal({
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">Có sẵn (available)</label>
                     <div className="p-3 bg-gray-50 rounded-md">
-                      <span className="text-gray-700 font-medium">{displayDetails.available}</span>
-                      {displayDetails.unit && (
-                        <span className="text-gray-500 ml-2">{displayDetails.unit}</span>
+                      <span className="text-gray-700 font-medium">{formatQuantityValue(displayDetails.available, displayDetails.unit)}</span>
+                      {formatUnitLabel(displayDetails.unit) && (
+                        <span className="text-gray-500 ml-2">{formatUnitLabel(displayDetails.unit)}</span>
                       )}
                     </div>
                   </div>
@@ -277,63 +245,6 @@ export function IngredientDetailModal({
                     })()}
                   </div>
                 </div>
-              </div>
-
-              {/* Nutrition Information */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="text-lg font-semibold text-gray-800">Thông tin dinh dưỡng</h3>
-                  {isNutritionLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-orange-600" />
-                  ) : null}
-                </div>
-
-                {nutritionError && (
-                  <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {nutritionError}
-                  </div>
-                )}
-
-                {!isNutritionLoading && !nutritionError && !nutritionDetails && (
-                  <div className="rounded-md border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-600">
-                    Chưa có dữ liệu dinh dưỡng. Chọn "Chỉnh sửa thông tin" để bổ sung.
-                  </div>
-                )}
-
-                {!isNutritionLoading && nutritionDetails && (
-                  <div className="space-y-3">
-                    {nutritionDetails.per_unit && (
-                      <div className="p-3 bg-gray-50 rounded-md text-sm text-gray-700">
-                        <span className="font-medium text-gray-800">Per:</span>{" "}
-                        {nutritionDetails.per_unit}
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                      {macroItems.map((item) => (
-                        <div key={item.label} className="rounded-md bg-gray-50 px-3 py-2">
-                          <p className="text-xs uppercase text-gray-500">{item.label}</p>
-                          <p className="text-sm font-semibold text-gray-800">
-                            {formatNutritionValue(item.value ?? 0, item.digits ?? 1)}{" "}
-                            <span className="text-xs font-medium text-gray-500">{item.unit}</span>
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                    {microItems.length > 0 && (
-                      <div className="grid grid-cols-2 gap-3">
-                        {microItems.map((item) => (
-                          <div key={item.label} className="rounded-md border px-3 py-2 text-sm text-gray-700">
-                            <p className="text-xs uppercase text-gray-500">{item.label}</p>
-                            <p className="font-medium text-gray-800">
-                              {formatNutritionValue(item.value ?? 0, 1)}{" "}
-                              <span className="text-xs font-medium text-gray-500">{item.unit}</span>
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Category Information */}
@@ -409,7 +320,6 @@ export function IngredientDetailModal({
             reserve: displayDetails.reserve,
             stock: displayDetails.stock,
           }}
-          nutrition={nutritionDetails}
         />
       )}
 

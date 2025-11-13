@@ -18,6 +18,8 @@ import { Button } from "@components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog"
 import { Textarea } from "@components/ui/textarea"
 import QuickOrderModal from "@components/customer/quickorder/QuickOrderModal"
+import ChatButton from "@components/customer/chat/ChatButton"
+import ChatBox, { type NutritionChatRequest } from "@components/customer/chat/ChatBox"
 import { PATHS } from "@config/path"
 import { bambiApi, API_ENDPOINTS } from "@/utils/api"
 import { useAuthStore } from "@zustand/stores/auth"
@@ -145,6 +147,8 @@ const OrdersPage: React.FC = () => {
       }
     >
   >({})
+  const [chatBoxOpen, setChatBoxOpen] = useState(false)
+  const [nutritionRequest, setNutritionRequest] = useState<NutritionChatRequest | null>(null)
 
   const ingredientCacheRef = useRef<Map<number, IngredientInfo[]>>(new Map())
   const ingredientUnitCacheRef = useRef<Map<number, string | undefined>>(new Map())
@@ -159,21 +163,37 @@ const OrdersPage: React.FC = () => {
   const formatUnit = (unit?: string) => {
     if (!unit) return ""
     const normalized = unit.toUpperCase()
+    // KILOGRAM: ẩn không hiển thị gì
+    if (normalized === "KILOGRAM") return ""
+    // LITER: hiển thị ml
+    if (normalized === "LITER") return "ml"
     const unitMap: Record<string, string> = {
       GRAM: "g",
-      KILOGRAM: "kg",
-      LITER: "l",
       PCS: "pcs",
       ML: "ml",
     }
     return unitMap[normalized] || unit.toLowerCase()
   }
 
+  const convertQuantityForDisplay = (quantity?: number, unit?: string): number => {
+    if (typeof quantity !== "number" || Number.isNaN(quantity)) return 0
+    if (!unit) return quantity
+    const normalized = unit.toUpperCase()
+    if (normalized === "LITER") {
+      return Math.round(quantity * 1000)
+    }
+    if (normalized === "KILOGRAM") {
+      return Math.round(quantity * 1000)
+    }
+    return quantity
+  }
+
   const formatIngredientQuantity = (quantity?: number, unit?: string) => {
     if (typeof quantity !== "number") return ""
+    const converted = convertQuantityForDisplay(quantity, unit)
     const formattedQuantity = new Intl.NumberFormat("vi-VN", {
-      maximumFractionDigits: Number.isInteger(quantity) ? 0 : 2,
-    }).format(quantity)
+      maximumFractionDigits: Number.isInteger(converted) ? 0 : 2,
+    }).format(converted)
     const unitLabel = formatUnit(unit)
     return unitLabel ? `${formattedQuantity} ${unitLabel}` : formattedQuantity
   }
@@ -480,6 +500,33 @@ const OrdersPage: React.FC = () => {
       void fetchOrderDetails(orderId)
     }
   }
+
+  // Khi chi tiết đơn được load, chuẩn bị nutrition request (không tự động gửi)
+  useEffect(() => {
+    if (activeDetailOrderId && orderDetailsState[activeDetailOrderId]?.details) {
+      const details = orderDetailsState[activeDetailOrderId].details || []
+      const dishIds = details
+        .map(detail => detail.dish?.id)
+        .filter((id): id is number => typeof id === "number" && id > 0)
+      
+      if (dishIds.length > 0) {
+        const dishNames = details
+          .map(detail => detail.dish?.name)
+          .filter((name): name is string => typeof name === "string")
+        
+        setNutritionRequest({
+          dishIds,
+          dishNames: dishNames.length > 0 ? dishNames : undefined,
+          orderId: activeDetailOrderId,
+          introMessage: `Tôi muốn xem lời khuyên dinh dưỡng cho đơn hàng #${activeDetailOrderId}`,
+          appendUserMessage: true,
+        })
+      }
+    } else {
+      // Reset khi đóng modal
+      setNutritionRequest(null)
+    }
+  }, [activeDetailOrderId, orderDetailsState])
 
   const renderContent = () => {
     if (!isAuthenticated || !user) {
@@ -897,6 +944,15 @@ const OrdersPage: React.FC = () => {
                       <div className="border border-gray-200 rounded-2xl p-4">
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Món ăn</h3>
+                          {nutritionRequest && nutritionRequest.dishIds.length > 0 && activeDetailOrderId && (
+                            <Button
+                              onClick={() => setChatBoxOpen(true)}
+                              size="sm"
+                              className="bg-orange-500 hover:bg-orange-600 text-white"
+                            >
+                              Xem lời khuyên dinh dưỡng cho đơn #{activeDetailOrderId}
+                            </Button>
+                          )}
                         </div>
                         {detailState?.loading ? (
                           <div className="flex justify-center items-center py-10 text-gray-500">
@@ -1005,6 +1061,22 @@ const OrdersPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Chat Button và ChatBox cho nutrition advice */}
+      <ChatButton />
+      {chatBoxOpen && (
+        <ChatBox
+          isOpen={chatBoxOpen}
+          onClose={() => {
+            setChatBoxOpen(false)
+            setNutritionRequest(null)
+          }}
+          nutritionRequest={nutritionRequest}
+          onNutritionRequestConsumed={() => {
+            setNutritionRequest(null)
+          }}
+        />
+      )}
     </div>
   )
 }

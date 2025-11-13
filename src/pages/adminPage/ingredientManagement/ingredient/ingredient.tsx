@@ -13,6 +13,43 @@ import { useEffect, useState, useMemo } from "react";
 import { Switch } from "@components/ui/switch";
 import IngredientDetailModal from "@components/admin/ingredient/IngredientDetailModal";
 
+const formatUnitLabel = (unit?: string): string => {
+  if (!unit) return ""
+  const normalized = unit.toUpperCase()
+  if (normalized === "KILOGRAM") return ""
+  if (normalized === "LITER") return "ml"
+  const map: Record<string, string> = {
+    GRAM: "g",
+    PCS: "phần",
+    ML: "ml",
+  }
+  return map[normalized] || unit.toLowerCase()
+}
+
+const convertQuantityForDisplay = (value?: number, unit?: string): number => {
+  if (typeof value !== "number" || Number.isNaN(value)) return 0
+  if (!unit) return value
+  const normalized = unit.toUpperCase()
+  if (normalized === "LITER" || normalized === "KILOGRAM") {
+    return Math.round(value * 1000)
+  }
+  return value
+}
+
+const formatQuantityValue = (value?: number, unit?: string): string => {
+  if (typeof value !== "number" || Number.isNaN(value)) return "—"
+  const converted = convertQuantityForDisplay(value, unit)
+  return Number.isInteger(converted) ? converted.toString() : converted.toString()
+}
+
+const normalizeUnitForEdit = (unit?: string): "GRAM" | "LITER" | "PCS" => {
+  if (!unit) return "GRAM"
+  const normalized = unit.toUpperCase()
+  if (normalized === "LITER" || normalized === "ML") return "LITER"
+  if (normalized === "PCS") return "PCS"
+  return "GRAM"
+}
+
 export const AdminIngredientsPage = () => {
   const currentDate = new Date().toLocaleString("vi-VN", {
     weekday: "long",
@@ -219,8 +256,8 @@ export const AdminIngredientsPage = () => {
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="[font-family:'Inter-SemiBold',Helvetica] font-semibold text-gray-800 text-sm leading-[20px] truncate">{ingredient.name}</h3>
-                        {ingredient.unit && (
-                          <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{ingredient.unit}</p>
+                        {formatUnitLabel(ingredient.unit) && (
+                          <p className="[font-family:'Inter-Regular',Helvetica] font-normal text-gray-500 text-xs leading-[16px] opacity-75">{formatUnitLabel(ingredient.unit)}</p>
                         )}
                       </div>
                     </div>
@@ -294,7 +331,7 @@ export const AdminIngredientsPage = () => {
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-gray-700">Tồn kho hiện tại</span>
-                      <span className="text-sm text-gray-700">{ingredient.stock ?? '—'}</span>
+                      <span className="text-sm text-gray-700">{formatQuantityValue(ingredient.stock, ingredient.unit)}</span>
                     </div>
                     <div className="w-full bg-[#00000033] rounded-full h-2 overflow-hidden">
                       {typeof ingredient.stock === 'number' && (
@@ -344,7 +381,7 @@ export const AdminIngredientsPage = () => {
             return {
               id: editing.id,
               name: editing.name,
-              unit: editing.unit,
+              unit: normalizeUnitForEdit(editing.unit),
               active: editing.active,
               ingredient_category_id: typeof maybeAny.categoryId === 'number' ? maybeAny.categoryId : (typeof maybeAny.ingredient_category_id === 'number' ? maybeAny.ingredient_category_id : undefined),
               categoryId: typeof maybeAny.categoryId === 'number' ? maybeAny.categoryId : undefined,

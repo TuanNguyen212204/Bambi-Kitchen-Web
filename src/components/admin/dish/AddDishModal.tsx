@@ -11,6 +11,20 @@ import { useIngredientStore } from "@zustand/stores/ingredients"
 
 interface Props { open: boolean; onClose: () => void }
 
+const formatUnit = (unit?: string): string => {
+  if (!unit) return ""
+  const unitUpper = unit.toUpperCase()
+  // KILOGRAM: ẩn không hiển thị gì
+  if (unitUpper === "KILOGRAM") return ""
+  // LITER: hiển thị ml
+  if (unitUpper === "LITER") return "ml"
+  const unitMap: Record<string, string> = {
+    GRAM: "g",
+    PCS: "phần",
+  }
+  return unitMap[unitUpper] || unit.toLowerCase()
+}
+
 export default function AddDishModal({ open, onClose }: Props) {
   const { createOrUpdate } = useDishStore()
   const { user } = useAuthStore()
@@ -275,7 +289,7 @@ export default function AddDishModal({ open, onClose }: Props) {
                         onChange={(e)=> setIngredients((prev)=> ({ ...prev, [ing.id]: Number(e.target.value) }))}
                         placeholder="0"
                       />
-                      <span className="w-12 text-xs text-gray-500 text-right uppercase" title={`Đơn vị: ${String(ing.unit || '').toLowerCase()}`}>{String(ing.unit || '').toLowerCase()}</span>
+                      <span className="w-12 text-xs text-gray-500 text-right" title={`Đơn vị: ${formatUnit(ing.unit)}`}>{formatUnit(ing.unit)}</span>
                     </div>
                   </div>
                 )
@@ -310,7 +324,7 @@ export default function AddDishModal({ open, onClose }: Props) {
                           <div key={id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-4 py-2">
                             <div className="text-sm text-gray-800 truncate" title={ing.name}>{ing.name}</div>
                             <div className="text-right text-sm tabular-nums">{qty}</div>
-                            <div className="text-xs uppercase text-gray-500 w-14 text-right">{String(ing.unit || '').toLowerCase()}</div>
+                            <div className="text-xs text-gray-500 w-14 text-right">{formatUnit(ing.unit)}</div>
                             <div className="text-right">
                               <Button
                                 type="button"

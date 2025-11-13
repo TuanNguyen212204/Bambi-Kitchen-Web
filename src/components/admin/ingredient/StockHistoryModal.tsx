@@ -8,6 +8,29 @@ interface Props {
   ingredient: { id: number; name: string; unit?: string }
 }
 
+const formatUnitLabel = (unit?: string): string => {
+  if (!unit) return ""
+  const normalized = unit.toUpperCase()
+  if (normalized === "KILOGRAM") return ""
+  if (normalized === "LITER" || normalized === "ML") return "ml"
+  const map: Record<string, string> = {
+    GRAM: "g",
+    PCS: "phần",
+  }
+  return map[normalized] || unit.toLowerCase()
+}
+
+const formatQuantityValue = (value: number, unit?: string): string => {
+  if (!Number.isFinite(value)) return "0"
+  if (!unit) return Number.isInteger(value) ? value.toString() : value.toString()
+  const normalized = unit.toUpperCase()
+  if (normalized === "LITER" || normalized === "KILOGRAM") {
+    const converted = Math.round(value * 1000)
+    return converted.toString()
+  }
+  return Number.isInteger(value) ? value.toString() : value.toString()
+}
+
 export default function StockHistoryModal({ open, onClose, ingredient }: Props) {
   const { getStockHistory } = useIngredientStore()
   const [transactions, setTransactions] = useState<Array<{
@@ -57,7 +80,7 @@ export default function StockHistoryModal({ open, onClose, ingredient }: Props) 
                       {tx.transactionType ? 'Nhập kho' : 'Xuất kho'}
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
-                      Số lượng: {tx.quantity} {ingredient.unit || ''}
+                      Số lượng: {formatQuantityValue(tx.quantity, ingredient.unit)} {formatUnitLabel(ingredient.unit)}
                     </p>
                     <p className="text-xs text-gray-500">
                       {new Date(tx.createAt).toLocaleString('vi-VN')}

@@ -6,6 +6,7 @@ import { Badge } from "@components/ui/badge";
 import { Image as ImageIcon, Edit3, Utensils, DollarSign } from "lucide-react";
 import EditDishModal from "./EditDishModal";
 import { useIngredientStore } from "@zustand/stores/ingredients";
+import { normalizeImageUrl } from "@/utils/file";
 
 interface DishDetailModalProps {
   open: boolean;
@@ -63,7 +64,15 @@ export function DishDetailModal({
       // Load dish details
       const dishRes = await bambiApi.get(API_ENDPOINTS.API_DISH_BY_ID(currentDishId));
       if (dishIdRef.current !== currentDishId) return; // Check lại sau khi async
-      setDishDetails(dishRes.data);
+      const dishData = dishRes.data;
+      if (dishData && typeof dishData === 'object') {
+        setDishDetails({
+          ...dishData,
+          imageUrl: normalizeImageUrl((dishData as any).imageUrl)
+        });
+      } else {
+        setDishDetails(dishData);
+      }
       
       // Load recipe - API trả về IngredientsGetByDishResponse (API v3)
       try {
@@ -283,13 +292,16 @@ export function DishDetailModal({
                         {recipe.map((r, idx) => {
                           const formatUnit = (unit?: string) => {
                             if (!unit) return "";
+                            const unitUpper = unit.toUpperCase();
+                            // KILOGRAM: ẩn không hiển thị gì
+                            if (unitUpper === "KILOGRAM") return "";
+                            // LITER: hiển thị ml
+                            if (unitUpper === "LITER") return "ml";
                             const unitMap: Record<string, string> = {
                               GRAM: "g",
-                              KILOGRAM: "kg",
-                              LITER: "l",
                               PCS: "phần",
                             };
-                            return unitMap[unit.toUpperCase()] || unit.toLowerCase();
+                            return unitMap[unitUpper] || unit.toLowerCase();
                           };
                           
                           const unit = formatUnit(r.ingredient.unit);
