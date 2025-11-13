@@ -1,6 +1,19 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Calendar, ClipboardList, Loader2, PackageCheck, PackageSearch, Repeat, Star, Tag, Utensils } from "lucide-react"
+import {
+  Calendar,
+  ClipboardList,
+  ListChecks,
+  Loader2,
+  PackageCheck,
+  PackageSearch,
+  Loader,
+  MapPin,
+  Repeat,
+  Star,
+  Tag,
+  Wallet,
+} from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog"
 import { Textarea } from "@components/ui/textarea"
@@ -36,9 +49,42 @@ interface ApiOrderDetail {
   totalCalories?: number
 }
 
+interface IngredientInfo {
+  id: number
+  name: string
+  quantity?: number
+  unit?: string
+  sourceType?: string
+}
+
+interface OrderDetailWithIngredients extends ApiOrderDetail {
+  ingredients?: IngredientInfo[]
+}
+
+interface ApiPayment {
+  orderId: number
+  accountId?: number
+  amount?: number
+  paymentMethod?: string
+  status?: string
+  createdAt?: string
+  updatedAt?: string
+  transactionId?: string
+  note?: string
+}
+
+interface PaymentInfo {
+  amount?: number
+  method?: string
+  status?: string
+  transactionId?: string
+  createdAt?: string
+  note?: string
+}
+
 interface OrderWithDetails {
   order: ApiOrder
-  details: ApiOrderDetail[]
+  details: OrderDetailWithIngredients[]
 }
 
 const statusMeta: Record<OrderStatus, { label: string; badge: string; border: string; text: string }> = {
@@ -77,16 +123,103 @@ const statusMeta: Record<OrderStatus, { label: string; badge: string; border: st
 const OrdersPage: React.FC = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuthStore()
-  const [orders, setOrders] = useState<OrderWithDetails[]>([])
+  const [orders, setOrders] = useState<ApiOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState<Record<number, boolean>>({})
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false)
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
   const [feedbackRanking, setFeedbackRanking] = useState<number>(5)
   const [feedbackComment, setFeedbackComment] = useState("")
   const [submittingFeedback, setSubmittingFeedback] = useState(false)
   const [quickOrderOpen, setQuickOrderOpen] = useState(false)
+  const [payments, setPayments] = useState<Record<number, PaymentInfo>>({})
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [activeDetailOrderId, setActiveDetailOrderId] = useState<number | null>(null)
+  const [orderDetailsState, setOrderDetailsState] = useState<
+    Record<
+      number,
+      {
+        loading: boolean
+        error?: string
+        details?: OrderDetailWithIngredients[]
+      }
+    >
+  >({})
+
+  const ingredientCacheRef = useRef<Map<number, IngredientInfo[]>>(new Map())
+  const ingredientUnitCacheRef = useRef<Map<number, string | undefined>>(new Map())
+
+  const ordersWithDetails = useMemo<OrderWithDetails[]>(() => {
+    return orders.map((order) => ({
+      order,
+      details: orderDetailsState[order.id]?.details ?? [],
+    }))
+  }, [orders, orderDetailsState])
+
+  const formatUnit = (unit?: string) => {
+    if (!unit) return ""
+    const normalized = unit.toUpperCase()
+    const unitMap: Record<string, string> = {
+      GRAM: "g",
+      KILOGRAM: "kg",
+      LITER: "l",
+      PCS: "pcs",
+      ML: "ml",
+    }
+    return unitMap[normalized] || unit.toLowerCase()
+  }
+
+  const formatIngredientQuantity = (quantity?: number, unit?: string) => {
+    if (typeof quantity !== "number") return ""
+    const formattedQuantity = new Intl.NumberFormat("vi-VN", {
+      maximumFractionDigits: Number.isInteger(quantity) ? 0 : 2,
+    }).format(quantity)
+    const unitLabel = formatUnit(unit)
+    return unitLabel ? `${formattedQuantity} ${unitLabel}` : formattedQuantity
+  }
+
+  const formatSourceType = (sourceType?: string) => {
+    if (!sourceType) return undefined
+    const normalized = sourceType.trim().toUpperCase()
+    const map: Record<string, string> = {
+      BASE: "Cơ bản",
+      ADDON: "Topping",
+      REMOVED: "Đã loại",
+    }
+    return map[normalized] || sourceType
+  }
+
+  const formatPaymentMethod = (method?: string) => {
+    if (!method) return "Không rõ phương thức"
+    const normalized = method.trim().toUpperCase()
+    const map: Record<string, string> = {
+      VNPAY: "VNPay",
+      MOMO: "MoMo",
+      CASH: "Tiền mặt",
+      COD: "Thanh toán khi nhận",
+      BANK_TRANSFER: "Chuyển khoản",
+      CREDIT_CARD: "Thẻ tín dụng",
+      DEBIT_CARD: "Thẻ ghi nợ",
+      ONLINE: "Thanh toán online",
+    }
+    return map[normalized] || method
+  }
+
+  const formatPaymentStatus = (status?: string) => {
+    if (!status) return { label: "Không rõ", badge: "bg-gray-100 text-gray-600" }
+    const normalized = status.trim().toUpperCase()
+    const map: Record<string, { label: string; badge: string }> = {
+      SUCCESS: { label: "Thành công", badge: "bg-emerald-100 text-emerald-700" },
+      COMPLETED: { label: "Thành công", badge: "bg-emerald-100 text-emerald-700" },
+      PAID: { label: "Đã thanh toán", badge: "bg-emerald-100 text-emerald-700" },
+      PENDING: { label: "Đang xử lý", badge: "bg-amber-100 text-amber-700" },
+      PROCESSING: { label: "Đang xử lý", badge: "bg-amber-100 text-amber-700" },
+      FAILED: { label: "Thất bại", badge: "bg-rose-100 text-rose-700" },
+      CANCELLED: { label: "Đã hủy", badge: "bg-rose-100 text-rose-700" },
+      REFUNDED: { label: "Đã hoàn tiền", badge: "bg-blue-100 text-blue-700" },
+    }
+    return map[normalized] || { label: status, badge: "bg-gray-100 text-gray-600" }
+  }
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -105,27 +238,44 @@ const OrdersPage: React.FC = () => {
 
         const ordersData = Array.isArray(data) ? data : []
 
-        const ordersWithDetails = await Promise.all(
-          ordersData.map(async (order) => {
-            try {
-              const detailRes = await bambiApi.get<ApiOrderDetail[]>(API_ENDPOINTS.API_ORDER_DETAILS_BY_ORDER(order.id), {
-                headers: { "x-silent-error": "1" },
-              })
-              const details = Array.isArray(detailRes.data) ? detailRes.data : []
-              return { order, details }
-            } catch {
-              return { order, details: [] }
-            }
-          }),
-        )
-
-        const sorted = ordersWithDetails.sort((a, b) => {
-          const dateA = new Date(a.order.createAt).getTime()
-          const dateB = new Date(b.order.createAt).getTime()
+        const sorted = ordersData.sort((a, b) => {
+          const dateA = new Date(a.createAt).getTime()
+          const dateB = new Date(b.createAt).getTime()
           return dateB - dateA
         })
 
         setOrders(sorted)
+
+        try {
+          const paymentRes = await bambiApi.get<ApiPayment[]>(API_ENDPOINTS.API_PAYMENTS_BY_ACCOUNT(user.id), {
+            headers: { "x-silent-error": "1" },
+          })
+          const paymentList = Array.isArray(paymentRes.data) ? paymentRes.data : []
+          const paymentMap = paymentList.reduce<Record<number, PaymentInfo>>((acc, item) => {
+            if (!item || typeof item.orderId !== "number") {
+              return acc
+            }
+
+            const existing = acc[item.orderId]
+            const currentTimestamp = item.createdAt ? new Date(item.createdAt).getTime() : 0
+            const existingTimestamp = existing?.createdAt ? new Date(existing.createdAt).getTime() : -Infinity
+
+            if (!existing || currentTimestamp >= existingTimestamp) {
+              acc[item.orderId] = {
+                amount: item.amount,
+                method: item.paymentMethod,
+                status: item.status,
+                transactionId: item.transactionId,
+                createdAt: item.createdAt,
+                note: item.note,
+              }
+            }
+            return acc
+          }, {})
+          setPayments(paymentMap)
+        } catch {
+          setPayments({})
+        }
       } catch (err) {
         const message =
           (err as { response?: { data?: { message?: string; error?: string } } }).response?.data?.message ||
@@ -142,10 +292,6 @@ const OrdersPage: React.FC = () => {
       setError("Không thể tải lịch sử đơn hàng")
     })
   }, [user?.id])
-
-  const toggleExpanded = (orderId: number) => {
-    setExpanded((prev) => ({ ...prev, [orderId]: !prev[orderId] }))
-  }
 
   const openFeedbackModal = (order: ApiOrder) => {
     setSelectedOrderId(order.id)
@@ -168,10 +314,10 @@ const OrdersPage: React.FC = () => {
       // Cập nhật lại trong state
       setOrders((prev) =>
         prev.map((item) =>
-          item.order.id === selectedOrderId
-            ? { ...item, order: { ...item.order, ranking: feedbackRanking, comment: feedbackComment.trim() || undefined } }
-            : item
-        )
+          item.id === selectedOrderId
+            ? { ...item, ranking: feedbackRanking, comment: feedbackComment.trim() || undefined }
+            : item,
+        ),
       )
 
       toast.success("Đánh giá đơn hàng thành công!")
@@ -192,7 +338,150 @@ const OrdersPage: React.FC = () => {
     return status === "COMPLETED"
   }
 
-  const content = useMemo(() => {
+  const normalizeRecipeResponse = (raw: unknown): IngredientInfo[] => {
+    if (Array.isArray(raw)) {
+      return raw
+        .map((item) => {
+          const ingredient = (item as { ingredient?: { id?: number; name?: string; unit?: string }; quantity?: number; sourceType?: string }).ingredient
+          const quantity = (item as { quantity?: number }).quantity
+          if (!ingredient?.id) return null
+          return {
+            id: ingredient.id,
+            name: ingredient.name || `Nguyên liệu #${ingredient.id}`,
+            unit: ingredient.unit,
+            quantity: typeof quantity === "number" ? quantity : undefined,
+            sourceType: (item as { sourceType?: string }).sourceType,
+          } satisfies IngredientInfo
+        })
+        .filter(Boolean) as IngredientInfo[]
+    }
+
+    if (
+      raw &&
+      typeof raw === "object" &&
+      "ingredients" in raw &&
+      Array.isArray((raw as { ingredients?: unknown[] }).ingredients)
+    ) {
+      const ingredients = (raw as { ingredients?: Array<{ id?: number; name?: string; neededQuantity?: number; unit?: string; sourceType?: string }> }).ingredients || []
+      return ingredients
+        .map((ing) => {
+          if (!ing?.id) return null
+          return {
+            id: ing.id,
+            name: ing.name || `Nguyên liệu #${ing.id}`,
+            quantity: typeof ing.neededQuantity === "number" ? ing.neededQuantity : undefined,
+            unit: (ing as { unit?: string }).unit,
+            sourceType: ing.sourceType,
+          } satisfies IngredientInfo
+        })
+        .filter(Boolean) as IngredientInfo[]
+    }
+
+    return []
+  }
+
+  const loadIngredientUnit = async (ingredientId: number): Promise<string | undefined> => {
+    const cache = ingredientUnitCacheRef.current
+    if (cache.has(ingredientId)) {
+      return cache.get(ingredientId)
+    }
+    try {
+      const res = await bambiApi.get<{ unit?: string }>(API_ENDPOINTS.API_INGREDIENT_BY_ID(ingredientId), {
+        headers: { "x-silent-error": "1" },
+      })
+      const unit = res.data?.unit
+      cache.set(ingredientId, unit)
+      return unit
+    } catch {
+      cache.set(ingredientId, undefined)
+      return undefined
+    }
+  }
+
+  const loadIngredientsForDish = async (dishId: number): Promise<IngredientInfo[]> => {
+    const ingredientCache = ingredientCacheRef.current
+    if (ingredientCache.has(dishId)) {
+      return ingredientCache.get(dishId) ?? []
+    }
+    try {
+      const res = await bambiApi.get(API_ENDPOINTS.API_RECIPE_BY_DISH(dishId), {
+        headers: { "x-silent-error": "1" },
+      })
+      const normalized = normalizeRecipeResponse(res.data)
+      const withUnits = await Promise.all(
+        normalized.map(async (item) => {
+          if (item.unit) return item
+          const unit = await loadIngredientUnit(item.id)
+          return { ...item, unit }
+        }),
+      )
+      ingredientCache.set(dishId, withUnits)
+      return withUnits
+    } catch {
+      ingredientCache.set(dishId, [])
+      return []
+    }
+  }
+
+  const fetchOrderDetails = async (orderId: number) => {
+    setOrderDetailsState((prev) => ({
+      ...prev,
+      [orderId]: {
+        ...prev[orderId],
+        loading: true,
+        error: undefined,
+      },
+    }))
+
+    try {
+      const detailRes = await bambiApi.get<ApiOrderDetail[]>(API_ENDPOINTS.API_ORDER_DETAILS_BY_ORDER(orderId), {
+        headers: { "x-silent-error": "1" },
+      })
+      const details = Array.isArray(detailRes.data) ? detailRes.data : []
+
+      const detailsWithIngredients = await Promise.all(
+        details.map(async (detail) => {
+          if (detail.dish?.id) {
+            const ingredients = await loadIngredientsForDish(detail.dish.id)
+            return { ...detail, ingredients }
+          }
+          return { ...detail, ingredients: [] }
+        }),
+      )
+
+      setOrderDetailsState((prev) => ({
+        ...prev,
+        [orderId]: {
+          loading: false,
+          details: detailsWithIngredients,
+          error: undefined,
+        },
+      }))
+    } catch (err) {
+      const message =
+        (err as { response?: { data?: { message?: string; error?: string } } }).response?.data?.message ||
+        (err as { response?: { data?: { message?: string; error?: string } } }).response?.data?.error ||
+        "Không thể tải chi tiết đơn hàng"
+      setOrderDetailsState((prev) => ({
+        ...prev,
+        [orderId]: {
+          loading: false,
+          details: [],
+          error: message,
+        },
+      }))
+    }
+  }
+
+  const handleOpenDetailModal = (orderId: number) => {
+    setActiveDetailOrderId(orderId)
+    setDetailModalOpen(true)
+    if (!orderDetailsState[orderId]?.details && !orderDetailsState[orderId]?.loading) {
+      void fetchOrderDetails(orderId)
+    }
+  }
+
+  const renderContent = () => {
     if (!isAuthenticated || !user) {
       return (
         <div className="max-w-xl mx-auto text-center bg-orange-50 border border-orange-100 rounded-3xl p-12 shadow-sm">
@@ -252,9 +541,8 @@ const OrdersPage: React.FC = () => {
 
     return (
       <div className="space-y-6">
-        {orders.map(({ order, details }) => {
-          const meta = statusMeta[order.status]
-          const isExpanded = expanded[order.id] ?? false
+        {ordersWithDetails.map(({ order, details }) => {
+          const meta = statusMeta[order.status as OrderStatus]
           const orderDate = order.createAt
             ? new Date(order.createAt).toLocaleString("vi-VN", {
                 day: "2-digit",
@@ -266,6 +554,9 @@ const OrdersPage: React.FC = () => {
             : "Không xác định"
 
           const totalItems = details.length
+          const paymentInfo = payments[order.id]
+          const paymentStatusMeta = paymentInfo?.status ? formatPaymentStatus(paymentInfo.status) : null
+          const detailState = orderDetailsState[order.id]
 
           return (
             <div
@@ -285,6 +576,12 @@ const OrdersPage: React.FC = () => {
                           <Calendar size={14} />
                           {orderDate}
                         </span>
+                        {!!order.note && (
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin size={14} />
+                            {order.note}
+                          </span>
+                        )}
                         <span className="inline-flex items-center gap-1">
                           <Tag size={14} />
                           {totalItems} món
@@ -296,11 +593,19 @@ const OrdersPage: React.FC = () => {
                     <span className={`px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide ${meta.badge}`}>
                       {meta.label}
                     </span>
-                    <div className="text-right">
+                    <div className="text-right space-y-1">
                       <p className="text-xs text-gray-500">Tổng thanh toán</p>
                       <p className="text-lg font-semibold text-gray-900">
                         {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(order.totalPrice || 0)}
                       </p>
+                      {paymentInfo && (
+                        <div className="text-xs text-gray-600">
+                          <div className="inline-flex items-center gap-1 text-gray-600">
+                            <Wallet size={14} />
+                            <span>{formatPaymentMethod(paymentInfo.method)}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -311,123 +616,110 @@ const OrdersPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Feedback section */}
-                {canGiveFeedback(order.status) && (
-                  <div className="border-t border-gray-100 pt-4">
-                    {order.ranking ? (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-medium text-emerald-800">Đánh giá của bạn:</span>
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                size={16}
-                                className={star <= (order.ranking || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}
-                              />
-                            ))}
-                          </div>
+                {paymentInfo && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
+                    <div className="flex flex-col gap-2 text-sm text-gray-600">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 font-medium text-gray-700">
+                          <Wallet size={16} className="text-gray-500" />
+                          <span>Thông tin thanh toán</span>
                         </div>
-                        {order.comment && (
-                          <p className="text-sm text-emerald-700 mt-1">{order.comment}</p>
+                        {paymentStatusMeta && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${paymentStatusMeta.badge}`}>
+                            {paymentStatusMeta.label}
+                          </span>
                         )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openFeedbackModal(order)}
-                          className="mt-2 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
-                        >
-                          Sửa đánh giá
-                        </Button>
                       </div>
-                    ) : (
-                      <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3">
-                        <p className="text-sm text-blue-800 mb-2">Bạn đã nhận được đơn hàng này. Hãy đánh giá trải nghiệm của bạn!</p>
-                        <Button
-                          size="sm"
-                          onClick={() => openFeedbackModal(order)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          Đánh giá đơn hàng
-                        </Button>
+                      <div className="grid gap-1 text-xs text-gray-600 sm:grid-cols-2">
+                        <span>
+                          <span className="font-medium text-gray-700">Phương thức:&nbsp;</span>
+                          {formatPaymentMethod(paymentInfo.method)}
+                        </span>
+                        {typeof paymentInfo.amount === "number" && (
+                          <span>
+                            <span className="font-medium text-gray-700">Số tiền:&nbsp;</span>
+                            {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(paymentInfo.amount)}
+                          </span>
+                        )}
+                        {paymentInfo.transactionId && (
+                          <span className="col-span-full">
+                            <span className="font-medium text-gray-700">Mã giao dịch:&nbsp;</span>
+                            <span className="font-mono">{paymentInfo.transactionId}</span>
+                          </span>
+                        )}
+                        {paymentInfo.createdAt && (
+                          <span>
+                            <span className="font-medium text-gray-700">Thời gian:&nbsp;</span>
+                            {new Date(paymentInfo.createdAt).toLocaleString("vi-VN")}
+                          </span>
+                        )}
+                        {paymentInfo.note && (
+                          <span className="col-span-full">
+                            <span className="font-medium text-gray-700">Ghi chú:&nbsp;</span>
+                            {paymentInfo.note}
+                          </span>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
 
-                <div className="border-t border-gray-100 pt-4">
-                  <button
-                    onClick={() => toggleExpanded(order.id)}
-                    className="w-full flex items-center justify-between text-sm font-medium text-orange-600 hover:text-orange-700"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Utensils size={16} />
-                      {isExpanded ? "Thu gọn món ăn" : "Xem chi tiết món ăn"}
-                    </span>
-                    <span>{isExpanded ? "▲" : "▼"}</span>
-                  </button>
-
-                  {isExpanded && (
-                    <div className="mt-4 space-y-3">
-                      {details.length === 0 ? (
-                        <div className="text-sm text-gray-500 bg-gray-50 border border-dashed border-gray-200 rounded-2xl px-4 py-3">
-                          Không có thông tin món ăn cho đơn này.
-                        </div>
-                      ) : (
-                        details.map((detail) => {
-                          const dishName = detail.dish?.name || "Món ăn không xác định"
-                          const dishImage = detail.dish?.imageUrl || detail.dish?.imgUrl
-                          const size = detail.size ? `Size ${detail.size}` : undefined
-
-                          return (
-                            <div
-                              key={detail.id}
-                              className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3"
-                            >
-                              <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
-                                  {dishImage ? (
-                                    <img src={dishImage} alt={dishName} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                      No image
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-gray-900 truncate">{dishName}</p>
-                                  <div className="text-xs text-gray-500 space-x-2">
-                                    {size && <span>{size}</span>}
-                                    {typeof detail.totalCalories === "number" && (
-                                      <span>{detail.totalCalories} kcal</span>
-                                    )}
-                                  </div>
-                                  {detail.notes && (
-                                    <p className="text-xs text-gray-500 mt-1">Ghi chú: {detail.notes}</p>
-                                  )}
-                                </div>
-                              </div>
-                              {typeof detail.dish?.price === "number" && (
-                                <div className="text-sm font-semibold text-gray-900">
-                                  {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                                    detail.dish.price,
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })
-                      )}
+                <div className="flex flex-wrap gap-3 justify-between items-center border-t border-gray-100 pt-4">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenDetailModal(order.id)}
+                      className="border-orange-200 text-orange-600 hover:bg-orange-50"
+                    >
+                      Xem chi tiết đơn
+                    </Button>
+                    {canGiveFeedback(order.status as OrderStatus) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openFeedbackModal(order)}
+                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                      >
+                        {order.ranking ? "Xem/Sửa đánh giá" : "Đánh giá đơn hàng"}
+                      </Button>
+                    )}
+                  </div>
+                  {detailState?.loading && (
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <Loader size={14} className="animate-spin" />
+                      Đang tải chi tiết...
                     </div>
                   )}
                 </div>
+
+                {/* Feedback section */}
+                {canGiveFeedback(order.status as OrderStatus) && order.ranking && (
+                  <div className="border-t border-gray-100 pt-4">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium text-emerald-800">Đánh giá của bạn:</span>
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              size={16}
+                              className={star <= (order.ranking || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      {order.comment && <p className="text-sm text-emerald-700 mt-1">{order.comment}</p>}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )
         })}
       </div>
     )
-  }, [expanded, isAuthenticated, loading, navigate, orders, user, error])
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-14">
@@ -452,7 +744,7 @@ const OrdersPage: React.FC = () => {
           </Button>
         </div>
       </div>
-      {content}
+      {renderContent()}
 
       {/* Feedback Modal */}
       <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
@@ -509,6 +801,210 @@ const OrdersPage: React.FC = () => {
 
       {/* Quick Order Modal */}
       <QuickOrderModal open={quickOrderOpen} onClose={() => setQuickOrderOpen(false)} />
+
+      {/* Order Detail Modal */}
+      <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          {activeDetailOrderId && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Chi tiết đơn hàng #{activeDetailOrderId}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                {(() => {
+                  const order = orders.find((item) => item.id === activeDetailOrderId)
+                  const detailState = orderDetailsState[activeDetailOrderId]
+                  const paymentInfo = payments[activeDetailOrderId]
+                  const paymentStatusMeta = paymentInfo?.status ? formatPaymentStatus(paymentInfo.status) : null
+
+                  if (!order) {
+                    return <p className="text-sm text-gray-500">Không tìm thấy thông tin đơn hàng.</p>
+                  }
+
+                  return (
+                    <>
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 space-y-1 text-sm text-gray-600">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-800">Trạng thái</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusMeta[order.status as OrderStatus]?.badge ?? "bg-gray-100 text-gray-600"}`}>
+                            {statusMeta[order.status as OrderStatus]?.label ?? order.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-800">Ngày đặt</span>
+                          <span>{new Date(order.createAt).toLocaleString("vi-VN")}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-800">Tổng tiền</span>
+                          <span className="font-semibold text-gray-900">
+                            {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(order.totalPrice || 0)}
+                          </span>
+                        </div>
+                        {order.note && (
+                          <div>
+                            <span className="font-semibold text-gray-800">Ghi chú</span>
+                            <p className="text-sm text-gray-600 mt-1">{order.note}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {paymentInfo && (
+                        <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 space-y-2 text-sm text-gray-600">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 font-semibold text-gray-800">
+                              <Wallet size={16} />
+                              <span>Thanh toán</span>
+                            </div>
+                            {paymentStatusMeta && (
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${paymentStatusMeta.badge}`}>
+                                {paymentStatusMeta.label}
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid gap-1 text-xs text-gray-600 sm:grid-cols-2">
+                            <span>
+                              <span className="font-medium text-gray-700">Phương thức:&nbsp;</span>
+                              {formatPaymentMethod(paymentInfo.method)}
+                            </span>
+                            {typeof paymentInfo.amount === "number" && (
+                              <span>
+                                <span className="font-medium text-gray-700">Số tiền:&nbsp;</span>
+                                {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(paymentInfo.amount)}
+                              </span>
+                            )}
+                            {paymentInfo.transactionId && (
+                              <span className="col-span-full">
+                                <span className="font-medium text-gray-700">Mã giao dịch:&nbsp;</span>
+                                <span className="font-mono">{paymentInfo.transactionId}</span>
+                              </span>
+                            )}
+                            {paymentInfo.createdAt && (
+                              <span>
+                                <span className="font-medium text-gray-700">Thời gian:&nbsp;</span>
+                                {new Date(paymentInfo.createdAt).toLocaleString("vi-VN")}
+                              </span>
+                            )}
+                            {paymentInfo.note && (
+                              <span className="col-span-full">
+                                <span className="font-medium text-gray-700">Ghi chú:&nbsp;</span>
+                                {paymentInfo.note}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="border border-gray-200 rounded-2xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Món ăn</h3>
+                        </div>
+                        {detailState?.loading ? (
+                          <div className="flex justify-center items-center py-10 text-gray-500">
+                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                            Đang tải chi tiết đơn hàng...
+                          </div>
+                        ) : detailState?.error ? (
+                          <div className="text-sm text-red-500">{detailState.error}</div>
+                        ) : !detailState?.details?.length ? (
+                          <div className="text-sm text-gray-500">Không có chi tiết món ăn.</div>
+                        ) : (
+                          <div className="space-y-3">
+                            {detailState.details.map((detail) => {
+                              const dishName = detail.dish?.name || "Món ăn không xác định"
+                              const dishImage = detail.dish?.imageUrl || detail.dish?.imgUrl
+                              const size = detail.size ? `Size ${detail.size}` : undefined
+                              const ingredients = detail.ingredients || []
+
+                              return (
+                                <div
+                                  key={detail.id}
+                                  className="border border-gray-100 rounded-xl overflow-hidden bg-white shadow-sm"
+                                >
+                                  <div className="grid grid-cols-[72px_1fr] gap-4 p-4">
+                                    <div className="w-18 h-18 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+                                      {dishImage ? (
+                                        <img src={dishImage} alt={dishName} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                          No image
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                          <p className="text-sm font-semibold text-gray-900 truncate">{dishName}</p>
+                                          <div className="text-xs text-gray-500 space-x-2 mt-1">
+                                            {size && <span>{size}</span>}
+                                            {typeof detail.totalCalories === "number" && (
+                                              <span>{detail.totalCalories} kcal</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {typeof detail.dish?.price === "number" && (
+                                          <div className="text-sm font-semibold text-gray-900 whitespace-nowrap">
+                                            {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                                              detail.dish.price ?? 0,
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                      {detail.notes && (
+                                        <p className="text-xs text-gray-500 mt-1">Ghi chú: {detail.notes}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {ingredients.length > 0 && (
+                                    <div className="border-t border-dashed border-gray-200 bg-slate-50 px-4 py-3">
+                                      <p className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                                        <ListChecks size={12} />
+                                        Nguyên liệu
+                                      </p>
+                                      <ul className="space-y-2">
+                                        {ingredients.map((ingredient) => {
+                                          const sourceLabel = formatSourceType(ingredient.sourceType)
+                                          const quantityLabel = formatIngredientQuantity(ingredient.quantity, ingredient.unit)
+                                          return (
+                                            <li
+                                              key={`${detail.id}-${ingredient.id}-${ingredient.sourceType ?? "base"}`}
+                                              className="flex items-center justify-between gap-2 text-xs text-gray-600"
+                                            >
+                                              <span className="flex items-center gap-2 min-w-0">
+                                                <span
+                                                  className="truncate font-medium text-gray-700"
+                                                  title={ingredient.name}
+                                                >
+                                                  {ingredient.name}
+                                                </span>
+                                                {sourceLabel && (
+                                                  <span className="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 border border-gray-200">
+                                                    {sourceLabel}
+                                                  </span>
+                                                )}
+                                              </span>
+                                              <span className="text-gray-500 tabular-nums">
+                                                {quantityLabel || "—"}
+                                              </span>
+                                            </li>
+                                          )
+                                        })}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )
+                })()}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

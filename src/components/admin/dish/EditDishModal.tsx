@@ -324,14 +324,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
                   const originalValue = isActive
                   setIsActive(checked) // Optimistic update
                   try {
-                    await toggleActive(dish.id)
-                    // Load lại dish details để sync state từ API
-                    const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
-                    const res = await bambiApi.get<{ id: number; name: string; description?: string; price?: number; imageUrl?: string; public?: boolean; active?: boolean }>(API_ENDPOINTS.API_DISH_BY_ID(dish.id))
-                    if (res.data) {
-                      setIsActive(res.data.active ?? true)
-                      setIsPublic(res.data.public ?? true)
-                    }
+                    const updatedActive = await toggleActive(dish.id)
+                    setIsActive(typeof updatedActive === "boolean" ? updatedActive : checked)
                     // Refresh để đồng bộ với store
                     const currentFilter = useDishStore.getState().statusFilter || "all"
                     await useDishStore.getState().fetchAll(currentFilter).catch(() => undefined)
@@ -357,14 +351,8 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
                   const originalValue = isPublic
                   setIsPublic(checked) // Optimistic update
                   try {
-                    await togglePublic(dish.id)
-                    // Load lại dish details để sync state từ API
-                    const { bambiApi, API_ENDPOINTS } = await import("@/utils/api")
-                    const res = await bambiApi.get<{ id: number; name: string; description?: string; price?: number; imageUrl?: string; public?: boolean; active?: boolean }>(API_ENDPOINTS.API_DISH_BY_ID(dish.id))
-                    if (res.data) {
-                      setIsActive(res.data.active ?? true)
-                      setIsPublic(res.data.public ?? true)
-                    }
+                    const updatedPublic = await togglePublic(dish.id)
+                    setIsPublic(typeof updatedPublic === "boolean" ? updatedPublic : checked)
                     // Refresh để đồng bộ với store
                     const currentFilter = useDishStore.getState().statusFilter || "all"
                     await useDishStore.getState().fetchAll(currentFilter).catch(() => undefined)
