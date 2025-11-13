@@ -123,8 +123,7 @@ export default function AddIngredientModal({ open, onClose }: Props) {
             onChange={(e)=> setUnit(e.target.value)}
           >
             <option value="GRAM">GRAM</option>
-            <option value="KILOGRAM">KILOGRAM</option>
-            <option value="LITER">LITER</option>
+            <option value="LITER">MILILIT (ml)</option>
             <option value="PCS">PCS</option>
           </select>
         </div>

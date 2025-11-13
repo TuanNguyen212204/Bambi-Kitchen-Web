@@ -60,6 +60,7 @@ export default function ChatButton({ className }: ChatButtonProps) {
     if (canUseChat) return
     if (typeof window === "undefined") return
     window.localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY)
+    setUnreadChatCount(0)
   }, [canUseChat])
 
   const totalBadgeCount = notificationUnreadCount + unreadChatCount

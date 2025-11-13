@@ -31,13 +31,31 @@ export const CheckoutCartItemsSection: React.FC<CheckoutCartItemsSectionProps> =
 
   const formatUnit = (unit?: string) => {
     if (!unit) return ""
+    const unitUpper = unit.toUpperCase()
+    // KILOGRAM: ẩn không hiển thị gì
+    if (unitUpper === "KILOGRAM") return ""
+    // LITER: hiển thị ml
+    if (unitUpper === "LITER") return "ml"
     const unitMap: Record<string, string> = {
       GRAM: "g",
-      KILOGRAM: "kg",
-      LITER: "l",
       PCS: "phần",
     }
-    return unitMap[unit.toUpperCase()] || unit.toLowerCase()
+    return unitMap[unitUpper] || unit.toLowerCase()
+  }
+
+  const convertQuantityForDisplay = (quantity: number, unit?: string): number => {
+    if (!Number.isFinite(quantity)) return 0
+    if (!unit) return quantity
+    const unitUpper = unit.toUpperCase()
+    if (unitUpper === "LITER" || unitUpper === "KILOGRAM") {
+      return Math.round(quantity * 1000)
+    }
+    return quantity
+  }
+
+  const formatQuantity = (quantity: number, unit?: string): string => {
+    const converted = convertQuantityForDisplay(quantity, unit)
+    return Number.isInteger(converted) ? converted.toString() : converted.toString()
   }
 
   const parseItemData = (notes?: string) => {
@@ -75,7 +93,7 @@ export const CheckoutCartItemsSection: React.FC<CheckoutCartItemsSectionProps> =
       if (!ingredient) return
 
       const unit = formatUnit(ingredient.unit)
-      const quantity = Number.isInteger(r.quantity) ? r.quantity : r.quantity.toFixed(1)
+      const quantity = formatQuantity(r.quantity, ingredient.unit)
 
       if (r.sourceType === "REMOVED") {
         removals.push(`${ingredient.name} (${quantity}${unit})`)

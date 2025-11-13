@@ -48,7 +48,30 @@ const normalizeQuantity = (value: number): number => {
   return Number(value.toFixed(precision))
 }
 
-const formatQuantityDisplay = (value: number): string => normalizeQuantity(value).toString()
+const convertQuantityForDisplay = (value: number, unit?: string): number => {
+  if (!Number.isFinite(value)) return 0
+  if (!unit) return normalizeQuantity(value)
+
+  const unitUpper = unit.toUpperCase()
+  if (unitUpper === "LITER") {
+    return normalizeQuantity(value * 1000)
+  }
+  if (unitUpper === "KILOGRAM") {
+    return normalizeQuantity(value * 1000)
+  }
+  return normalizeQuantity(value)
+}
+
+const formatQuantityDisplay = (value: number, unit?: string): string => {
+  const displayValue = convertQuantityForDisplay(value, unit)
+  return Number.isInteger(displayValue) ? displayValue.toString() : displayValue.toString()
+}
+
+const formatQuantityWithUnit = (value: number, unit?: string): string => {
+  const unitLabel = formatUnit(unit)
+  const quantityText = formatQuantityDisplay(value, unit)
+  return unitLabel ? `${quantityText} ${unitLabel}` : quantityText
+}
 
 // Giới hạn số lượng tối đa cho mỗi nguyên liệu theo đơn vị (giống các quán ăn/web khác)
 // - PCS (phần): tối đa 3 phần
@@ -75,13 +98,16 @@ const getMaxQuantityForUnit = (unit?: string): number => {
 // Format unit từ API sang hiển thị
 const formatUnit = (unit?: string): string => {
   if (!unit) return ""
+  const unitUpper = unit.toUpperCase()
+  // KILOGRAM: ẩn không hiển thị gì
+  if (unitUpper === "KILOGRAM") return ""
+  // LITER: hiển thị ml
+  if (unitUpper === "LITER") return "ml"
   const unitMap: Record<string, string> = {
     GRAM: "g",
-    KILOGRAM: "kg",
-    LITER: "L",
     PCS: "phần",
   }
-  return unitMap[unit.toUpperCase()] || unit
+  return unitMap[unitUpper] || unit
 }
 
 export default function CustomBowlModal({ open, onClose, editingItemId, initialData, onSave }: CustomBowlModalProps) {
@@ -330,9 +356,9 @@ const getStepAmount = (unit?: string): number => {
       // Kiểm tra số lượng mặc định không vượt quá giới hạn
       if (defaultQuantity > maxQuantity) {
         if (defaultQuantity > maxAvailable) {
-          toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
+          toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${formatQuantityWithUnit(maxAvailable, ingredient.unit)}`)
         } else {
-          toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
+          toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${formatQuantityWithUnit(maxQuantityByUnit, ingredient.unit)}`)
         }
         return
       }
@@ -380,9 +406,9 @@ const getStepAmount = (unit?: string): number => {
     // Nếu đang tăng số lượng (delta > 0), kiểm tra số lượng có sẵn trong kho và giới hạn tối đa theo đơn vị
     if (delta > 0 && newQty > maxQuantity) {
       if (newQty > maxAvailable) {
-        toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${maxAvailable} ${formatUnit(ingredient.unit)}`)
+        toast.warning(`Số lượng có sẵn trong kho không đủ. Hiện có: ${formatQuantityWithUnit(maxAvailable, ingredient.unit)}`)
       } else {
-        toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${maxQuantityByUnit} ${formatUnit(ingredient.unit)}`)
+        toast.warning(`Số lượng tối đa cho ${ingredient.name} là ${formatQuantityWithUnit(maxQuantityByUnit, ingredient.unit)}`)
       }
       return
     }
@@ -866,13 +892,13 @@ const getStepAmount = (unit?: string): number => {
                                   }}
                                   className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs disabled:opacity-50"
                                   disabled={!isSelected}
-                                  title={`Giảm ${formatQuantityDisplay(stepAmountScaled)} ${formatUnit(ingredient.unit)}`}
+                                  title={`Giảm ${formatQuantityWithUnit(stepAmountScaled, ingredient.unit)}`}
                                 >
                                   <Minus size={14} className="mr-1" />
-                                  <span>{formatQuantityDisplay(stepAmountScaled)}</span>
+                                  <span>{formatQuantityDisplay(stepAmountScaled, ingredient.unit)}</span>
                                 </button>
                                 <span className="flex-1 text-center text-xs text-gray-700 font-medium">
-                                  {formatQuantityDisplay(displayQuantity)} {formatUnit(ingredient.unit)}
+                                  {formatQuantityDisplay(displayQuantity, ingredient.unit)} {formatUnit(ingredient.unit)}
                                 </span>
                                 <button
                                   onClick={(e) => {
@@ -881,10 +907,10 @@ const getStepAmount = (unit?: string): number => {
                                   }}
                                   className="flex-shrink-0 px-2 py-1.5 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-semibold transition-colors text-xs disabled:opacity-50"
                                   disabled={!canIncrease}
-                                  title={`Thêm ${formatQuantityDisplay(stepAmountScaled)} ${formatUnit(ingredient.unit)}`}
+                                  title={`Thêm ${formatQuantityWithUnit(stepAmountScaled, ingredient.unit)}`}
                                 >
                                   <Plus size={14} className="mr-1" />
-                                  <span>{formatQuantityDisplay(stepAmountScaled)}</span>
+                                  <span>{formatQuantityDisplay(stepAmountScaled, ingredient.unit)}</span>
                                 </button>
                               </div>
                               {isSelected && selectedIng && ingredient.pricePerUnit && (
@@ -955,7 +981,7 @@ const getStepAmount = (unit?: string): number => {
                           >
                             <span>{ingredient.name}</span>
                             <span className="bg-orange-300 px-2 rounded-full text-xs">
-                              {formatQuantityDisplay(selected.quantity)}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
+                              {formatQuantityDisplay(selected.quantity, ingredient.unit)}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
                             </span>
                             <button
                               onClick={() => handleIngredientToggle(ingredient)}
@@ -1015,7 +1041,7 @@ const getStepAmount = (unit?: string): number => {
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <span className="text-sm font-semibold text-orange-600 whitespace-nowrap">
-                                {formatQuantityDisplay(selected.quantity)}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
+                                {formatQuantityDisplay(selected.quantity, ingredient.unit)}{ingredient.unit ? ` ${formatUnit(ingredient.unit)}` : ""}
                               </span>
 \
                             </div>

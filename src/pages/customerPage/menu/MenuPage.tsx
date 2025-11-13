@@ -379,8 +379,7 @@ const MenuPage: React.FC = () => {
                         </div>
                         <h3 className="text-2xl font-bold text-gray-900 mb-2 uppercase">Make your own bowl</h3>
                         <p className="text-gray-600 mb-4">Tự tạo tô poke bowl theo sở thích của bạn</p>
-                        <div className="flex items-center justify-between w-full max-w-xs mt-4">
-                          <span className="text-lg font-bold text-gray-900">Từ 16.500đ</span>
+                        <div className="flex justify-center w-full max-w-xs mt-4">
                           <Button className="bg-[#ea6d27] hover:bg-[#d85f1f] text-white font-semibold">
                             Tạo ngay
                           </Button>

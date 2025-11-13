@@ -6,6 +6,7 @@ import type {
 } from "@models/nutrition/calculate"
 import type { Nutrition } from "@models/nutrition/nutrition"
 import type { NutritionIngredientContribution } from "@models/chat"
+import type { ChatServiceResponse } from "@services/chat.service"
 import { bambiApi } from "@utils/api"
 import { API_ENDPOINTS } from "@utils/endpoints"
 
@@ -388,6 +389,80 @@ export async function calculateDishNutrition(
   return {
     ...prepared,
     analysis,
+  }
+}
+
+export async function getNutritionAdviceForDishes(
+  dishIds: number[],
+  options?: { query?: string; dishNames?: string[] }
+): Promise<ChatServiceResponse> {
+  const uniqueIds = Array.from(
+    new Set(
+      (dishIds || []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0)
+    )
+  )
+
+  if (!uniqueIds.length) {
+    throw new NutritionError("Không có món ăn hợp lệ để phân tích dinh dưỡng.")
+  }
+
+  const params: Record<string, unknown> = {
+    dishIds: uniqueIds.join(","),
+  }
+
+  if (options?.query) {
+    params.query = options.query
+  }
+
+  if (options?.dishNames && options.dishNames.length > 0) {
+    params.names = options.dishNames.join("|")
+  }
+
+  try {
+    const response = await bambiApi.get<unknown>(
+      API_ENDPOINTS.API_GEMINI_CALCULATE_CALORIES,
+      {
+        params,
+        headers: { "x-silent-error": "1" },
+      }
+    )
+
+    const data = response.data
+
+    if (typeof data === "string") {
+      return { message: data, raw: data }
+    }
+
+    if (data && typeof data === "object") {
+      const payload = data as {
+        message?: string
+        reply?: string
+        content?: string
+        metadata?: unknown
+      }
+
+      const resolvedMessage =
+        payload.message ??
+        payload.reply ??
+        payload.content ??
+        JSON.stringify(data)
+
+      return {
+        message: resolvedMessage,
+        metadata: (payload.metadata as ChatServiceResponse["metadata"]) ?? null,
+        raw: data,
+      }
+    }
+
+    return {
+      message: typeof data === "undefined" || data === null ? "" : String(data),
+      raw: data,
+    }
+  } catch (error) {
+    throw new NutritionError(
+      "Không thể lấy lời khuyên dinh dưỡng từ AI.",
+      error
+    )
   }
 }
 
