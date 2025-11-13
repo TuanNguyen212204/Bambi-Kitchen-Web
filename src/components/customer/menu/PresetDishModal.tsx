@@ -11,6 +11,7 @@ import type { StoreIngredient } from "@/zustand/types"
 import type { Dish } from "@models/dish/dish"
 import type { DishTemplateItem } from "@/zustand/slices/dish/template.slice"
 import { bambiApi, API_ENDPOINTS } from "@/utils/api"
+import { normalizeImageUrl } from "@/utils/file"
 
 interface PresetDishModalProps {
   open: boolean
@@ -232,7 +233,7 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
                 name: dishDataFromApi.name || '',
                 description: dishDataFromApi.description,
                 price: dishDataFromApi.price || 0,
-                imageUrl: dishDataFromApi.imageUrl,
+                imageUrl: normalizeImageUrl(dishDataFromApi.imageUrl),
                 ingredients,
               }
               
@@ -669,7 +670,7 @@ export default function PresetDishModal({ open, onClose, dish, editingItemId, in
       id: dish.id,
       name: dishName,
       price: Math.round(finalPrice), // Price per unit with modifications
-      img_url: dishDetails.imageUrl || dish.imageUrl || "",
+      img_url: normalizeImageUrl(dishDetails.imageUrl || dish.imageUrl) || "",
       account_id: 0,
       dish_category_id: dish.categoryId || 0,
       type: "single",

@@ -7,6 +7,7 @@ import { Switch } from "@components/ui/switch"
 import ReusableModal, { ModalForm, ModalActions } from "@components/ui/modal/modal"
 import { useDishStore } from "@zustand/stores/dish"
 import { useIngredientStore } from "@zustand/stores/ingredients"
+import { normalizeImageUrl } from "@/utils/file"
 
 interface Props { open: boolean; onClose: () => void; dish: { id: number; name: string; description?: string; price?: number; public?: boolean; active?: boolean; ingredients?: Record<number, number> } }
 
@@ -98,7 +99,7 @@ export default function EditDishModal({ open, onClose, dish }: Props) {
           setPrice(d.price != null ? String(d.price) : "")
           if (!activeDirtyRef.current) setIsActive(d.active ?? true)
           if (!publicDirtyRef.current) setIsPublic(d.public ?? true)
-          setExistingImageUrl(d.imageUrl)
+          setExistingImageUrl(normalizeImageUrl(d.imageUrl))
         }
       } catch { return }
     }

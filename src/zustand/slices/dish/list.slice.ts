@@ -1,5 +1,6 @@
 import type { StateCreator } from "zustand"
 import { bambiApi, bambiPublicApi, API_ENDPOINTS } from "@/utils/api"
+import { normalizeImageUrl } from "@/utils/file"
 
 export interface DishItem {
   id: number
@@ -52,6 +53,10 @@ export const createDishListSlice: StateCreator<
               headers: { "x-silent-error": "1" },
             })
             let items = Array.isArray(data) ? data : []
+            items = items.map(item => ({
+              ...item,
+              imageUrl: normalizeImageUrl(item.imageUrl)
+            }))
             set({ items, loading: false })
             return
           }
@@ -62,6 +67,10 @@ export const createDishListSlice: StateCreator<
           headers: { "x-silent-error": "1" },
         })
         let items = Array.isArray(data) ? data : []
+        items = items.map(item => ({
+          ...item,
+          imageUrl: normalizeImageUrl(item.imageUrl)
+        }))
         set({ items, loading: false })
         return
       }
@@ -70,6 +79,10 @@ export const createDishListSlice: StateCreator<
         headers: { "x-silent-error": "1" },
       })
       let items = Array.isArray(data) ? data : []
+      items = items.map(item => ({
+        ...item,
+        imageUrl: normalizeImageUrl(item.imageUrl)
+      }))
       
       // Filter theo active=false nếu là "inactive"
       if (filterType === "inactive") {

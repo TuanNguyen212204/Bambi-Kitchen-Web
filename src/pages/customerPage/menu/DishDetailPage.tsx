@@ -5,6 +5,7 @@ import { Button } from "@components/ui/button"
 import { PATHS } from "@config/path"
 import { bambiApi, bambiPublicApi, API_ENDPOINTS } from "@/utils/api"
 import { extractErrorMessage } from "@/utils/errors"
+import { normalizeImageUrl } from "@/utils/file"
 import { useAuthStore } from "@zustand/stores/auth"
 import { useIngredientStore } from "@zustand/stores/ingredients"
 import type { StoreIngredient } from "@/zustand/types/ingredient"
@@ -109,7 +110,15 @@ const DishDetailPage: React.FC = () => {
 
         if (!mounted) return
 
-        setDish(dishRes.data)
+        const dishData = dishRes.data;
+        if (dishData && typeof dishData === 'object') {
+          setDish({
+            ...dishData,
+            imageUrl: normalizeImageUrl((dishData as any).imageUrl || (dishData as any).imgUrl)
+          });
+        } else {
+          setDish(dishData);
+        }
         setRawIngredientsData(recipeRes.data)
       } catch (err) {
         if (!mounted) return
@@ -147,7 +156,7 @@ const DishDetailPage: React.FC = () => {
       name: dish.name,
       description: dish.description,
       price: dish.price,
-      imageUrl: dish.imageUrl || dish.imgUrl,
+      imageUrl: normalizeImageUrl(dish.imageUrl || dish.imgUrl),
       public: dish.public,
       active: dish.active,
       usedQuantity: dish.usedQuantity ?? dish.used,
