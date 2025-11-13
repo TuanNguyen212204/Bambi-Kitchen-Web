@@ -15,6 +15,7 @@ import TunaImg from "@assets/Menu/tuna.png"
 import PorkImg from "@assets/Menu/pork.png"
 import BeefImg from "@assets/Menu/beef.png"
 import ShrimpsImg from "@assets/Menu/shrimps.png"
+import { normalizeImageUrl } from "@/utils/file"
 
 interface DishResponse {
   id: number
@@ -201,7 +202,7 @@ const DishDetailPage: React.FC = () => {
                   <div className="relative z-10 w-full max-w-md">
                     <div className="rounded-full overflow-hidden shadow-xl border-4 border-white">
                       <img
-                        src={dish.imageUrl || dish.imgUrl || getFallbackImage(dish.id)}
+                        src={normalizeImageUrl(dish.imageUrl || dish.imgUrl) || getFallbackImage(dish.id)}
                         alt={dish.name}
                         className="w-full aspect-square object-cover"
                         onError={(event) => {

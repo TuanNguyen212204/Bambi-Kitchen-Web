@@ -18,6 +18,7 @@ import ShrimpsImg from "@assets/Menu/shrimps.png"
 import BackgroundMenu from "@assets/Menu/backgroundMenu.png"
 import CustomBowlModal from "@/components/customer/menu/CustomBowlModal"
 import PresetDishModal from "@/components/customer/menu/PresetDishModal"
+import { normalizeImageUrl } from "@/utils/file"
 
 const fallbackImages = [TunaImg, PorkImg, BeefImg, ShrimpsImg]
 const getFallbackImage = (idx: number) => fallbackImages[idx % fallbackImages.length]
@@ -75,7 +76,17 @@ const MenuCard: React.FC<{
         className="relative mb-4 block focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500 rounded-full"
       >
         <div className="w-44 h-44 rounded-full overflow-hidden bg-gray-100">
-          <img src={dish.imageUrl || getFallbackImage(idx)} alt={dish.name} className="w-full h-full object-cover" />
+          <img 
+            src={normalizeImageUrl(dish.imageUrl) || getFallbackImage(idx)} 
+            alt={dish.name} 
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.src !== getFallbackImage(idx)) {
+                target.src = getFallbackImage(idx);
+              }
+            }}
+          />
         </div>
         <div className="absolute top-2 right-2 bg-gray-800 text-white px-3 py-2 rounded-full text-sm font-bold shadow-lg">
           {priceFormat(dish.price)}
