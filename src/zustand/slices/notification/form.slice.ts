@@ -1,7 +1,7 @@
-import type { StateCreator } from "zustand"
-import { bambiApi, API_ENDPOINTS } from "@/utils/api"
+import { API_ENDPOINTS, bambiApi } from "@/utils/api"
 import type { NotificationFormSlice, NotificationStore } from "@/zustand/types/notification"
 import { toast } from "sonner"
+import type { StateCreator } from "zustand"
 
 export const createNotificationFormSlice: StateCreator<
   NotificationStore,
@@ -78,8 +78,8 @@ export const createNotificationFormSlice: StateCreator<
 
   markAsRead: async (id) => {
     try {
-      // PATCH không cần body theo API v3 docs
-      await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(id))
+      // PATCH với empty body - Authorization header sẽ được thêm tự động bởi interceptor
+      await bambiApi.patch(API_ENDPOINTS.API_NOTIFICATION_MARK_READ(id), {})
       toast.success("Đã đánh dấu là đã đọc!")
       await get().fetchAll()
     } catch (error: any) {
