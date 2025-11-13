@@ -122,6 +122,24 @@ export default function NotificationIcon({ className = "", onClick }: Notificati
     }
   }, [items, user?.role_id])
 
+  // Lắng nghe event khi notification được mark as read để refresh unread count
+  useEffect(() => {
+    if (!user?.id) return
+
+    const handleNotificationMarkedRead = () => {
+      // Refresh lại notifications để cập nhật unread count
+      const controller = new AbortController()
+      fetchNotifications(controller.signal)
+    }
+
+    window.addEventListener('notification-marked-read', handleNotificationMarkedRead)
+    
+    return () => {
+      window.removeEventListener('notification-marked-read', handleNotificationMarkedRead)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
   return (
     <div className="relative">
       <button

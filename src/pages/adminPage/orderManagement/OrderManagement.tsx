@@ -52,10 +52,6 @@ const OrderManagement = () => {
   const [loadingPayment, setLoadingPayment] = useState(false)
   const [q, setQ] = useState("")
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "PAID" | "COMPLETED" | "CANCELLED">("ALL")
-  const [openFeedback, setOpenFeedback] = useState(false)
-  const [feedbackRanking, setFeedbackRanking] = useState<number | undefined>(undefined)
-  const [feedbackComment, setFeedbackComment] = useState("")
-  const [savingFeedback, setSavingFeedback] = useState(false)
   const [openCreate, setOpenCreate] = useState(false)
 
   const formatCurrency = (amount?: number) =>
@@ -164,32 +160,6 @@ const OrderManagement = () => {
     const cancelled = orders.filter((o) => String(o.status).toLowerCase() === "cancelled").length
     return { total, paid, completed, cancelled }
   }, [orders])
-
-  // giữ cho tương thích cũ (không dùng nữa)
-
-  const openFeedbackModal = () => {
-    if (!current) return
-    setFeedbackRanking(current.ranking)
-    setFeedbackComment(current.comment || "")
-    setOpenFeedback(true)
-  }
-
-  const saveFeedback = async () => {
-    if (!current) return
-    setSavingFeedback(true)
-    try {
-      await bambiApi.put(API_ENDPOINTS.API_ORDER_FEEDBACK_UPDATE, {
-        orderId: current.id,
-        ranking: typeof feedbackRanking === 'number' ? feedbackRanking : undefined,
-        comment: feedbackComment?.trim() || undefined,
-      })
-      // cập nhật lại trong bộ nhớ
-      setOrders((prev) => prev.map((o) => (o.id === current.id ? { ...o, ranking: feedbackRanking, comment: feedbackComment } : o)))
-      setOpenFeedback(false)
-    } finally {
-      setSavingFeedback(false)
-    }
-  }
 
   // modal tạo đơn được tách riêng thành component
 
@@ -342,17 +312,33 @@ const OrderManagement = () => {
                     )}
                     {current.note && <div className="text-sm text-gray-700"><span className="font-medium">Ghi chú:</span> {current.note}</div>}
                     {(current.ranking || current.comment) && (
-                      <div className="mt-2 text-sm text-gray-700">
-                        <div className="font-medium">Feedback khách hàng</div>
-                        {current.ranking ? <div>Đánh giá: {current.ranking}/5</div> : null}
-                        {current.comment ? <div>Bình luận: {current.comment}</div> : null}
+                      <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div className="font-medium text-gray-800 mb-2 flex items-center gap-2">
+                          <Star className="w-4 h-4 text-yellow-500" />
+                          Feedback khách hàng
+                        </div>
+                        {current.ranking && (
+                          <div className="text-sm text-gray-700 mb-1">
+                            <span className="font-medium">Đánh giá:</span> {current.ranking}/5
+                            <div className="flex items-center gap-1 mt-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  size={14}
+                                  className={star <= current.ranking! ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {current.comment && (
+                          <div className="text-sm text-gray-700 mt-2">
+                            <span className="font-medium">Bình luận:</span>
+                            <p className="mt-1 text-gray-600 italic">"{current.comment}"</p>
+                          </div>
+                        )}
                       </div>
                     )}
-                    <div className="mt-3">
-                      <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={openFeedbackModal}>
-                        Cập nhật feedback
-                      </Button>
-                    </div>
                   </div>
                 )
               })()}
@@ -429,49 +415,6 @@ const OrderManagement = () => {
         </div>
         </div>
       </section>
-
-      {/* Feedback Modal */}
-      <Dialog open={openFeedback} onOpenChange={setOpenFeedback}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Cập nhật feedback đơn #{current?.id}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm text-gray-700 mb-2">Đánh giá</label>
-              <div className="flex items-center gap-2">
-                {[1,2,3,4,5].map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setFeedbackRanking(v)}
-                    className="p-1"
-                    aria-label={`Chọn ${v} sao`}
-                  >
-                    <Star className={`w-6 h-6 ${ (feedbackRanking ?? 0) >= v ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300' }`} />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-700 mb-1">Bình luận</label>
-              <textarea
-                className="w-full border border-gray-200 rounded-md p-2 text-sm bg-white"
-                rows={4}
-                placeholder="Nhập bình luận..."
-                value={feedbackComment}
-                onChange={(e) => setFeedbackComment(e.target.value)}
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" onClick={() => setOpenFeedback(false)}>Hủy</Button>
-              <Button onClick={saveFeedback} disabled={savingFeedback} className="bg-blue-600 hover:bg-blue-700 text-white">
-                {savingFeedback ? "Đang lưu..." : "Lưu"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Create Order Modal (componentized) */}
       <CreateOrderModal

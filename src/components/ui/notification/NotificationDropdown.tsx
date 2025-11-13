@@ -132,6 +132,8 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
       if (user?.role_id === 1) {
         // Admin: dùng store method
         await markAsRead(notificationId);
+        // Dispatch event để NotificationIcon cập nhật unread count
+        window.dispatchEvent(new CustomEvent('notification-marked-read'));
       } else {
         // User thường: gọi API trực tiếp
         // PATCH với empty body - Authorization header sẽ được thêm tự động bởi interceptor
@@ -143,6 +145,8 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
               notif.id === notificationId ? { ...notif, read: true, is_read: true } : notif
             )
           );
+          // Dispatch event để NotificationIcon cập nhật unread count
+          window.dispatchEvent(new CustomEvent('notification-marked-read'));
           // Refresh lại danh sách để đảm bảo đồng bộ
           await fetchNotifications();
         } catch (patchError: any) {

@@ -2,11 +2,12 @@ import CartDropdown from "@/components/ui/cart/CartDropdown";
 import CartIcon from "@/components/ui/cart/CartIcon";
 import NotificationDropdown from "@/components/ui/notification/NotificationDropdown";
 import NotificationIcon from "@/components/ui/notification/NotificationIcon";
+import QuickOrderModal from "@/components/customer/quickorder/QuickOrderModal";
 import { useAuthStore } from "@/zustand/stores/auth";
 import logo from "@assets/logo.png";
 import { PATHS } from "@config/path";
 import { ROLES } from "@config/routes";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon, Repeat } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
@@ -14,6 +15,7 @@ const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [quickOrderOpen, setQuickOrderOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -163,16 +165,28 @@ const Header = () => {
                     Thông tin người dùng
                   </button>
                   {user?.role_id === ROLES.CUSTOMER && (
-                    <button
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
-                      onClick={() => {
-                        closeAllDropdowns();
-                        navigate(PATHS.ORDERS);
-                      }}
-                    >
-                      <UserIcon size={16} />
-                      Lịch sử đơn hàng
-                    </button>
+                    <>
+                      <button
+                        className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
+                        onClick={() => {
+                          closeAllDropdowns();
+                          navigate(PATHS.ORDERS);
+                        }}
+                      >
+                        <UserIcon size={16} />
+                        Lịch sử đơn hàng
+                      </button>
+                      <button
+                        className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
+                        onClick={() => {
+                          closeAllDropdowns();
+                          setQuickOrderOpen(true);
+                        }}
+                      >
+                        <Repeat size={16} />
+                        Đặt lại đơn hàng
+                      </button>
+                    </>
                   )}
                   <button 
                     className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2" 
@@ -202,6 +216,9 @@ const Header = () => {
           )}
         </div>
       </div>
+      {isAuthenticated && user?.role_id === ROLES.CUSTOMER && (
+        <QuickOrderModal open={quickOrderOpen} onClose={() => setQuickOrderOpen(false)} />
+      )}
     </header>
   );
 };

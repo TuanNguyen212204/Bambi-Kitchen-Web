@@ -401,27 +401,23 @@ const getStepAmount = (unit?: string): number => {
     ))
   }
 
-  // Base price constant (có thể lấy từ config sau)
-  const BASE_BOWL_PRICE = 16500
-
-  // Calculate total price
+  // Calculate total price based on priceRatio and quantityRatio
+  // Giá được tính từ tổng giá các nguyên liệu đã chọn nhân với priceRatio
   const totalPrice = useMemo(() => {
-    if (!selectedTemplate) return BASE_BOWL_PRICE
+    if (!selectedTemplate) return 0
     
-    // Base price từ template: basePrice * priceRatio
-    let price = BASE_BOWL_PRICE * selectedTemplate.priceRatio
-    
-    // Add ingredient prices: pricePerUnit * quantity
+    // Tính tổng giá các nguyên liệu đã chọn
     // Lưu ý: quantity đã được scale theo quantityRatio trong handleIngredientToggle và handleAdjustQuantity
-    // nên giá tính trực tiếp từ pricePerUnit * quantity (đã scale)
+    let totalIngredientPrice = 0
     selectedIngredients.forEach(selected => {
       const ingredient = ingredients.find(ing => ing.id === selected.ingredientId)
       if (ingredient && ingredient.pricePerUnit) {
-        price += ingredient.pricePerUnit * selected.quantity
+        totalIngredientPrice += ingredient.pricePerUnit * selected.quantity
       }
     })
     
-    return Math.round(price)
+    // Áp dụng priceRatio vào tổng giá
+    return Math.round(totalIngredientPrice * selectedTemplate.priceRatio)
   }, [selectedTemplate, selectedIngredients, ingredients])
 
   // Handle next step
@@ -709,9 +705,6 @@ const getStepAmount = (unit?: string): number => {
                         </p>
                       )}
                     </div>
-                    <p className="text-2xl font-bold text-orange-600 mt-4">
-                      {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Math.round(BASE_BOWL_PRICE * template.priceRatio))}
-                    </p>
                   </div>
                 </div>
               ))}
