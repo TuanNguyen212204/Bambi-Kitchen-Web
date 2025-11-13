@@ -77,9 +77,15 @@ export const API_ENDPOINTS = {
   AI_ANALYZE: "/ai/analyze",
   AI_SUGGESTIONS: "/ai/suggestions",
   
-  // Gemini AI Chat
-  API_GEMINI_CHAT: (message: string) => `/api/gemini/chat?message=${encodeURIComponent(message)}`,
-  API_GEMINI_AGENT: "/api/gemini/agent",
+  // AI Chat
+  API_CHAT: "/chat", // tạm giữ nếu backend duy trì endpoint này
+  API_GEMINI_CHAT: "/api/gemini/chat",
+  
+  // Nutrition & health
+  API_NUTRITION: "/api/nutrition",
+  API_NUTRITION_BY_ID: (id: number) => `/api/nutrition?id=${id}`,
+  API_NUTRITION_BY_INGREDIENT: (ingredientId: number) => `/api/nutrition/${ingredientId}/ingredient`,
+  API_MAIL_CALCULATE_CALORIES: "/api/mail/calculate-calories",
   
   ACTIVE_ORDERS: "/staff/orders/active",
   ORDER_STATUS: (id: string) => `/staff/orders/${id}/status`,

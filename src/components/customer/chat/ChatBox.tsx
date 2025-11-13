@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react"
 import { X, Send, Bot, User, Loader2, AlertCircle, RotateCcw } from "lucide-react"
 import { cn } from "@lib/utils"
-import { chatWithAIFallback, ChatError } from "@services/chat.service"
+import type { ChatMessageMetadata, ChatMessageNutritionMetadata } from "@models/chat"
+import { chatWithAI, ChatError } from "@services/chat.service"
 import { Button } from "@components/ui/button"
 import { Textarea } from "@components/ui/textarea"
 import { extractErrorMessage } from "@utils/errors"
+import NutritionAnalysisCard from "./NutritionAnalysisCard"
 
 interface Message {
   id: string
@@ -12,20 +14,104 @@ interface Message {
   content: string
   timestamp: Date
   isError?: boolean
+  metadata?: ChatMessageMetadata | null
 }
 
 interface ChatBoxProps {
   isOpen: boolean
   onClose: () => void
+  onAssistantMessage?: (message: Message) => void
 }
 
-export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
+const isNutritionAnalysisMetadata = (
+  metadata: ChatMessageMetadata | null | undefined
+): metadata is ChatMessageNutritionMetadata => {
+  return !!metadata && metadata.type === "nutrition-analysis"
+}
+
+const tryDeriveNutritionMetadataFromContent = (
+  content: string
+): ChatMessageNutritionMetadata | null => {
+  const trimmed = content.trim()
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      typeof parsed.score === "undefined" ||
+      typeof parsed.totals !== "object" ||
+      parsed.totals === null
+    ) {
+      return null
+    }
+
+    const analysisBase: ChatMessageNutritionMetadata["analysis"] = {
+      score: Number(parsed.score) || 0,
+      title: typeof parsed.title === "string" ? parsed.title : "",
+      roast: typeof parsed.roast === "string" ? parsed.roast : "",
+      totals: {
+        calories: Number(
+          (parsed.totals as Record<string, unknown>)?.calories
+        ) || 0,
+        protein: Number(
+          (parsed.totals as Record<string, unknown>)?.protein
+        ) || 0,
+        carb: Number((parsed.totals as Record<string, unknown>)?.carb) || 0,
+        fat: Number((parsed.totals as Record<string, unknown>)?.fat) || 0,
+        fiber: Number((parsed.totals as Record<string, unknown>)?.fiber) || 0,
+      },
+      suggest: typeof parsed.suggest === "string" ? parsed.suggest : "",
+    }
+    if (
+      parsed.analysis &&
+      typeof parsed.analysis === "object" &&
+      parsed.analysis !== null
+    ) {
+      Object.assign(
+        analysisBase,
+        parsed.analysis as Record<string, unknown>
+      )
+    }
+
+    const analysis = analysisBase
+
+    const payload: ChatMessageNutritionMetadata["payload"] = {
+      name: typeof parsed.name === "string" ? parsed.name : "Món ăn",
+      ingredients: [],
+    }
+
+    return {
+      type: "nutrition-analysis",
+      dishId: Number(parsed.dishId) || 0,
+      dishName:
+        typeof parsed.dishName === "string"
+          ? (parsed.dishName as string)
+          : payload.name,
+      payload,
+      generatedAt: new Date().toISOString(),
+      contributions: [],
+      analysis,
+      missingIngredients: Array.isArray(parsed.missingIngredients)
+        ? (parsed.missingIngredients as Array<{ id: number; name: string }>)
+        : undefined,
+    }
+  } catch {
+    return null
+  }
+}
+
+export default function ChatBox({ isOpen, onClose, onAssistantMessage }: ChatBoxProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       role: "assistant",
       content: "Xin chào! Tôi là trợ lý AI của Bambi Kitchen. Tôi có thể giúp gì cho bạn hôm nay?",
       timestamp: new Date(),
+      metadata: null,
     },
   ])
   const [input, setInput] = useState("")
@@ -85,15 +171,21 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
     setLastError(null)
 
     try {
-      const response = await chatWithAIFallback(userMessage.content)
+      const response = await chatWithAI(userMessage.content)
+      const derivedMetadata =
+        response.metadata ?? tryDeriveNutritionMetadataFromContent(response.message)
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: response,
+        content: response.message,
         timestamp: new Date(),
+        metadata: derivedMetadata,
       }
+
       setMessages((prev) => [...prev, assistantMessage])
       setLastError(null)
+      onAssistantMessage?.(assistantMessage)
     } catch (error) {
       const isChatError = error instanceof ChatError
       const statusCode = isChatError ? error.statusCode : (error as { response?: { status?: number } })?.response?.status
@@ -170,49 +262,87 @@ export default function ChatBox({ isOpen, onClose }: ChatBoxProps) {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={cn(
-                "flex gap-3",
-                message.role === "user" ? "justify-end" : "justify-start"
-              )}
-            >
-              {message.role === "assistant" && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                  <Bot className="h-4 w-4" />
-                </div>
-              )}
+          {messages.map((message) => {
+            const isAssistant = message.role === "assistant"
+            const showAlertIcon =
+              message.isError || message.content.includes("⚠️")
+            const isNutritionMessage =
+              isAssistant &&
+              !showAlertIcon &&
+              isNutritionAnalysisMetadata(message.metadata)
+
+            return (
               <div
+                key={message.id}
                 className={cn(
-                  "max-w-[80%] rounded-lg px-4 py-2",
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : message.isError || message.content.includes("⚠️")
-                    ? "bg-destructive/10 text-destructive border border-destructive/20"
-                    : "bg-muted text-muted-foreground"
+                  "flex gap-3",
+                  message.role === "user" ? "justify-end" : "justify-start"
                 )}
               >
-                <div className="flex items-start gap-2">
-                  {(message.isError || message.content.includes("⚠️")) && (
-                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                {isAssistant && (
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                    <Bot className="h-4 w-4" />
+                  </div>
+                )}
+                <div
+                  className={cn(
+                    "max-w-[80%]",
+                    isNutritionMessage
+                      ? "w-full sm:max-w-[85%] space-y-2"
+                      : "rounded-lg px-4 py-2",
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : showAlertIcon
+                      ? "bg-destructive/10 text-destructive border border-destructive/20"
+                      : isNutritionMessage
+                      ? "bg-transparent text-foreground"
+                      : "bg-muted text-muted-foreground"
                   )}
-                  <p className="text-sm whitespace-pre-wrap flex-1">{message.content}</p>
+                >
+                  {isNutritionMessage ? (
+                    <>
+                      {message.content && (
+                        <div className="rounded-lg bg-muted px-4 py-3 text-sm text-muted-foreground whitespace-pre-wrap shadow-sm">
+                          {message.content}
+                        </div>
+                      )}
+                      <NutritionAnalysisCard
+                        metadata={message.metadata as ChatMessageNutritionMetadata}
+                      />
+                      <p className="text-xs opacity-70 mt-2 text-right">
+                        {message.timestamp.toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-start gap-2">
+                        {showAlertIcon && (
+                          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        )}
+                        <p className="text-sm whitespace-pre-wrap flex-1">
+                          {message.content}
+                        </p>
+                      </div>
+                      <p className="text-xs opacity-70 mt-1">
+                        {message.timestamp.toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </>
+                  )}
                 </div>
-                <p className="text-xs opacity-70 mt-1">
-                  {message.timestamp.toLocaleTimeString("vi-VN", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
+                {message.role === "user" && (
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                    <User className="h-4 w-4" />
+                  </div>
+                )}
               </div>
-              {message.role === "user" && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                  <User className="h-4 w-4" />
-                </div>
-              )}
-            </div>
-          ))}
+            )
+          })}
           {isLoading && (
             <div className="flex gap-3 justify-start">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
