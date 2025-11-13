@@ -1,7 +1,7 @@
 // import React from "react";
-import { Facebook, Instagram } from "lucide-react";
-import logo from "@assets/logo.png";
 import footerBg from "@assets/Footer/BackgroundGetOrPromoCodeFooterPic.png";
+import logo from "@assets/logo.png";
+import { Facebook, Instagram } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -65,7 +65,6 @@ const Footer = () => {
           <div className="text-[#5c6574] text-[15px] leading-10">
             <div>Menu</div>
             <div>About us</div>
-            <div>Contact us</div>
             <div>Main dishes</div>
           </div>
         </div>

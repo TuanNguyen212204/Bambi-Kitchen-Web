@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
-import { LogOut, User as UserIcon } from "lucide-react";
+import CartDropdown from "@/components/ui/cart/CartDropdown";
+import CartIcon from "@/components/ui/cart/CartIcon";
+import NotificationDropdown from "@/components/ui/notification/NotificationDropdown";
+import NotificationIcon from "@/components/ui/notification/NotificationIcon";
 import { useAuthStore } from "@/zustand/stores/auth";
-import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import logo from "@assets/logo.png";
 import { PATHS } from "@config/path";
 import { ROLES } from "@config/routes";
-import NotificationIcon from "@/components/ui/notification/NotificationIcon";
-import NotificationDropdown from "@/components/ui/notification/NotificationDropdown";
-import CartIcon from "@/components/ui/cart/CartIcon";
-import CartDropdown from "@/components/ui/cart/CartDropdown";
+import { LogOut, User as UserIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -87,7 +87,6 @@ const Header = () => {
           <NavLink to={PATHS.HOME} end className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Home</NavLink>
           <NavLink to={"/menu"} className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Menu</NavLink>
           <NavLink to={PATHS.ABOUT} className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>About Us</NavLink>
-          <NavLink to={PATHS.CONTACT} className={({isActive}) => `hover:text-[#ea6d27] ${isActive ? 'text-[#ea6d27] font-semibold' : 'text-[#101a24]'}`}>Contact</NavLink>
         </nav>
 
         <div className="flex items-center gap-4">
