@@ -3,6 +3,7 @@ import { X, Clock, Package, Loader2 } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { bambiApi, API_ENDPOINTS } from "@/utils/api"
 import { useAuthStore } from "@zustand/stores/auth"
+import { normalizeImageUrl } from "@/utils/file"
 import { useCartStore } from "@/zustand/stores/cart"
 import { toast } from "sonner"
 import type { Dish } from "@models/dish/dish"
@@ -113,7 +114,7 @@ export default function QuickOrderModal({ open, onClose }: QuickOrderModalProps)
       id: typeof data?.id === "number" ? data.id : fallbackId,
       name: typeof data?.name === "string" ? data.name : `Món #${fallbackId}`,
       price: normalizePrice(data?.price),
-      img_url: data?.imageUrl || data?.imgUrl || "",
+      img_url: normalizeImageUrl(data?.imageUrl || data?.imgUrl) || "",
       account_id: data?.account?.id ?? data?.accountId ?? 0,
       dish_category_id: data?.dishCategory?.id ?? data?.dishCategoryId ?? 0,
       type,
@@ -192,7 +193,7 @@ export default function QuickOrderModal({ open, onClose }: QuickOrderModalProps)
             id: detail.dish.id,
             name: detail.dish.name || cachedDish?.name || `Món #${detail.dish.id}`,
             price,
-            img_url: detail.dish.imageUrl || cachedDish?.img_url || "",
+            img_url: normalizeImageUrl(detail.dish.imageUrl) || cachedDish?.img_url || "",
             account_id: cachedDish?.account_id ?? 0,
             dish_category_id: cachedDish?.dish_category_id ?? 0,
             type: cachedDish?.type ?? "single",

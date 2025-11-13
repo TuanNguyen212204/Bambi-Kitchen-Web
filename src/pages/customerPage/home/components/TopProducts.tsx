@@ -8,6 +8,7 @@ import BeefImg from "@assets/Menu/beef.png";
 import ShrimpsImg from "@assets/Menu/shrimps.png";
 import { PATHS } from "@config/path";
 import { useAuthStore } from "@zustand/stores/auth";
+import { normalizeImageUrl } from "@/utils/file";
 
 interface Product {
   id: number;
@@ -163,7 +164,7 @@ const TopProducts: React.FC = () => {
             name: dish.name ?? "Món ăn",
             description: dish.description ?? "Món ăn healthy tại Bambi Kitchen.",
             price: dish.price ?? 0,
-            imageUrl: dish.imageUrl || dish.imgUrl || "",
+            imageUrl: normalizeImageUrl(dish.imageUrl || dish.imgUrl) || "",
             category: dish.dishType || "healthy bowl",
             rating: 4.5,
             isAvailable: dish.active ?? true,
