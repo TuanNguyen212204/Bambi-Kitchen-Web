@@ -162,7 +162,7 @@ const normalizeRecipeIngredients = (
 
   if (Array.isArray(data)) {
     return data
-      .map((item) => {
+      .map<NormalizedIngredientUsage | null>((item) => {
         const ingredient = (item as any)?.ingredient
         const quantityRaw =
           (item as any)?.quantity ??
@@ -189,7 +189,7 @@ const normalizeRecipeIngredients = (
             (item as any)?.unit ??
             ingredient?.ingredientUnit ??
             null,
-        }
+        } satisfies NormalizedIngredientUsage
       })
       .filter((item): item is NormalizedIngredientUsage => item !== null)
   }
@@ -198,7 +198,7 @@ const normalizeRecipeIngredients = (
     const ingredients = (data as any)?.ingredients
     if (Array.isArray(ingredients)) {
       return ingredients
-        .map((item) => {
+        .map<NormalizedIngredientUsage | null>((item) => {
           const id = Number(item?.id ?? item?.ingredientId)
           const quantityRaw =
             item?.neededQuantity ?? item?.quantity ?? item?.amount
@@ -214,7 +214,7 @@ const normalizeRecipeIngredients = (
                 : `Nguyên liệu #${id}`,
             amount: Math.max(quantity, 0),
             unit: item?.unit ?? null,
-          }
+          } satisfies NormalizedIngredientUsage
         })
         .filter((item): item is NormalizedIngredientUsage => item !== null)
     }
@@ -290,8 +290,9 @@ export async function prepareDishNutritionPayload(
         }
       }
 
+      const fallbackUnit = parsePerUnit(nutrition?.per_unit ?? undefined)?.unit
       const normalizedUnit = normalizeUnit(
-        ingredient.unit ?? nutrition?.ingredient?.unit
+        ingredient.unit ?? fallbackUnit ?? undefined
       )
       const ratio = calculateScalingRatio(
         ingredient.amount,

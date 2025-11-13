@@ -89,7 +89,10 @@ export default function NutritionAnalysisCard({
 
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {macroList.map((item) => (
+          {macroList.map((item) => {
+            const totalValue =
+              analysis.totals[item.key as keyof typeof analysis.totals] ?? 0
+            return (
             <div
               key={item.key}
               className="rounded-md bg-muted px-3 py-2 text-center"
@@ -98,19 +101,14 @@ export default function NutritionAnalysisCard({
                 {item.label}
               </p>
               <p className="text-base font-semibold text-foreground">
-                {formatNumber(
-                  Number(
-                    (analysis.totals as Record<string, number | undefined>)[
-                      item.key
-                    ] ?? 0
-                  )
-                )}{" "}
+                {formatNumber(totalValue)}{" "}
                 <span className="text-xs font-medium text-muted-foreground">
                   {item.unit}
                 </span>
               </p>
             </div>
-          ))}
+            )
+          })}
         </div>
 
         {analysis.roast && (
