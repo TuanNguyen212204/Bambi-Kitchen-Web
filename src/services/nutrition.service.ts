@@ -422,9 +422,8 @@ export async function saveIngredientNutrition(
   data: IngredientNutritionData
 ): Promise<Nutrition> {
   try {
-    const payload: Partial<Nutrition> & { ingredient: { id: number } } = {
-      ingredient: { id: ingredientId },
-      ingredient_id: ingredientId,
+    const payload: Record<string, unknown> = {
+      ingredientId,
     }
 
     if (typeof data.id === "number") {
