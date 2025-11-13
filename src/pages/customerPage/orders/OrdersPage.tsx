@@ -501,7 +501,7 @@ const OrdersPage: React.FC = () => {
     }
   }
 
-  // Khi chi tiết đơn được load, tự động tạo nutrition request
+  // Khi chi tiết đơn được load, chuẩn bị nutrition request (không tự động gửi)
   useEffect(() => {
     if (activeDetailOrderId && orderDetailsState[activeDetailOrderId]?.details) {
       const details = orderDetailsState[activeDetailOrderId].details || []
@@ -522,6 +522,9 @@ const OrdersPage: React.FC = () => {
           appendUserMessage: true,
         })
       }
+    } else {
+      // Reset khi đóng modal
+      setNutritionRequest(null)
     }
   }, [activeDetailOrderId, orderDetailsState])
 
@@ -941,6 +944,15 @@ const OrdersPage: React.FC = () => {
                       <div className="border border-gray-200 rounded-2xl p-4">
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Món ăn</h3>
+                          {nutritionRequest && nutritionRequest.dishIds.length > 0 && activeDetailOrderId && (
+                            <Button
+                              onClick={() => setChatBoxOpen(true)}
+                              size="sm"
+                              className="bg-orange-500 hover:bg-orange-600 text-white"
+                            >
+                              Xem lời khuyên dinh dưỡng cho đơn #{activeDetailOrderId}
+                            </Button>
+                          )}
                         </div>
                         {detailState?.loading ? (
                           <div className="flex justify-center items-center py-10 text-gray-500">
@@ -1064,18 +1076,6 @@ const OrdersPage: React.FC = () => {
             setNutritionRequest(null)
           }}
         />
-      )}
-      
-      {/* Tự động mở ChatBox khi có nutrition request */}
-      {nutritionRequest && !chatBoxOpen && (
-        <div className="fixed bottom-20 right-4 z-50">
-          <Button
-            onClick={() => setChatBoxOpen(true)}
-            className="bg-orange-500 hover:bg-orange-600 text-white shadow-lg"
-          >
-            Xem lời khuyên dinh dưỡng
-          </Button>
-        </div>
       )}
     </div>
   )
