@@ -392,6 +392,23 @@ export async function calculateDishNutrition(
   }
 }
 
+interface DishNutritionResponseItem {
+  dishId: number
+  response: {
+    score: number
+    title: string
+    roast: string
+    totals: {
+      calories: number
+      protein: number
+      carb: number
+      fat: number
+      fiber: number
+    }
+    suggest: string
+  }
+}
+
 export async function getNutritionAdviceForDishes(
   dishIds: number[],
   options?: { query?: string; dishNames?: string[] }
@@ -406,29 +423,102 @@ export async function getNutritionAdviceForDishes(
     throw new NutritionError("Không có món ăn hợp lệ để phân tích dinh dưỡng.")
   }
 
-  const params: Record<string, unknown> = {
-    dishIds: uniqueIds.join(","),
-  }
-
-  if (options?.query) {
-    params.query = options.query
-  }
-
-  if (options?.dishNames && options.dishNames.length > 0) {
-    params.names = options.dishNames.join("|")
-  }
-
   try {
-    const response = await bambiApi.get<unknown>(
+    // POST với body là array dish ids
+    const response = await bambiApi.post<DishNutritionResponseItem[]>(
       API_ENDPOINTS.API_GEMINI_CALCULATE_CALORIES,
+      uniqueIds,
       {
-        params,
         headers: { "x-silent-error": "1" },
       }
     )
 
     const data = response.data
 
+    // Xử lý response là array of objects
+    if (Array.isArray(data) && data.length > 0) {
+      // Tạo map dishId -> dishName để dễ tra cứu
+      const dishNameMap = new Map<number, string>()
+      if (options?.dishNames && options.dishNames.length > 0) {
+        uniqueIds.forEach((id, idx) => {
+          if (options.dishNames && options.dishNames[idx]) {
+            dishNameMap.set(id, options.dishNames[idx])
+          }
+        })
+      }
+      
+      // Format message cho từng dish
+      const messages: string[] = []
+      
+      for (const item of data) {
+        const analysis = item.response
+        const dishName = dishNameMap.get(item.dishId) || `Món #${item.dishId}`
+        
+        let dishMessage = `🍽️ **${dishName}**\n\n`
+        dishMessage += `📊 **${analysis.title}**\n\n`
+        dishMessage += `${analysis.roast}\n\n`
+        dishMessage += `📈 **Thông tin dinh dưỡng:**\n`
+        dishMessage += `• Calories: ${analysis.totals.calories} kcal\n`
+        dishMessage += `• Protein: ${analysis.totals.protein}g\n`
+        dishMessage += `• Carb: ${analysis.totals.carb}g\n`
+        dishMessage += `• Fat: ${analysis.totals.fat}g\n`
+        dishMessage += `• Fiber: ${analysis.totals.fiber}g\n\n`
+        
+        if (analysis.suggest) {
+          dishMessage += `💡 **Gợi ý:** ${analysis.suggest}\n`
+        }
+        
+        messages.push(dishMessage)
+      }
+
+      const combinedMessage = messages.join("\n---\n\n")
+
+      // Nếu chỉ có 1 dish, tạo metadata để hiển thị card
+      if (data.length === 1) {
+        const item = data[0]
+        const analysis = item.response
+        const dishName = dishNameMap.get(item.dishId) || `Món #${item.dishId}`
+        
+        const metadata: ChatServiceResponse["metadata"] = {
+          type: "nutrition-analysis",
+          dishId: item.dishId,
+          dishName,
+          payload: {
+            name: dishName,
+            ingredients: [],
+          },
+          generatedAt: new Date().toISOString(),
+          contributions: [],
+          analysis: {
+            score: analysis.score,
+            title: analysis.title,
+            roast: analysis.roast,
+            totals: {
+              calories: analysis.totals.calories,
+              protein: analysis.totals.protein,
+              carb: analysis.totals.carb,
+              fat: analysis.totals.fat,
+              fiber: analysis.totals.fiber,
+            },
+            suggest: analysis.suggest,
+          },
+        }
+
+        return {
+          message: combinedMessage,
+          metadata,
+          raw: data,
+        }
+      }
+
+      // Nếu có nhiều dishes, chỉ trả về message
+      return {
+        message: combinedMessage,
+        raw: data,
+      }
+    }
+
+    // Fallback: nếu response không phải array
     if (typeof data === "string") {
       return { message: data, raw: data }
     }

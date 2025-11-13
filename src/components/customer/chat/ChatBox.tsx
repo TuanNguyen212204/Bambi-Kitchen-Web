@@ -191,6 +191,7 @@ export default function ChatBox({
   const [isProcessingNutrition, setIsProcessingNutrition] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const processedNutritionRequestRef = useRef<string | null>(null)
   const isAuthenticated = useAuthStore(
     (state) => state.isAuthenticated || Boolean(state.token)
   )
@@ -323,6 +324,17 @@ export default function ChatBox({
       return
     }
 
+    // Tạo unique key cho request để tránh xử lý trùng lặp
+    const requestKey = `${nutritionRequest.dishIds.join(",")}-${nutritionRequest.orderId || ""}`
+    
+    // Nếu đã xử lý request này rồi, bỏ qua
+    if (processedNutritionRequestRef.current === requestKey) {
+      return
+    }
+
+    // Đánh dấu đã xử lý
+    processedNutritionRequestRef.current = requestKey
+
     const shouldAppendUserMessage = nutritionRequest.appendUserMessage !== false
     if (shouldAppendUserMessage) {
       const userContent =
@@ -348,6 +360,13 @@ export default function ChatBox({
     void handleNutritionAdviceRequest(nutritionRequest)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nutritionRequest, isOpen])
+
+  // Reset processed request khi đóng chatBox
+  useEffect(() => {
+    if (!isOpen) {
+      processedNutritionRequestRef.current = null
+    }
+  }, [isOpen])
 
   const handleSend = async (retryMessage?: string) => {
     const messageToSend = retryMessage || input.trim()
