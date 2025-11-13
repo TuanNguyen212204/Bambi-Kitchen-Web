@@ -93,7 +93,7 @@ export default function NotificationIcon({ className = "", onClick }: Notificati
     }, 100)
     
     // Chỉ polling khi user đã đăng nhập và component vẫn còn mounted
-    // Tăng interval lên 60 giây để giảm tải server
+    // Polling mỗi 15 giây để cập nhật unread count kịp thời
     const interval = setInterval(() => {
       // Kiểm tra lại user?.id và mounted trước khi fetch để tránh gọi API không cần thiết
       if (mounted && user?.id) {
@@ -101,7 +101,7 @@ export default function NotificationIcon({ className = "", onClick }: Notificati
         const intervalController = new AbortController()
         fetchNotifications(intervalController.signal)
       }
-    }, 60000) // Tăng từ 30s lên 60s
+    }, 15000) // 15 giây để cập nhật kịp thời hơn
     
     return () => {
       mounted = false
@@ -121,6 +121,24 @@ export default function NotificationIcon({ className = "", onClick }: Notificati
       setUnreadCount(unreadCount)
     }
   }, [items, user?.role_id])
+
+  // Lắng nghe event khi notification được mark as read để refresh unread count
+  useEffect(() => {
+    if (!user?.id) return
+
+    const handleNotificationMarkedRead = () => {
+      // Refresh lại notifications để cập nhật unread count ngay lập tức
+      // Không dùng AbortController vì đây là manual refresh
+      fetchNotifications()
+    }
+
+    window.addEventListener('notification-marked-read', handleNotificationMarkedRead)
+    
+    return () => {
+      window.removeEventListener('notification-marked-read', handleNotificationMarkedRead)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   return (
     <div className="relative">

@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Calendar, ClipboardList, Loader2, PackageCheck, PackageSearch, Tag, Utensils } from "lucide-react"
+import { Calendar, ClipboardList, Loader2, PackageCheck, PackageSearch, Repeat, Star, Tag, Utensils } from "lucide-react"
 import { Button } from "@components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog"
+import { Textarea } from "@components/ui/textarea"
+import QuickOrderModal from "@components/customer/quickorder/QuickOrderModal"
 import { PATHS } from "@config/path"
 import { bambiApi, API_ENDPOINTS } from "@/utils/api"
 import { useAuthStore } from "@zustand/stores/auth"
+import { toast } from "sonner"
 
 type OrderStatus = "PENDING" | "PREPARING" | "COMPLETED" | "PAID" | "CANCELLED"
 
@@ -14,6 +18,8 @@ interface ApiOrder {
   totalPrice: number
   status: OrderStatus
   note?: string
+  ranking?: number
+  comment?: string
 }
 
 interface ApiOrderDetail {
@@ -75,6 +81,12 @@ const OrdersPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<number, boolean>>({})
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false)
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
+  const [feedbackRanking, setFeedbackRanking] = useState<number>(5)
+  const [feedbackComment, setFeedbackComment] = useState("")
+  const [submittingFeedback, setSubmittingFeedback] = useState(false)
+  const [quickOrderOpen, setQuickOrderOpen] = useState(false)
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -133,6 +145,51 @@ const OrdersPage: React.FC = () => {
 
   const toggleExpanded = (orderId: number) => {
     setExpanded((prev) => ({ ...prev, [orderId]: !prev[orderId] }))
+  }
+
+  const openFeedbackModal = (order: ApiOrder) => {
+    setSelectedOrderId(order.id)
+    setFeedbackRanking(order.ranking || 5)
+    setFeedbackComment(order.comment || "")
+    setFeedbackModalOpen(true)
+  }
+
+  const handleSubmitFeedback = async () => {
+    if (!selectedOrderId) return
+
+    setSubmittingFeedback(true)
+    try {
+      await bambiApi.put(API_ENDPOINTS.API_ORDER_FEEDBACK_UPDATE, {
+        orderId: selectedOrderId,
+        ranking: feedbackRanking,
+        comment: feedbackComment.trim() || undefined,
+      })
+
+      // Cập nhật lại trong state
+      setOrders((prev) =>
+        prev.map((item) =>
+          item.order.id === selectedOrderId
+            ? { ...item, order: { ...item.order, ranking: feedbackRanking, comment: feedbackComment.trim() || undefined } }
+            : item
+        )
+      )
+
+      toast.success("Đánh giá đơn hàng thành công!")
+      setFeedbackModalOpen(false)
+    } catch (err) {
+      const message =
+        (err as { response?: { data?: { message?: string; error?: string } } }).response?.data?.message ||
+        (err as { response?: { data?: { message?: string; error?: string } } }).response?.data?.error ||
+        "Không thể gửi đánh giá"
+      toast.error(message)
+    } finally {
+      setSubmittingFeedback(false)
+    }
+  }
+
+  const canGiveFeedback = (status: OrderStatus) => {
+    // Chỉ cho phép feedback khi đơn đã hoàn thành (COMPLETED)
+    return status === "COMPLETED"
   }
 
   const content = useMemo(() => {
@@ -254,6 +311,50 @@ const OrdersPage: React.FC = () => {
                   </div>
                 )}
 
+                {/* Feedback section */}
+                {canGiveFeedback(order.status) && (
+                  <div className="border-t border-gray-100 pt-4">
+                    {order.ranking ? (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-medium text-emerald-800">Đánh giá của bạn:</span>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                size={16}
+                                className={star <= (order.ranking || 0) ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {order.comment && (
+                          <p className="text-sm text-emerald-700 mt-1">{order.comment}</p>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openFeedbackModal(order)}
+                          className="mt-2 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                        >
+                          Sửa đánh giá
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3">
+                        <p className="text-sm text-blue-800 mb-2">Bạn đã nhận được đơn hàng này. Hãy đánh giá trải nghiệm của bạn!</p>
+                        <Button
+                          size="sm"
+                          onClick={() => openFeedbackModal(order)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Đánh giá đơn hàng
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="border-t border-gray-100 pt-4">
                   <button
                     onClick={() => toggleExpanded(order.id)}
@@ -337,11 +438,77 @@ const OrdersPage: React.FC = () => {
             Theo dõi trạng thái và chi tiết từng đơn hàng bạn đã đặt tại Bambi Kitchen.
           </p>
         </div>
-        <Button onClick={() => navigate(PATHS.MENU)} variant="outline" className="border-orange-200 text-orange-600 hover:bg-orange-50">
-          Tiếp tục đặt món
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setQuickOrderOpen(true)}
+            variant="outline"
+            className="border-orange-200 text-orange-600 hover:bg-orange-50 flex items-center gap-2"
+          >
+            <Repeat size={16} />
+            Đặt lại đơn hàng
+          </Button>
+          <Button onClick={() => navigate(PATHS.MENU)} variant="outline" className="border-orange-200 text-orange-600 hover:bg-orange-50">
+            Tiếp tục đặt món
+          </Button>
+        </div>
       </div>
       {content}
+
+      {/* Feedback Modal */}
+      <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Đánh giá đơn hàng #{selectedOrderId}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Đánh giá</label>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setFeedbackRanking(star)}
+                    className="p-1 hover:opacity-80 transition-opacity"
+                    aria-label={`Chọn ${star} sao`}
+                  >
+                    <Star
+                      size={32}
+                      className={star <= feedbackRanking ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}
+                    />
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Chọn {feedbackRanking} sao</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Bình luận (tùy chọn)</label>
+              <Textarea
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value)}
+                placeholder="Chia sẻ trải nghiệm của bạn về đơn hàng này..."
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setFeedbackModalOpen(false)} disabled={submittingFeedback}>
+                Hủy
+              </Button>
+              <Button
+                onClick={handleSubmitFeedback}
+                disabled={submittingFeedback}
+                className="bg-orange-500 hover:bg-orange-600 text-white"
+              >
+                {submittingFeedback ? "Đang gửi..." : "Gửi đánh giá"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Order Modal */}
+      <QuickOrderModal open={quickOrderOpen} onClose={() => setQuickOrderOpen(false)} />
     </div>
   )
 }

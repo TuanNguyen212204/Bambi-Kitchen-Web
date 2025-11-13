@@ -77,6 +77,8 @@ export default function NotificationManagement() {
     try {
       await markAsRead(notificationId)
       await fetchAll()
+      // Dispatch event để NotificationIcon cập nhật unread count
+      window.dispatchEvent(new CustomEvent('notification-marked-read'))
     } catch (error) {
       console.error("Error marking as read:", error)
     }
